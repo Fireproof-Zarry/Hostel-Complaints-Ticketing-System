@@ -11,7 +11,7 @@ export default function Login() {
     localStorage.setItem('idToken', idToken)
 
     try {
-      const response = await fetch('http://localhost:8080/auth/me', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/me`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${idToken}`,
