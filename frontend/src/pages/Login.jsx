@@ -30,6 +30,7 @@ export default function Login() {
       if (user.role === 'ADMIN') {
         navigate('/admin')
       } else {
+        console.log('Navigating to student...')
         navigate('/student')
       }
     } catch (error) {

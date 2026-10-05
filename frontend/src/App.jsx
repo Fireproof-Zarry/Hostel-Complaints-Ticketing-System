@@ -6,6 +6,8 @@ import StudentHome from './pages/StudentHome'
 import AdminHome from './pages/AdminHome'
 
 export default function App() {
+  console.log("Google Client ID:", import.meta.env.VITE_GOOGLE_CLIENT_ID)
+
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <BrowserRouter>
