@@ -10,7 +10,7 @@ export default function StudentHome() {
     title: '',
     description: '',
     category: 'Electrical',
-    block: 'Mahanadi',
+    floor: 'Second',
     room: ''
   });
 
@@ -109,11 +109,14 @@ export default function StudentHome() {
             <option value="IT">IT/Network</option>
           </select>
 
-          <select value={formData.block} onChange={e => setFormData({...formData, block: e.target.value})}>
-            <option value="Mahanadi">Mahanadi</option>
-            <option value="Godavari">Godavari</option>
-            <option value="Ganga">Ganga</option>
-            <option value="Jamuna">Jamuna</option>
+          <select value={formData.floor} onChange={e => setFormData({...formData, floor: e.target.value})}>
+            <option value="Ground">Ground</option>
+            <option value="First">First</option>
+            <option value="Second">Second</option>
+            <option value="Third">Third</option>
+            <option value="Fourth">Fourth</option>
+            <option value="Fifth">Fifth</option>
+            <option value="Sixth">Sixth</option>
           </select>
 
           <input required type="text" placeholder="Room Number (e.g. 312)" value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} />
