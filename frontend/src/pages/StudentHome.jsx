@@ -5,7 +5,7 @@ export default function StudentHome() {
   const [complaints, setComplaints] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -15,7 +15,7 @@ export default function StudentHome() {
   });
 
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('idToken');
 
   // If there is no token, kick them back to login. Otherwise, fetch complaints.
   useEffect(() => {
@@ -28,7 +28,7 @@ export default function StudentHome() {
 
   const fetchMyComplaints = async () => {
     try {
-      const response = await fetch('/api/complaints/mine', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/complaints/mine`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -50,7 +50,7 @@ export default function StudentHome() {
     setSuccess('');
 
     try {
-      const response = await fetch('/api/complaints', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/complaints`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,13 +78,13 @@ export default function StudentHome() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('idToken');
     navigate('/login');
   };
 
   return (
     <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto', position: 'relative' }}>
-      <button 
+      <button
         onClick={handleLogout}
         style={{ position: 'absolute', top: '20px', right: '20px', padding: '8px 16px', cursor: 'pointer' }}
       >
@@ -92,16 +92,16 @@ export default function StudentHome() {
       </button>
 
       <h2>Student Dashboard</h2>
-      
+
       <div style={{ border: '1px solid #ccc', padding: '20px', marginBottom: '30px', borderRadius: '8px', marginTop: '40px' }}>
         <h3>File a New Complaint</h3>
         {error && <p style={{ color: 'red' }}>{error}</p>}
         {success && <p style={{ color: 'green' }}>{success}</p>}
-        
+
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <input required type="text" placeholder="Title" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
-          
-          <select value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+          <input required type="text" placeholder="Title" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
+
+          <select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
             <option value="Electrical">Electrical</option>
             <option value="Plumbing">Plumbing</option>
             <option value="Carpentry">Carpentry</option>
@@ -119,10 +119,10 @@ export default function StudentHome() {
             <option value="Sixth">Sixth</option>
           </select>
 
-          <input required type="text" placeholder="Room Number (e.g. 312)" value={formData.room} onChange={e => setFormData({...formData, room: e.target.value})} />
-          
-          <textarea required placeholder="Describe the issue..." rows="4" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
-          
+          <input required type="text" placeholder="Room Number (e.g. 312)" value={formData.room} onChange={e => setFormData({ ...formData, room: e.target.value })} />
+
+          <textarea required placeholder="Describe the issue..." rows="4" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}></textarea>
+
           <button type="submit" style={{ padding: '10px', backgroundColor: '#0056b3', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
             Submit Complaint
           </button>
@@ -147,9 +147,9 @@ export default function StudentHome() {
                 <td>#{c.id}</td>
                 <td>{c.title}</td>
                 <td>
-                  <span style={{ 
-                    padding: '3px 8px', 
-                    borderRadius: '12px', 
+                  <span style={{
+                    padding: '3px 8px',
+                    borderRadius: '12px',
                     fontSize: '0.85em',
                     backgroundColor: c.status === 'PENDING' ? '#fff3cd' : '#d1e7dd'
                   }}>
@@ -160,7 +160,7 @@ export default function StudentHome() {
                 <td>{new Date(c.createdAt).toLocaleDateString()}</td>
               </tr>
             ))}
-          </tbody>  
+          </tbody>
         </table>
       )}
     </div>
