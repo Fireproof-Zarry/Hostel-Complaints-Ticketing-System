@@ -19,6 +19,23 @@ export default function AdminHome() {
   // Selected complaint for View
   const [selectedComplaint, setSelectedComplaint] = useState(null)
 
+  // Complaint for status update
+  const [statusComplaint, setStatusComplaint] = useState(null)
+  const [newStatus, setNewStatus] = useState('')
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [statusError, setStatusError] = useState('')
+
+  // Success toast
+  const [successMessage, setSuccessMessage] = useState('')
+
+  const showSuccessMessage = (message) => {
+    setSuccessMessage(message)
+
+    setTimeout(() => {
+      setSuccessMessage('')
+    }, 4000)
+  }
+
   const fetchComplaints = async (filters = {}) => {
     const idToken = localStorage.getItem('idToken')
 
@@ -72,9 +89,13 @@ export default function AdminHome() {
 
       setComplaints(data)
       setFilteredComplaints(data)
+
+      return true
     } catch (error) {
       console.error('Failed to fetch complaints:', error)
       setError('Failed to load complaints.')
+
+      return false
     } finally {
       setLoading(false)
     }
@@ -114,14 +135,16 @@ export default function AdminHome() {
         .split(/\s+/)
         .filter(Boolean)
 
-      return searchWords.every((word) => searchableText.includes(word))
+      return searchWords.every((word) =>
+        searchableText.includes(word)
+      )
     })
 
     setFilteredComplaints(filtered)
   }
 
-  const handleApplyFilters = () => {
-    fetchComplaints({
+  const handleApplyFilters = async () => {
+    const success = await fetchComplaints({
       status: statusFilter,
       category: categoryFilter,
       floor: floorFilter,
@@ -129,9 +152,13 @@ export default function AdminHome() {
       from: fromDate,
       to: toDate,
     })
+
+    if (success) {
+      showSuccessMessage('Filters applied successfully')
+    }
   }
 
-  const handleResetFilters = () => {
+  const handleResetFilters = async () => {
     setStatusFilter('')
     setCategoryFilter('')
     setFloorFilter('')
@@ -139,7 +166,74 @@ export default function AdminHome() {
     setToDate('')
     setAssignedToFilter('')
 
-    fetchComplaints()
+    const success = await fetchComplaints()
+
+    if (success) {
+      showSuccessMessage('Filters reset')
+    }
+  }
+
+  const handleStatusUpdate = async () => {
+    if (!statusComplaint || !newStatus) {
+      return
+    }
+
+    const idToken = localStorage.getItem('idToken')
+
+    try {
+      setStatusUpdating(true)
+      setStatusError('')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/${statusComplaint.id}/status?status=${encodeURIComponent(newStatus)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const message = await response.text()
+
+        throw new Error(
+          message || `Failed to update status: ${response.status}`
+        )
+      }
+
+      const updatedComplaint = await response.json()
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === updatedComplaint.id
+            ? updatedComplaint
+            : complaint
+        )
+      )
+
+      setFilteredComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === updatedComplaint.id
+            ? updatedComplaint
+            : complaint
+        )
+      )
+
+      setStatusComplaint(null)
+      setNewStatus('')
+      setStatusError('')
+
+      showSuccessMessage('Status updated successfully')
+    } catch (error) {
+      console.error('Failed to update complaint status:', error)
+
+      setStatusError(
+        error.message || 'Failed to update complaint status.'
+      )
+    } finally {
+      setStatusUpdating(false)
+    }
   }
 
   const getTimeSinceRaised = (createdAt) => {
@@ -185,18 +279,27 @@ export default function AdminHome() {
     ),
   ]
 
+  const statusOptions = [
+    'PENDING',
+    'ASSIGNED',
+    'IN_PROGRESS',
+    'RESOLVED',
+    'REJECTED',
+  ]
+
   return (
     <div className="admin-layout">
 
       {/* Sidebar */}
-      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
-
+      <aside
+        className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'
+          }`}
+      >
         <div className="sidebar-header">
           <h2>Hostel Complaints</h2>
         </div>
 
         <nav className="sidebar-nav">
-
           <button className="nav-item active">
             <span>⌂</span>
             {sidebarOpen && <span>Admin Home</span>}
@@ -211,7 +314,6 @@ export default function AdminHome() {
             <span>◷</span>
             {sidebarOpen && <span>History</span>}
           </button>
-
         </nav>
 
         <div className="sidebar-bottom">
@@ -220,7 +322,6 @@ export default function AdminHome() {
             {sidebarOpen && <span>Profile</span>}
           </button>
         </div>
-
       </aside>
 
       {/* Main Area */}
@@ -228,7 +329,6 @@ export default function AdminHome() {
 
         {/* Header */}
         <header className="admin-header">
-
           <button
             className="menu-button"
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -241,7 +341,6 @@ export default function AdminHome() {
           <div className="profile-button">
             ◉
           </div>
-
         </header>
 
         {/* Content */}
@@ -249,7 +348,6 @@ export default function AdminHome() {
 
           {/* Search */}
           <div className="search-section">
-
             <input
               type="text"
               placeholder="Search complaints..."
@@ -264,7 +362,6 @@ export default function AdminHome() {
             >
               Search
             </button>
-
           </div>
 
           {/* Filters */}
@@ -275,12 +372,16 @@ export default function AdminHome() {
 
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value)
+                }
               >
                 <option value="">All</option>
                 <option value="PENDING">PENDING</option>
                 <option value="ASSIGNED">ASSIGNED</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="IN_PROGRESS">
+                  IN_PROGRESS
+                </option>
                 <option value="RESOLVED">RESOLVED</option>
                 <option value="REJECTED">REJECTED</option>
               </select>
@@ -291,10 +392,14 @@ export default function AdminHome() {
 
               <select
                 value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
+                onChange={(e) =>
+                  setCategoryFilter(e.target.value)
+                }
               >
                 <option value="">All</option>
-                <option value="Electrical">Electrical</option>
+                <option value="Electrical">
+                  Electrical
+                </option>
                 <option value="Plumbing">Plumbing</option>
                 <option value="Carpentry">Carpentry</option>
                 <option value="Cleaning">Cleaning</option>
@@ -307,7 +412,9 @@ export default function AdminHome() {
 
               <select
                 value={floorFilter}
-                onChange={(e) => setFloorFilter(e.target.value)}
+                onChange={(e) =>
+                  setFloorFilter(e.target.value)
+                }
               >
                 <option value="">All</option>
                 <option value="ground">Ground</option>
@@ -326,7 +433,9 @@ export default function AdminHome() {
               <input
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(e) =>
+                  setFromDate(e.target.value)
+                }
               />
             </div>
 
@@ -336,7 +445,9 @@ export default function AdminHome() {
               <input
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={(e) =>
+                  setToDate(e.target.value)
+                }
               />
             </div>
 
@@ -345,7 +456,9 @@ export default function AdminHome() {
 
               <select
                 value={assignedToFilter}
-                onChange={(e) => setAssignedToFilter(e.target.value)}
+                onChange={(e) =>
+                  setAssignedToFilter(e.target.value)
+                }
               >
                 <option value="">All</option>
 
@@ -370,12 +483,10 @@ export default function AdminHome() {
             >
               Reset
             </button>
-
           </div>
 
           {/* Complaints */}
           <div className="complaints-section">
-
             <h2>Complaints</h2>
 
             {loading && (
@@ -390,116 +501,134 @@ export default function AdminHome() {
               </div>
             )}
 
-            {!loading && !error && filteredComplaints.length === 0 && (
-              <div className="table-placeholder">
-                <p>No complaints found.</p>
-              </div>
-            )}
+            {!loading &&
+              !error &&
+              filteredComplaints.length === 0 && (
+                <div className="table-placeholder">
+                  <p>No complaints found.</p>
+                </div>
+              )}
 
-            {!loading && !error && filteredComplaints.length > 0 && (
-              <div className="complaints-table-wrapper">
-
-                <table className="complaints-table">
-
-                  <thead>
-                    <tr>
-                      <th>Complaint No.</th>
-                      <th>Title</th>
-                      <th>Category</th>
-                      <th>Email</th>
-                      <th>Floor</th>
-                      <th>Room No.</th>
-                      <th>Status</th>
-                      <th>Assigned To</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-
-                    {filteredComplaints.map((complaint) => (
-                      <tr key={complaint.id}>
-
-                        <td>
-                          #{complaint.id}
-                        </td>
-
-                        <td>
-                          <strong className="complaint-title">
-                            {complaint.title}
-                          </strong>
-                        </td>
-
-                        <td>
-                          {complaint.category}
-                        </td>
-
-                        <td>
-                          {complaint.student?.email || 'No email'}
-                        </td>
-
-                        <td>
-                          {complaint.floor}
-                        </td>
-
-                        <td>
-                          {complaint.room}
-                        </td>
-
-                        <td>
-                          <span
-                            className={`status-badge status-${complaint.status?.toLowerCase()}`}
-                          >
-                            {complaint.status}
-                          </span>
-                        </td>
-
-                        <td>
-                          {complaint.assignedTo || 'Unassigned'}
-                        </td>
-
-                        <td>
-                          <div className="action-buttons">
-
-                            <button
-                              className="table-action-button"
-                              onClick={() => setSelectedComplaint(complaint)}
-                            >
-                              View
-                            </button>
-
-                            <button className="table-action-button">
-                              Assign
-                            </button>
-
-                            <button className="table-action-button">
-                              Status
-                            </button>
-
-                          </div>
-                        </td>
-
+            {!loading &&
+              !error &&
+              filteredComplaints.length > 0 && (
+                <div className="complaints-table-wrapper">
+                  <table className="complaints-table">
+                    <thead>
+                      <tr>
+                        <th>Complaint No.</th>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Email</th>
+                        <th>Floor</th>
+                        <th>Room No.</th>
+                        <th>Status</th>
+                        <th>Assigned To</th>
+                        <th>Action</th>
                       </tr>
-                    ))}
+                    </thead>
 
-                  </tbody>
+                    <tbody>
+                      {filteredComplaints.map((complaint) => (
+                        <tr key={complaint.id}>
 
-                </table>
+                          <td>
+                            #{complaint.id}
+                          </td>
 
-              </div>
-            )}
+                          <td>
+                            <strong className="complaint-title">
+                              {complaint.title}
+                            </strong>
+                          </td>
 
+                          <td>
+                            {complaint.category}
+                          </td>
+
+                          <td>
+                            {complaint.student?.email ||
+                              'No email'}
+                          </td>
+
+                          <td>
+                            {complaint.floor}
+                          </td>
+
+                          <td>
+                            {complaint.room}
+                          </td>
+
+                          <td>
+                            <span
+                              className={`status-badge status-${complaint.status?.toLowerCase()}`}
+                            >
+                              {complaint.status}
+                            </span>
+                          </td>
+
+                          <td>
+                            {complaint.assignedTo ||
+                              'Unassigned'}
+                          </td>
+
+                          <td>
+                            <div className="action-buttons">
+
+                              <button
+                                type="button"
+                                className="table-action-button"
+                                onClick={() =>
+                                  setSelectedComplaint(
+                                    complaint
+                                  )
+                                }
+                              >
+                                View
+                              </button>
+
+                              <button
+                                type="button"
+                                className="table-action-button"
+                              >
+                                Assign
+                              </button>
+
+                              <button
+                                type="button"
+                                className="table-action-button"
+                                onClick={() => {
+                                  setStatusComplaint(
+                                    complaint
+                                  )
+                                  setNewStatus(
+                                    complaint.status || ''
+                                  )
+                                  setStatusError('')
+                                }}
+                              >
+                                Status
+                              </button>
+
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
           </div>
-
         </section>
-
       </main>
 
       {/* Complaint Details Modal */}
       {selectedComplaint && (
         <div
           className="complaint-modal-overlay"
-          onClick={() => setSelectedComplaint(null)}
+          onClick={() =>
+            setSelectedComplaint(null)
+          }
         >
           <div
             className="complaint-modal"
@@ -507,35 +636,38 @@ export default function AdminHome() {
           >
 
             <div className="complaint-modal-header">
-
               <div>
                 <h2>Complaint Details</h2>
 
                 <div className="complaint-meta">
-                  <span>#{selectedComplaint.id}</span>
+                  <span>
+                    #{selectedComplaint.id}
+                  </span>
 
                   <span>•</span>
 
                   <span>
-                    {getTimeSinceRaised(selectedComplaint.createdAt)}
+                    {getTimeSinceRaised(
+                      selectedComplaint.createdAt
+                    )}
                   </span>
                 </div>
               </div>
 
               <button
+                type="button"
                 className="complaint-modal-close"
-                onClick={() => setSelectedComplaint(null)}
+                onClick={() =>
+                  setSelectedComplaint(null)
+                }
               >
                 ×
               </button>
-
             </div>
 
             <div className="complaint-details">
 
-              {/* Title */}
               <div className="detail-item detail-item-full complaint-title-detail">
-
                 <span className="detail-label">
                   Title
                 </span>
@@ -543,12 +675,9 @@ export default function AdminHome() {
                 <span className="detail-title-value">
                   {selectedComplaint.title || '—'}
                 </span>
-
               </div>
 
-              {/* Category */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Category
                 </span>
@@ -556,57 +685,45 @@ export default function AdminHome() {
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.category || '—'}
                 </span>
-
               </div>
 
-              {/* Status */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Status
                 </span>
 
                 <span className="detail-value">
-
                   <span
                     className={`status-badge status-${selectedComplaint.status?.toLowerCase()}`}
                   >
                     {selectedComplaint.status || '—'}
                   </span>
-
                 </span>
-
               </div>
 
-              {/* Student Email */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Student Email
                 </span>
 
                 <span className="detail-value detail-value-large">
-                  {selectedComplaint.student?.email || 'No email'}
+                  {selectedComplaint.student?.email ||
+                    'No email'}
                 </span>
-
               </div>
 
-              {/* Assigned To */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Assigned To
                 </span>
 
                 <span className="detail-value detail-value-large">
-                  {selectedComplaint.assignedTo || 'Unassigned'}
+                  {selectedComplaint.assignedTo ||
+                    'Unassigned'}
                 </span>
-
               </div>
 
-              {/* Floor */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Floor
                 </span>
@@ -614,12 +731,9 @@ export default function AdminHome() {
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.floor || '—'}
                 </span>
-
               </div>
 
-              {/* Room */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Room No.
                 </span>
@@ -627,12 +741,9 @@ export default function AdminHome() {
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.room || '—'}
                 </span>
-
               </div>
 
-              {/* Description */}
               <div className="detail-item detail-item-full">
-
                 <span className="detail-label">
                   Description
                 </span>
@@ -641,12 +752,9 @@ export default function AdminHome() {
                   {selectedComplaint.description ||
                     'No description provided.'}
                 </p>
-
               </div>
 
-              {/* Created */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Created At
                 </span>
@@ -658,12 +766,9 @@ export default function AdminHome() {
                     ).toLocaleString()
                     : '—'}
                 </span>
-
               </div>
 
-              {/* Updated */}
               <div className="detail-item">
-
                 <span className="detail-label">
                   Updated At
                 </span>
@@ -675,23 +780,170 @@ export default function AdminHome() {
                     ).toLocaleString()
                     : '—'}
                 </span>
-
               </div>
+
+            </div>
+
+            <div className="complaint-modal-footer">
+              <button
+                type="button"
+                className="reset-button"
+                onClick={() =>
+                  setSelectedComplaint(null)
+                }
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Update Modal */}
+      {statusComplaint && (
+        <div
+          className="complaint-modal-overlay"
+          onClick={() => {
+            if (!statusUpdating) {
+              setStatusComplaint(null)
+              setStatusError('')
+            }
+          }}
+        >
+          <div
+            className="complaint-modal status-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+
+            <div className="complaint-modal-header">
+              <div>
+                <h2>Update Status</h2>
+
+                <div className="complaint-meta">
+                  <span>
+                    #{statusComplaint.id}
+                  </span>
+
+                  <span>•</span>
+
+                  <span>
+                    {statusComplaint.title}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="complaint-modal-close"
+                onClick={() => {
+                  if (!statusUpdating) {
+                    setStatusComplaint(null)
+                    setStatusError('')
+                  }
+                }}
+                disabled={statusUpdating}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="complaint-details">
+
+              {/* Current Status */}
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  Current Status
+                </span>
+
+                <span className="detail-value">
+                  <span
+                    className={`status-badge status-${statusComplaint.status?.toLowerCase()}`}
+                  >
+                    {statusComplaint.status}
+                  </span>
+                </span>
+              </div>
+
+              {/* New Status */}
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  New Status
+                </span>
+
+                <div className="status-options">
+                  {statusOptions.map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      className={`status-option ${newStatus === status
+                        ? 'selected'
+                        : ''
+                        }`}
+                      onClick={() => {
+                        setNewStatus(status)
+                        setStatusError('')
+                      }}
+                      disabled={statusUpdating}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Error */}
+              {statusError && (
+                <div className="detail-item detail-item-full">
+                  <p className="status-error">
+                    {statusError}
+                  </p>
+                </div>
+              )}
 
             </div>
 
             <div className="complaint-modal-footer">
 
               <button
+                type="button"
                 className="reset-button"
-                onClick={() => setSelectedComplaint(null)}
+                onClick={() => {
+                  if (!statusUpdating) {
+                    setStatusComplaint(null)
+                    setStatusError('')
+                  }
+                }}
+                disabled={statusUpdating}
               >
-                Close
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="apply-button"
+                onClick={handleStatusUpdate}
+                disabled={
+                  statusUpdating || !newStatus
+                }
+              >
+                {statusUpdating
+                  ? 'Updating...'
+                  : 'Update Status'}
               </button>
 
             </div>
-
           </div>
+        </div>
+      )}
+
+      {/* Success Toast */}
+      {successMessage && (
+        <div className="success-toast">
+          <span className="success-toast-icon">
+            ✓
+          </span>
+
+          <span>{successMessage}</span>
         </div>
       )}
 
