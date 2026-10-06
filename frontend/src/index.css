@@ -639,3 +639,153 @@ body {
 .complaint-modal-footer .reset-button:hover {
   background: #222;
 }
+
+/* =========================
+   STATUS OPTIONS
+========================= */
+
+.status-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.status-option {
+  height: 42px;
+
+  padding: 0 16px;
+
+  background: #202023;
+  color: #aaa;
+
+  border: 1px solid #333;
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
+}
+
+.status-option:hover:not(:disabled) {
+  background: rgba(112, 64, 255, 0.08);
+  border-color: #a68cf4;
+  color: #a6a3b5;
+}
+
+.status-option:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.status-option.selected {
+  background: rgba(112, 64, 255, 0.16);
+  border-color: #7040ff;
+  color: #b99cff;
+}
+
+.status-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   STATUS MODAL
+========================= */
+
+.status-modal {
+  max-width: 620px;
+}
+
+.status-modal .complaint-details {
+  gap: 26px;
+}
+
+/* =========================
+   STATUS ERROR
+========================= */
+
+.status-error {
+  margin: 0;
+
+  padding: 12px 14px;
+
+  background: rgba(220, 70, 70, 0.08);
+
+  border: 1px solid rgba(220, 70, 70, 0.25);
+  border-radius: 8px;
+
+  color: #ff7777;
+
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* =========================
+   STATUS MODAL FOOTER
+========================= */
+
+.status-modal .complaint-modal-footer {
+  gap: 10px;
+}
+
+.status-modal .complaint-modal-footer .apply-button {
+  min-width: 130px;
+}
+
+.status-modal .complaint-modal-footer .reset-button {
+  min-width: 96px;
+}
+
+/* =========================
+   SUCCESS TOAST
+========================= */
+
+.success-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  padding: 13px 18px;
+
+  background: #171719;
+  color: #fff;
+
+  border: 1px solid #333;
+  border-radius: 9px;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+
+  font-size: 14px;
+  font-weight: 500;
+
+  z-index: 2000;
+}
+
+.success-toast-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 22px;
+  height: 22px;
+
+  background: #173b2a;
+  color: #55d98a;
+
+  border-radius: 50%;
+
+  font-size: 13px;
+  font-weight: 700;
+}

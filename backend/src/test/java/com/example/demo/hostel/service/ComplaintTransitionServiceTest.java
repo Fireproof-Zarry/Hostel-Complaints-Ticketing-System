@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ComplaintTransitionServiceTest {
 
@@ -37,11 +36,31 @@ class ComplaintTransitionServiceTest {
     }
 
     @Test
+    void pendingToResolved_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
+                        Status.PENDING,
+                        Status.RESOLVED
+                )
+        );
+    }
+
+    @Test
     void assignedToInProgress_isAllowed() {
         assertDoesNotThrow(() ->
                 transitionService.validateTransition(
                         Status.ASSIGNED,
                         Status.IN_PROGRESS
+                )
+        );
+    }
+
+    @Test
+    void assignedToPending_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
+                        Status.ASSIGNED,
+                        Status.PENDING
                 )
         );
     }
@@ -57,21 +76,19 @@ class ComplaintTransitionServiceTest {
     }
 
     @Test
-    void pendingToResolved_isRejected() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> transitionService.validateTransition(
-                        Status.PENDING,
-                        Status.RESOLVED
+    void inProgressToRejected_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
+                        Status.IN_PROGRESS,
+                        Status.REJECTED
                 )
         );
     }
 
     @Test
-    void resolvedToPending_isRejected() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> transitionService.validateTransition(
+    void resolvedToPending_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
                         Status.RESOLVED,
                         Status.PENDING
                 )
@@ -79,12 +96,31 @@ class ComplaintTransitionServiceTest {
     }
 
     @Test
-    void rejectedToAssigned_isRejected() {
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> transitionService.validateTransition(
+    void resolvedToInProgress_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
+                        Status.RESOLVED,
+                        Status.IN_PROGRESS
+                )
+        );
+    }
+
+    @Test
+    void rejectedToAssigned_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
                         Status.REJECTED,
                         Status.ASSIGNED
+                )
+        );
+    }
+
+    @Test
+    void rejectedToResolved_isAllowed() {
+        assertDoesNotThrow(() ->
+                transitionService.validateTransition(
+                        Status.REJECTED,
+                        Status.RESOLVED
                 )
         );
     }
