@@ -1,269 +1,280 @@
 import { useEffect, useState } from 'react'
 
 export default function AdminHome() {
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [complaints, setComplaints] = useState([])
-  const [status, setStatus] = useState('')
-  const [category, setCategory] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const fetchComplaints = async () => {
-    const idToken = localStorage.getItem('idToken')
-
-    try {
-      setLoading(true)
-      setError('')
-
-      const params = new URLSearchParams()
-
-      if (status) params.append('status', status)
-      if (category) params.append('category', category)
-
-      if (from && to) {
-        params.append('from', `${from}T00:00:00`)
-        params.append('to', `${to}T23:59:59`)
-      }
-
-      const queryString = params.toString()
-
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints${queryString ? `?${queryString}` : ''
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch complaints: ${response.status}`)
-      }
-
-      const data = await response.json()
-      setComplaints(data)
-    } catch (error) {
-      console.error('Failed to fetch complaints:', error)
-      setError('Failed to load complaints.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const updateStatus = async (complaintId, newStatus) => {
-    const idToken = localStorage.getItem('idToken')
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints/${complaintId}/status?status=${newStatus}`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to update status: ${response.status}`)
-      }
-
-      const updatedComplaint = await response.json()
-
-      setComplaints((currentComplaints) =>
-        currentComplaints.map((complaint) =>
-          complaint.id === complaintId ? updatedComplaint : complaint
-        )
-      )
-    } catch (error) {
-      console.error('Failed to update complaint status:', error)
-      alert('Failed to update complaint status.')
-    }
-  }
-
-  const assignComplaint = async (complaintId, email) => {
-    const idToken = localStorage.getItem('idToken')
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints/${complaintId}/assign?email=${encodeURIComponent(email)}`,
-        {
-          method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
-      )
-
-      if (!response.ok) {
-        throw new Error(`Failed to assign complaint: ${response.status}`)
-      }
-
-      const updatedComplaint = await response.json()
-
-      setComplaints((currentComplaints) =>
-        currentComplaints.map((complaint) =>
-          complaint.id === complaintId ? updatedComplaint : complaint
-        )
-      )
-    } catch (error) {
-      console.error('Failed to assign complaint:', error)
-      alert('Failed to assign complaint.')
-    }
-  }
-
   useEffect(() => {
+    const fetchComplaints = async () => {
+      const idToken = localStorage.getItem('idToken')
+
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/admin/complaints`,
+          {
+            headers: {
+              Authorization: `Bearer ${idToken}`,
+            },
+          }
+        )
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch complaints: ${response.status}`)
+        }
+
+        const data = await response.json()
+        setComplaints(data)
+      } catch (error) {
+        console.error('Failed to fetch complaints:', error)
+        setError('Failed to load complaints.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
     fetchComplaints()
   }, [])
 
-  const clearFilters = () => {
-    setStatus('')
-    setCategory('')
-    setFrom('')
-    setTo('')
-  }
-
-  if (loading) {
-    return <h1>Loading complaints...</h1>
-  }
-
-  if (error) {
-    return <h1>{error}</h1>
-  }
-
   return (
-    <div>
-      <h1>Admin Dashboard</h1>
+    <div className="admin-layout">
 
-      {/* Filters */}
-      <div>
-        <label>
-          Status:{' '}
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
+      {/* Sidebar */}
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'}`}>
+
+        <div className="sidebar-header">
+          <h2>Hostel Complaints</h2>
+        </div>
+
+        <nav className="sidebar-nav">
+
+          <button className="nav-item active">
+            <span>⌂</span>
+            {sidebarOpen && <span>Admin Home</span>}
+          </button>
+
+          <button className="nav-item">
+            <span>▦</span>
+            {sidebarOpen && <span>Analytics</span>}
+          </button>
+
+          <button className="nav-item">
+            <span>◷</span>
+            {sidebarOpen && <span>History</span>}
+          </button>
+
+        </nav>
+
+        <div className="sidebar-bottom">
+          <button className="nav-item">
+            <span>◉</span>
+            {sidebarOpen && <span>Profile</span>}
+          </button>
+        </div>
+
+      </aside>
+
+      {/* Main Area */}
+      <main className="admin-main">
+
+        {/* Header */}
+        <header className="admin-header">
+
+          <button
+            className="menu-button"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
           >
-            <option value="">All</option>
-            <option value="PENDING">Pending</option>
-            <option value="ASSIGNED">Assigned</option>
-            <option value="IN_PROGRESS">In Progress</option>
-            <option value="RESOLVED">Resolved</option>
-            <option value="REJECTED">Rejected</option>
-          </select>
-        </label>
+            ☰
+          </button>
 
-        <label>
-          {' '}
-          Category:{' '}
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          >
-            <option value="">All</option>
-            <option value="Electrical">Electrical</option>
-            <option value="Plumbing">Plumbing</option>
-            <option value="Cleaning">Cleaning</option>
-            <option value="Other">Other</option>
-          </select>
-        </label>
+          <h1>Admin Home</h1>
 
-        <label>
-          {' '}
-          From:{' '}
-          <input
-            type="date"
-            value={from}
-            onChange={(e) => setFrom(e.target.value)}
-          />
-        </label>
+          <div className="profile-button">
+            ◉
+          </div>
 
-        <label>
-          {' '}
-          To:{' '}
-          <input
-            type="date"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
-        </label>
+        </header>
 
-        <button onClick={fetchComplaints}>
-          Apply Filters
-        </button>
+        {/* Content */}
+        <section className="admin-content">
 
-        <button onClick={clearFilters}>
-          Clear Filters
-        </button>
-      </div>
-
-      {/* Complaints */}
-      {complaints.length === 0 ? (
-        <p>No complaints found.</p>
-      ) : (
-        complaints.map((complaint) => (
-          <div key={complaint.id}>
-            <h2>{complaint.title}</h2>
-
-            <p>ID: {complaint.id}</p>
-
-            <p>Category: {complaint.category}</p>
-
-            {/* Status Management */}
-            <label>
-              Status:{' '}
-              <select
-                value={complaint.status}
-                onChange={(e) =>
-                  updateStatus(complaint.id, e.target.value)
-                }
-              >
-                <option value="PENDING">Pending</option>
-                <option value="ASSIGNED">Assigned</option>
-                <option value="IN_PROGRESS">In Progress</option>
-                <option value="RESOLVED">Resolved</option>
-                <option value="REJECTED">Rejected</option>
-              </select>
-            </label>
-
-            <p>
-              Student: {complaint.student?.email}
-            </p>
-
-            {/* Assignment */}
-            <p>
-              Assigned To:{' '}
-              {complaint.assignedTo || 'Unassigned'}
-            </p>
+          {/* Search */}
+          <div className="search-section">
 
             <input
-              type="email"
-              placeholder="Admin email"
-              id={`assign-${complaint.id}`}
+              type="text"
+              placeholder="Search complaints..."
+              className="search-input"
             />
 
-            <button
-              onClick={() => {
-                const email = document.getElementById(
-                  `assign-${complaint.id}`
-                ).value
-
-                if (!email) {
-                  alert('Enter an admin email.')
-                  return
-                }
-
-                assignComplaint(complaint.id, email)
-              }}
-            >
-              Assign
+            <button className="search-button">
+              Search
             </button>
 
-            <hr />
           </div>
-        ))
-      )}
+
+          {/* Filters */}
+          <div className="filters-section">
+
+            <select>
+              <option value="">Status</option>
+            </select>
+
+            <select>
+              <option value="">Category</option>
+            </select>
+
+            <select>
+              <option value="">Floor</option>
+            </select>
+
+            <div className="date-filter">
+              <label>From</label>
+              <input type="date" />
+            </div>
+
+            <div className="date-filter">
+              <label>To</label>
+              <input type="date" />
+            </div>
+
+            <select>
+              <option value="">In-charge</option>
+            </select>
+
+            <button className="apply-button">
+              Apply Filters
+            </button>
+
+            <button className="reset-button">
+              Reset
+            </button>
+
+          </div>
+
+          {/* Complaints */}
+          <div className="complaints-section">
+
+            <h2>Complaints</h2>
+
+            {loading && (
+              <div className="table-placeholder">
+                <p>Loading complaints...</p>
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="table-placeholder">
+                <p>{error}</p>
+              </div>
+            )}
+
+            {!loading && !error && complaints.length === 0 && (
+              <div className="table-placeholder">
+                <p>No complaints found.</p>
+              </div>
+            )}
+
+            {!loading && !error && complaints.length > 0 && (
+              <div className="complaints-table-wrapper">
+
+                <table className="complaints-table">
+
+                  <thead>
+                    <tr>
+                      <th>Complaint No.</th>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Email</th>
+                      <th>Floor</th>
+                      <th>Room No.</th>
+                      <th>Status</th>
+                      <th>Assigned To</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+
+                    {complaints.map((complaint) => (
+                      <tr key={complaint.id}>
+
+                        <td>
+                          #{complaint.id}
+                        </td>
+
+                        <td>
+                          <strong className="complaint-title">
+                            {complaint.title}
+                          </strong>
+                        </td>
+
+                        <td>
+                          {complaint.category}
+                        </td>
+
+                        <td>
+                          {complaint.student?.email || 'No email'}
+                        </td>
+
+                        <td>
+                          {complaint.floor}
+                        </td>
+
+                        <td>
+                          {complaint.room}
+                        </td>
+
+                        <td>
+                          <span
+                            className={`status-badge status-${complaint.status?.toLowerCase()}`}
+                          >
+                            {complaint.status}
+                          </span>
+                        </td>
+
+                        <td>
+                          {complaint.assignedTo || 'Unassigned'}
+                        </td>
+
+                        <td>
+                          <div className="action-buttons">
+
+                            <button className="table-action-button">
+                              View
+                            </button>
+
+                            <button className="table-action-button">
+                              Assign
+                            </button>
+
+                            <button className="table-action-button">
+                              Status
+                            </button>
+
+                          </div>
+                        </td>
+
+                      </tr>
+                    ))}
+
+                  </tbody>
+
+                </table>
+
+              </div>
+            )}
+
+          </div>
+
+        </section>
+
+      </main>
+
     </div>
   )
 }
