@@ -14,6 +14,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
@@ -21,11 +24,17 @@ class AdminServiceTest {
     @Mock
     private ComplaintRepository complaintRepository;
 
+    @Mock
+    private ComplaintTransitionService transitionService;
+
     private AdminService adminService;
 
     @BeforeEach
     void setUp() {
-        adminService = new AdminService(complaintRepository);
+        adminService = new AdminService(
+                complaintRepository,
+                transitionService
+        );
     }
 
     @Test
@@ -116,5 +125,64 @@ class AdminServiceTest {
 
         verify(complaintRepository)
                 .findByCreatedAtBetween(from, to);
+    }
+
+    @Test
+    void updateStatus_whenTransitionIsValid_thenSavesComplaint() {
+
+        Complaint complaint = new Complaint();
+        complaint.setStatus(Status.PENDING);
+
+        when(complaintRepository.findById(1L))
+                .thenReturn(java.util.Optional.of(complaint));
+
+        when(complaintRepository.save(complaint))
+                .thenReturn(complaint);
+
+        AdminService service = adminService;
+
+        Complaint result = service.updateStatus(
+                1L,
+                Status.ASSIGNED
+        );
+
+        verify(transitionService)
+                .validateTransition(
+                        Status.PENDING,
+                        Status.ASSIGNED
+                );
+
+        verify(complaintRepository)
+                .save(complaint);
+
+        assertEquals(Status.ASSIGNED, result.getStatus());
+    }
+
+    @Test
+    void updateStatus_whenTransitionIsInvalid_thenDoesNotSave() {
+
+    Complaint complaint = new Complaint();
+    complaint.setStatus(Status.PENDING);
+
+    when(complaintRepository.findById(1L))
+            .thenReturn(java.util.Optional.of(complaint));
+
+    doThrow(new IllegalArgumentException("Invalid status transition"))
+            .when(transitionService)
+            .validateTransition(
+                    Status.PENDING,
+                    Status.RESOLVED
+            );
+
+    assertThrows(
+            IllegalArgumentException.class,
+            () -> adminService.updateStatus(
+                    1L,
+                    Status.RESOLVED
+            )
+    );
+
+    verify(complaintRepository, never())
+            .save(complaint);
     }
 }

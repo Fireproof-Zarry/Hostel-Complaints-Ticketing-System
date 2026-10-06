@@ -12,9 +12,12 @@ import java.util.List;
 public class AdminService {
 
     private final ComplaintRepository complaintRepository;
-
-    public AdminService(ComplaintRepository complaintRepository) {
+    
+    private final ComplaintTransitionService transitionService;
+    
+    public AdminService(ComplaintRepository complaintRepository, ComplaintTransitionService transitionService) {
         this.complaintRepository = complaintRepository;
+        this.transitionService = transitionService;
     }
 
     public List<Complaint> getComplaints(
@@ -57,5 +60,22 @@ public class AdminService {
         }
 
         return complaintRepository.findAll();
+    }
+
+    public Complaint updateStatus(Long id, Status newStatus) {
+        Complaint complaint = complaintRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Complaint not found"));
+
+        Status currentStatus = complaint.getStatus();
+
+        transitionService.validateTransition(
+                currentStatus,
+                newStatus
+        );
+
+        complaint.setStatus(newStatus);
+
+        return complaintRepository.save(complaint);
     }
 }

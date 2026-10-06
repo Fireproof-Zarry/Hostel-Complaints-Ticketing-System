@@ -3,7 +3,10 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.service.AdminService;
+
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -23,13 +26,25 @@ public class AdminController {
     public List<Complaint> getComplaints(
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime from,
-            @RequestParam(required = false)
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
 
         return adminService.getComplaints(status, category, from, to);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(
+            @PathVariable Long id,
+            @RequestParam Status status) {
+
+        try {
+            Complaint complaint = adminService.updateStatus(id, status);
+            return ResponseEntity.ok(complaint);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
     }
 }
