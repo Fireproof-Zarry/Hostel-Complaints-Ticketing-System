@@ -26,8 +26,6 @@ export default function AdminHome() {
         params.append('category', category)
       }
 
-      // Backend currently supports date filtering only
-      // when both from and to are provided.
       if (from && to) {
         params.append('from', `${from}T00:00:00`)
         params.append('to', `${to}T23:59:59`)
@@ -68,6 +66,39 @@ export default function AdminHome() {
     setCategory('')
     setFrom('')
     setTo('')
+  }
+
+  const updateStatus = async (complaintId, newStatus) => {
+    const idToken = localStorage.getItem('idToken')
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/${complaintId}/status?status=${newStatus}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to update status: ${response.status}`)
+      }
+
+      const updatedComplaint = await response.json()
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === complaintId
+            ? updatedComplaint
+            : complaint
+        )
+      )
+    } catch (error) {
+      console.error('Failed to update complaint status:', error)
+      alert('Failed to update complaint status.')
+    }
   }
 
   if (loading) return <h1>Loading complaints...</h1>
@@ -142,11 +173,29 @@ export default function AdminHome() {
             <h2>{complaint.title}</h2>
             <p>ID: {complaint.id}</p>
             <p>Category: {complaint.category}</p>
-            <p>Status: {complaint.status}</p>
+
+            <label>
+              Status:{' '}
+              <select
+                value={complaint.status}
+                onChange={(e) =>
+                  updateStatus(complaint.id, e.target.value)
+                }
+              >
+                <option value="PENDING">Pending</option>
+                <option value="ASSIGNED">Assigned</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+            </label>
+
             <p>Student: {complaint.student?.email}</p>
+
             <p>
               Assigned To: {complaint.assignedTo || 'Unassigned'}
             </p>
+
             <hr />
           </div>
         ))
