@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react'
 export default function AdminHome() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [complaints, setComplaints] = useState([])
+  const [filteredComplaints, setFilteredComplaints] = useState([])
+  const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -28,7 +30,9 @@ export default function AdminHome() {
         }
 
         const data = await response.json()
+
         setComplaints(data)
+        setFilteredComplaints(data)
       } catch (error) {
         console.error('Failed to fetch complaints:', error)
         setError('Failed to load complaints.')
@@ -39,6 +43,44 @@ export default function AdminHome() {
 
     fetchComplaints()
   }, [])
+
+  const handleSearch = () => {
+    const query = searchTerm.trim().toLowerCase()
+
+    if (!query) {
+      setFilteredComplaints(complaints)
+      return
+    }
+
+    const filtered = complaints.filter((complaint) => {
+      const searchableText = [
+        complaint.id,
+        complaint.title,
+        complaint.description,
+        complaint.category,
+        complaint.student?.email,
+        complaint.student?.name,
+        complaint.floor,
+        complaint.room,
+        complaint.assignedTo,
+        complaint.status,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      // Remove common words like "room", "floor", "#"
+      // so searches such as "room 204" still work.
+      const searchWords = query
+        .replace(/#/g, ' ')
+        .split(/\s+/)
+        .filter(Boolean)
+
+      return searchWords.every((word) => searchableText.includes(word))
+    })
+
+    setFilteredComplaints(filtered)
+  }
 
   return (
     <div className="admin-layout">
@@ -109,9 +151,14 @@ export default function AdminHome() {
               type="text"
               placeholder="Search complaints..."
               className="search-input"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
 
-            <button className="search-button">
+            <button
+              className="search-button"
+              onClick={handleSearch}
+            >
               Search
             </button>
 
@@ -173,13 +220,13 @@ export default function AdminHome() {
               </div>
             )}
 
-            {!loading && !error && complaints.length === 0 && (
+            {!loading && !error && filteredComplaints.length === 0 && (
               <div className="table-placeholder">
                 <p>No complaints found.</p>
               </div>
             )}
 
-            {!loading && !error && complaints.length > 0 && (
+            {!loading && !error && filteredComplaints.length > 0 && (
               <div className="complaints-table-wrapper">
 
                 <table className="complaints-table">
@@ -200,7 +247,7 @@ export default function AdminHome() {
 
                   <tbody>
 
-                    {complaints.map((complaint) => (
+                    {filteredComplaints.map((complaint) => (
                       <tr key={complaint.id}>
 
                         <td>
