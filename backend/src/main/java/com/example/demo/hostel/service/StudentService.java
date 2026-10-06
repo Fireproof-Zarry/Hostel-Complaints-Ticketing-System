@@ -30,6 +30,6 @@ public class StudentService {
     }
 
     public List<Complaint> getStudentComplaints(User student) {
-        return complaintRepository.findByStudent(student);
+        return complaintRepository.findByStudentOrderByCreatedAtDesc(student);
     }
 }
