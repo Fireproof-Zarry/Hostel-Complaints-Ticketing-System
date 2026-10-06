@@ -18,13 +18,8 @@ export default function AdminHome() {
 
       const params = new URLSearchParams()
 
-      if (status) {
-        params.append('status', status)
-      }
-
-      if (category) {
-        params.append('category', category)
-      }
+      if (status) params.append('status', status)
+      if (category) params.append('category', category)
 
       if (from && to) {
         params.append('from', `${from}T00:00:00`)
@@ -57,17 +52,6 @@ export default function AdminHome() {
     }
   }
 
-  useEffect(() => {
-    fetchComplaints()
-  }, [])
-
-  const clearFilters = () => {
-    setStatus('')
-    setCategory('')
-    setFrom('')
-    setTo('')
-  }
-
   const updateStatus = async (complaintId, newStatus) => {
     const idToken = localStorage.getItem('idToken')
 
@@ -90,9 +74,7 @@ export default function AdminHome() {
 
       setComplaints((currentComplaints) =>
         currentComplaints.map((complaint) =>
-          complaint.id === complaintId
-            ? updatedComplaint
-            : complaint
+          complaint.id === complaintId ? updatedComplaint : complaint
         )
       )
     } catch (error) {
@@ -101,13 +83,61 @@ export default function AdminHome() {
     }
   }
 
-  if (loading) return <h1>Loading complaints...</h1>
-  if (error) return <h1>{error}</h1>
+  const assignComplaint = async (complaintId, email) => {
+    const idToken = localStorage.getItem('idToken')
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/${complaintId}/assign?email=${encodeURIComponent(email)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to assign complaint: ${response.status}`)
+      }
+
+      const updatedComplaint = await response.json()
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === complaintId ? updatedComplaint : complaint
+        )
+      )
+    } catch (error) {
+      console.error('Failed to assign complaint:', error)
+      alert('Failed to assign complaint.')
+    }
+  }
+
+  useEffect(() => {
+    fetchComplaints()
+  }, [])
+
+  const clearFilters = () => {
+    setStatus('')
+    setCategory('')
+    setFrom('')
+    setTo('')
+  }
+
+  if (loading) {
+    return <h1>Loading complaints...</h1>
+  }
+
+  if (error) {
+    return <h1>{error}</h1>
+  }
 
   return (
     <div>
       <h1>Admin Dashboard</h1>
 
+      {/* Filters */}
       <div>
         <label>
           Status:{' '}
@@ -125,7 +155,8 @@ export default function AdminHome() {
         </label>
 
         <label>
-          {' '}Category:{' '}
+          {' '}
+          Category:{' '}
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -139,7 +170,8 @@ export default function AdminHome() {
         </label>
 
         <label>
-          {' '}From:{' '}
+          {' '}
+          From:{' '}
           <input
             type="date"
             value={from}
@@ -148,7 +180,8 @@ export default function AdminHome() {
         </label>
 
         <label>
-          {' '}To:{' '}
+          {' '}
+          To:{' '}
           <input
             type="date"
             value={to}
@@ -165,15 +198,19 @@ export default function AdminHome() {
         </button>
       </div>
 
+      {/* Complaints */}
       {complaints.length === 0 ? (
         <p>No complaints found.</p>
       ) : (
         complaints.map((complaint) => (
           <div key={complaint.id}>
             <h2>{complaint.title}</h2>
+
             <p>ID: {complaint.id}</p>
+
             <p>Category: {complaint.category}</p>
 
+            {/* Status Management */}
             <label>
               Status:{' '}
               <select
@@ -190,11 +227,38 @@ export default function AdminHome() {
               </select>
             </label>
 
-            <p>Student: {complaint.student?.email}</p>
-
             <p>
-              Assigned To: {complaint.assignedTo || 'Unassigned'}
+              Student: {complaint.student?.email}
             </p>
+
+            {/* Assignment */}
+            <p>
+              Assigned To:{' '}
+              {complaint.assignedTo || 'Unassigned'}
+            </p>
+
+            <input
+              type="email"
+              placeholder="Admin email"
+              id={`assign-${complaint.id}`}
+            />
+
+            <button
+              onClick={() => {
+                const email = document.getElementById(
+                  `assign-${complaint.id}`
+                ).value
+
+                if (!email) {
+                  alert('Enter an admin email.')
+                  return
+                }
+
+                assignComplaint(complaint.id, email)
+              }}
+            >
+              Assign
+            </button>
 
             <hr />
           </div>
