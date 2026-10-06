@@ -7,11 +7,11 @@ import com.example.demo.hostel.service.AdminService;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
@@ -129,5 +129,80 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(null, null, from, to);
+        }
+
+        @Test
+        void assignComplaint_withValidAdmin_returns200() throws Exception {
+                AdminService adminService = mock(AdminService.class);
+
+                Complaint complaint = new Complaint();
+                complaint.setAssignedTo("admin@smail.iitm.ac.in");
+
+                when(adminService.assignComplaint(
+                        1L,
+                        "admin@smail.iitm.ac.in"
+                )).thenReturn(complaint);
+
+                mockMvc(adminService)
+                        .perform(
+                                patch("/api/admin/complaints/1/assign")
+                                        .param("email", "admin@smail.iitm.ac.in")
+                        )
+                        .andExpect(status().isOk());
+
+                verify(adminService).assignComplaint(
+                        1L,
+                        "admin@smail.iitm.ac.in"
+                );
+        }
+
+        @Test
+        void assignComplaint_whenUserNotFound_returns400() throws Exception {
+                AdminService adminService = mock(AdminService.class);
+
+                when(adminService.assignComplaint(
+                        1L,
+                        "unknown@smail.iitm.ac.in"
+                )).thenThrow(
+                        new IllegalArgumentException("User not found")
+                );
+
+                mockMvc(adminService)
+                        .perform(
+                                patch("/api/admin/complaints/1/assign")
+                                        .param("email", "unknown@smail.iitm.ac.in")
+                        )
+                        .andExpect(status().isBadRequest());
+
+                verify(adminService).assignComplaint(
+                        1L,
+                        "unknown@smail.iitm.ac.in"
+                );
+        }
+
+        @Test
+        void assignComplaint_whenUserIsNotAdmin_returns400() throws Exception {
+                AdminService adminService = mock(AdminService.class);
+
+                when(adminService.assignComplaint(
+                        1L,
+                        "student@smail.iitm.ac.in"
+                )).thenThrow(
+                        new IllegalArgumentException(
+                                "Complaint can only be assigned to an admin"
+                        )
+                );
+
+                mockMvc(adminService)
+                        .perform(
+                                patch("/api/admin/complaints/1/assign")
+                                        .param("email", "student@smail.iitm.ac.in")
+                        )
+                        .andExpect(status().isBadRequest());
+
+                verify(adminService).assignComplaint(
+                        1L,
+                        "student@smail.iitm.ac.in"
+                );
         }
 }
