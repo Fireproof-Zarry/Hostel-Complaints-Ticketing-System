@@ -26,8 +26,12 @@ public class AdminController {
     public List<Complaint> getComplaints(
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime to) {
 
         return adminService.getComplaints(status, category, from, to);
     }
@@ -39,6 +43,22 @@ public class AdminController {
 
         try {
             Complaint complaint = adminService.updateStatus(id, status);
+            return ResponseEntity.ok(complaint);
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/assign")
+    public ResponseEntity<?> assignComplaint(
+            @PathVariable Long id,
+            @RequestParam String email) {
+
+        try {
+            Complaint complaint = adminService.assignComplaint(id, email);
             return ResponseEntity.ok(complaint);
 
         } catch (IllegalArgumentException e) {
