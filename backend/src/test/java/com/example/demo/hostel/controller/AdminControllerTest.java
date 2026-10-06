@@ -58,14 +58,14 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .updateStatus(1L, Status.RESOLVED);
-
         }
 
         @Test
         void getComplaints_withoutFilters_returns200() throws Exception {
                 AdminService adminService = mock(AdminService.class);
 
-                when(adminService.getComplaints(null, null, null, null))
+                when(adminService.getComplaints(
+                                null, null, null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -73,7 +73,8 @@ class AdminControllerTest {
                                 .andExpect(status().isOk());
 
                 verify(adminService)
-                                .getComplaints(null, null, null, null);
+                                .getComplaints(
+                                                null, null, null, null, null, null);
         }
 
         @Test
@@ -81,7 +82,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                Status.PENDING, null, null, null))
+                                Status.PENDING, null, null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -90,7 +91,8 @@ class AdminControllerTest {
                                 .andExpect(status().isOk());
 
                 verify(adminService)
-                                .getComplaints(Status.PENDING, null, null, null);
+                                .getComplaints(
+                                                Status.PENDING, null, null, null, null, null);
         }
 
         @Test
@@ -98,7 +100,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                null, "Plumbing", null, null))
+                                null, "Plumbing", null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -107,7 +109,8 @@ class AdminControllerTest {
                                 .andExpect(status().isOk());
 
                 verify(adminService)
-                                .getComplaints(null, "Plumbing", null, null);
+                                .getComplaints(
+                                                null, "Plumbing", null, null, null, null);
         }
 
         @Test
@@ -118,7 +121,7 @@ class AdminControllerTest {
                 LocalDateTime to = LocalDateTime.of(2026, 10, 6, 23, 59);
 
                 when(adminService.getComplaints(
-                                null, null, from, to))
+                                null, null, null, null, from, to))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -128,7 +131,8 @@ class AdminControllerTest {
                                 .andExpect(status().isOk());
 
                 verify(adminService)
-                                .getComplaints(null, null, from, to);
+                                .getComplaints(
+                                                null, null, null, null, from, to);
         }
 
         @Test

@@ -2,11 +2,13 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Role;
-import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.UserRepository;
+import com.example.demo.hostel.specification.ComplaintSpecification;
 
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -32,43 +34,22 @@ public class AdminService {
     public List<Complaint> getComplaints(
             Status status,
             String category,
+            String floor,
+            String assignedTo,
             LocalDateTime from,
             LocalDateTime to) {
 
-        if (status != null && category != null && from != null && to != null) {
-            return complaintRepository
-                    .findByStatusAndCategoryAndCreatedAtBetween(
-                            status, category, from, to);
-        }
+        Specification<Complaint> specification =
+                ComplaintSpecification.withFilters(
+                        status,
+                        category,
+                        floor,
+                        assignedTo,
+                        from,
+                        to
+                );
 
-        if (status != null && category != null) {
-            return complaintRepository
-                    .findByStatusAndCategory(status, category);
-        }
-
-        if (status != null && from != null && to != null) {
-            return complaintRepository
-                    .findByStatusAndCreatedAtBetween(status, from, to);
-        }
-
-        if (category != null && from != null && to != null) {
-            return complaintRepository
-                    .findByCategoryAndCreatedAtBetween(category, from, to);
-        }
-
-        if (status != null) {
-            return complaintRepository.findByStatus(status);
-        }
-
-        if (category != null) {
-            return complaintRepository.findByCategory(category);
-        }
-
-        if (from != null && to != null) {
-            return complaintRepository.findByCreatedAtBetween(from, to);
-        }
-
-        return complaintRepository.findAll();
+        return complaintRepository.findAll(specification);
     }
 
     public Complaint updateStatus(Long id, Status newStatus) {

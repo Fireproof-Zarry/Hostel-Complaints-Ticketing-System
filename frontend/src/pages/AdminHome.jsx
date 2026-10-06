@@ -8,39 +8,76 @@ export default function AdminHome() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    const fetchComplaints = async () => {
-      const idToken = localStorage.getItem('idToken')
+  // Filter values
+  const [statusFilter, setStatusFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [floorFilter, setFloorFilter] = useState('')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const [assignedToFilter, setAssignedToFilter] = useState('')
 
-      try {
-        setLoading(true)
-        setError('')
+  const fetchComplaints = async (filters = {}) => {
+    const idToken = localStorage.getItem('idToken')
 
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/admin/complaints`,
-          {
-            headers: {
-              Authorization: `Bearer ${idToken}`,
-            },
-          }
-        )
+    try {
+      setLoading(true)
+      setError('')
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch complaints: ${response.status}`)
-        }
+      const params = new URLSearchParams()
 
-        const data = await response.json()
-
-        setComplaints(data)
-        setFilteredComplaints(data)
-      } catch (error) {
-        console.error('Failed to fetch complaints:', error)
-        setError('Failed to load complaints.')
-      } finally {
-        setLoading(false)
+      if (filters.status) {
+        params.append('status', filters.status)
       }
-    }
 
+      if (filters.category) {
+        params.append('category', filters.category)
+      }
+
+      if (filters.floor) {
+        params.append('floor', filters.floor)
+      }
+
+      if (filters.assignedTo) {
+        params.append('assignedTo', filters.assignedTo)
+      }
+
+      if (filters.from) {
+        params.append('from', `${filters.from}T00:00:00`)
+      }
+
+      if (filters.to) {
+        params.append('to', `${filters.to}T23:59:59`)
+      }
+
+      const queryString = params.toString()
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints${queryString ? `?${queryString}` : ''
+        }`,
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch complaints: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      setComplaints(data)
+      setFilteredComplaints(data)
+    } catch (error) {
+      console.error('Failed to fetch complaints:', error)
+      setError('Failed to load complaints.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
     fetchComplaints()
   }, [])
 
@@ -69,8 +106,6 @@ export default function AdminHome() {
         .join(' ')
         .toLowerCase()
 
-      // Remove common words like "room", "floor", "#"
-      // so searches such as "room 204" still work.
       const searchWords = query
         .replace(/#/g, ' ')
         .split(/\s+/)
@@ -81,6 +116,36 @@ export default function AdminHome() {
 
     setFilteredComplaints(filtered)
   }
+
+  const handleApplyFilters = () => {
+    fetchComplaints({
+      status: statusFilter,
+      category: categoryFilter,
+      floor: floorFilter,
+      assignedTo: assignedToFilter,
+      from: fromDate,
+      to: toDate,
+    })
+  }
+
+  const handleResetFilters = () => {
+    setStatusFilter('')
+    setCategoryFilter('')
+    setFloorFilter('')
+    setFromDate('')
+    setToDate('')
+    setAssignedToFilter('')
+
+    fetchComplaints()
+  }
+
+  const assignedToUsers = [
+    ...new Set(
+      complaints
+        .map((complaint) => complaint.assignedTo)
+        .filter(Boolean)
+    ),
+  ]
 
   return (
     <div className="admin-layout">
@@ -167,37 +232,104 @@ export default function AdminHome() {
           {/* Filters */}
           <div className="filters-section">
 
-            <select>
-              <option value="">Status</option>
-            </select>
+            <div className="filter-dropdown">
+              <label>Status</label>
 
-            <select>
-              <option value="">Category</option>
-            </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="PENDING">PENDING</option>
+                <option value="ASSIGNED">ASSIGNED</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="RESOLVED">RESOLVED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </div>
 
-            <select>
-              <option value="">Floor</option>
-            </select>
+            <div className="filter-dropdown">
+              <label>Category</label>
+
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="Electrical">Electrical</option>
+                <option value="Plumbing">Plumbing</option>
+                <option value="Carpentry">Carpentry</option>
+                <option value="Cleaning">Cleaning</option>
+                <option value="IT">IT/Network</option>
+              </select>
+            </div>
+
+            <div className="filter-dropdown">
+              <label>Floor</label>
+
+              <select
+                value={floorFilter}
+                onChange={(e) => setFloorFilter(e.target.value)}
+              >
+                <option value="">All</option>
+                <option value="ground">Ground</option>
+                <option value="first">First</option>
+                <option value="second">Second</option>
+                <option value="third">Third</option>
+                <option value="fourth">Fourth</option>
+                <option value="fifth">Fifth</option>
+                <option value="sixth">Sixth</option>
+              </select>
+            </div>
 
             <div className="date-filter">
               <label>From</label>
-              <input type="date" />
+
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
             </div>
 
             <div className="date-filter">
               <label>To</label>
-              <input type="date" />
+
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
             </div>
 
-            <select>
-              <option value="">In-charge</option>
-            </select>
+            <div className="filter-dropdown">
+              <label>In-charge</label>
 
-            <button className="apply-button">
+              <select
+                value={assignedToFilter}
+                onChange={(e) => setAssignedToFilter(e.target.value)}
+              >
+                <option value="">All</option>
+
+                {assignedToUsers.map((email) => (
+                  <option key={email} value={email}>
+                    {email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <button
+              className="apply-button"
+              onClick={handleApplyFilters}
+            >
               Apply Filters
             </button>
 
-            <button className="reset-button">
+            <button
+              className="reset-button"
+              onClick={handleResetFilters}
+            >
               Reset
             </button>
 

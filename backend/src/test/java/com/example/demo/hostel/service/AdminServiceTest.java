@@ -13,12 +13,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import org.springframework.data.jpa.domain.Specification;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,22 +55,30 @@ class AdminServiceTest {
                 new Complaint()
         );
 
-        when(complaintRepository.findAll()).thenReturn(complaints);
+        when(complaintRepository.findAll(any(Specification.class)))
+                .thenReturn(complaints);
 
         List<Complaint> result =
-                adminService.getComplaints(null, null, null, null);
+                adminService.getComplaints(
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
 
         assertEquals(2, result.size());
 
-        verify(complaintRepository).findAll();
+        verify(complaintRepository).findAll(any(Specification.class));
     }
 
     @Test
-    void whenStatusFilter_thenFindByStatus() {
+    void whenStatusFilter_thenReturnMatchingComplaints() {
 
         List<Complaint> complaints = List.of(new Complaint());
 
-        when(complaintRepository.findByStatus(Status.PENDING))
+        when(complaintRepository.findAll(any(Specification.class)))
                 .thenReturn(complaints);
 
         List<Complaint> result =
@@ -75,21 +86,22 @@ class AdminServiceTest {
                         Status.PENDING,
                         null,
                         null,
+                        null,
+                        null,
                         null
                 );
 
         assertEquals(1, result.size());
 
-        verify(complaintRepository)
-                .findByStatus(Status.PENDING);
+        verify(complaintRepository).findAll(any(Specification.class));
     }
 
     @Test
-    void whenCategoryFilter_thenFindByCategory() {
+    void whenCategoryFilter_thenReturnMatchingComplaints() {
 
         List<Complaint> complaints = List.of(new Complaint());
 
-        when(complaintRepository.findByCategory("PLUMBING"))
+        when(complaintRepository.findAll(any(Specification.class)))
                 .thenReturn(complaints);
 
         List<Complaint> result =
@@ -97,17 +109,18 @@ class AdminServiceTest {
                         null,
                         "PLUMBING",
                         null,
+                        null,
+                        null,
                         null
                 );
 
         assertEquals(1, result.size());
 
-        verify(complaintRepository)
-                .findByCategory("PLUMBING");
+        verify(complaintRepository).findAll(any(Specification.class));
     }
 
     @Test
-    void whenDateFilter_thenFindByDateRange() {
+    void whenDateFilter_thenReturnMatchingComplaints() {
 
         LocalDateTime from =
                 LocalDateTime.of(2026, 10, 1, 0, 0);
@@ -117,11 +130,13 @@ class AdminServiceTest {
 
         List<Complaint> complaints = List.of(new Complaint());
 
-        when(complaintRepository.findByCreatedAtBetween(from, to))
+        when(complaintRepository.findAll(any(Specification.class)))
                 .thenReturn(complaints);
 
         List<Complaint> result =
                 adminService.getComplaints(
+                        null,
+                        null,
                         null,
                         null,
                         from,
@@ -130,8 +145,7 @@ class AdminServiceTest {
 
         assertEquals(1, result.size());
 
-        verify(complaintRepository)
-                .findByCreatedAtBetween(from, to);
+        verify(complaintRepository).findAll(any(Specification.class));
     }
 
     @Test
