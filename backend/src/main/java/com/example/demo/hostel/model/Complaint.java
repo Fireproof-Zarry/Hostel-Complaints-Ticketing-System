@@ -23,7 +23,7 @@ public class Complaint {
     private String category;
 
     @Column(nullable = false)
-    private String block;
+    private String floor;
 
     @Column(nullable = false)
     private String room;
@@ -32,9 +32,9 @@ public class Complaint {
     @Column(nullable = false)
     private Status status = Status.PENDING;
 
-    private String assignedTo; // name of maintenance staff
+    private String assignedTo; 
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
 
@@ -52,8 +52,8 @@ public class Complaint {
     public void setDescription(String description) { this.description = description; }
     public String getCategory() { return category; }
     public void setCategory(String category) { this.category = category; }
-    public String getBlock() { return block; }
-    public void setBlock(String block) { this.block = block; }
+    public String getFloor() { return floor; }
+    public void setFloor(String floor) { this.floor = floor; }
     public String getRoom() { return room; }
     public void setRoom(String room) { this.room = room; }
     public String getAssignedTo() { return assignedTo; }
