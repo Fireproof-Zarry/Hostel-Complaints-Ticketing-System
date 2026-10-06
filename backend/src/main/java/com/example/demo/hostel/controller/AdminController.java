@@ -26,6 +26,8 @@ public class AdminController {
     public List<Complaint> getComplaints(
             @RequestParam(required = false) Status status,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String floor,
+            @RequestParam(required = false) String assignedTo,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime from,
@@ -33,7 +35,14 @@ public class AdminController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             LocalDateTime to) {
 
-        return adminService.getComplaints(status, category, from, to);
+        return adminService.getComplaints(
+                status,
+                category,
+                floor,
+                assignedTo,
+                from,
+                to
+        );
     }
 
     @PatchMapping("/{id}/status")

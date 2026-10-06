@@ -69,7 +69,7 @@ class AdminControllerSecurityTest {
     void whenAdminAccessesAdminEndpoint_thenReturns200() throws Exception {
 
         when(adminService.getComplaints(
-                null, null, null, null
+                null, null, null, null, null, null
         )).thenReturn(List.of());
 
         mockMvc.perform(
