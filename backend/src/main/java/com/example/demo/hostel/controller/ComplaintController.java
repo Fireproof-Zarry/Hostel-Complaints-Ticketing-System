@@ -27,14 +27,18 @@ public class ComplaintController {
         String title = payload.get("title");
         String description = payload.get("description");
         String category = payload.get("category");
-        String block = payload.get("block");
+        String floor = payload.get("floor");
         String room = payload.get("room");
 
-        if (title == null || title.trim().isEmpty() || description == null || description.trim().isEmpty() || category == null || block == null || room == null) {
+        if (title == null || title.trim().isEmpty()
+            || description == null || description.trim().isEmpty()
+            || category == null
+            || floor == null
+            || room == null) {
             return ResponseEntity.badRequest().build();
         }
 
-        Complaint savedComplaint = complaintService.createComplaint(email, title, description, category, block, room);
+        Complaint savedComplaint = complaintService.createComplaint(email, title, description, category, floor, room);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedComplaint);
     }
 
