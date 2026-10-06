@@ -1,7 +1,6 @@
 package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.config.SecurityConfig;
-import com.example.demo.hostel.controller.HealthController;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.service.StudentService;
 import org.junit.jupiter.api.Test;
