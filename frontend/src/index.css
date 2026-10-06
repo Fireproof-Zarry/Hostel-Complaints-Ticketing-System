@@ -463,3 +463,179 @@ body {
 
   color: #888;
 }
+
+/* =========================
+   COMPLAINT DETAILS MODAL
+========================= */
+
+.complaint-modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  background: rgba(0, 0, 0, 0.55);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 24px;
+
+  z-index: 1000;
+}
+
+.complaint-modal {
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  background: #111;
+  color: #fff;
+
+  border: 1px solid #333;
+  border-radius: 14px;
+
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+
+.complaint-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  padding: 26px 28px;
+
+  border-bottom: 1px solid #333;
+}
+
+.complaint-modal-header h2 {
+  margin: 0 0 6px;
+
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.complaint-meta {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+
+  color: #888;
+
+  font-size: 13px;
+}
+
+.complaint-modal-close {
+  border: none;
+  background: transparent;
+
+  color: #888;
+
+  font-size: 30px;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+.complaint-modal-close:hover {
+  color: #fff;
+}
+
+.complaint-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 24px;
+
+  padding: 28px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.detail-item-full {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  color: #999;
+
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #fff;
+
+  font-size: 15px;
+
+  line-height: 1.4;
+
+  word-break: break-word;
+}
+
+.detail-value-large {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.complaint-title-detail {
+  padding-bottom: 4px;
+}
+
+.detail-title-value {
+  color: #fff;
+
+  font-size: 22px;
+  font-weight: 600;
+
+  line-height: 1.35;
+
+  word-break: break-word;
+}
+
+.detail-description {
+  margin: 0;
+
+  padding: 16px;
+
+  background: #202023;
+
+  border: 1px solid #2d2d31;
+  border-radius: 9px;
+
+  color: #ddd;
+
+  font-size: 15px;
+  line-height: 1.6;
+
+  white-space: pre-wrap;
+}
+
+.complaint-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+
+  padding: 18px 28px;
+
+  border-top: 1px solid #333;
+}
+
+.complaint-modal-footer .reset-button {
+  height: 44px;
+
+  color: #fff;
+
+  background: transparent;
+
+  border-color: #333;
+}
+
+.complaint-modal-footer .reset-button:hover {
+  background: #222;
+}

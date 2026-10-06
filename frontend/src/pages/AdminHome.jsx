@@ -16,6 +16,9 @@ export default function AdminHome() {
   const [toDate, setToDate] = useState('')
   const [assignedToFilter, setAssignedToFilter] = useState('')
 
+  // Selected complaint for View
+  const [selectedComplaint, setSelectedComplaint] = useState(null)
+
   const fetchComplaints = async (filters = {}) => {
     const idToken = localStorage.getItem('idToken')
 
@@ -137,6 +140,41 @@ export default function AdminHome() {
     setAssignedToFilter('')
 
     fetchComplaints()
+  }
+
+  const getTimeSinceRaised = (createdAt) => {
+    if (!createdAt) {
+      return ''
+    }
+
+    const createdDate = new Date(createdAt)
+    const today = new Date()
+
+    const createdDay = new Date(
+      createdDate.getFullYear(),
+      createdDate.getMonth(),
+      createdDate.getDate()
+    )
+
+    const todayDay = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate()
+    )
+
+    const differenceDays = Math.floor(
+      (todayDay - createdDay) / (1000 * 60 * 60 * 24)
+    )
+
+    if (differenceDays === 0) {
+      return 'Raised today'
+    }
+
+    if (differenceDays === 1) {
+      return 'Raised 1 day ago'
+    }
+
+    return `Raised ${differenceDays} days ago`
   }
 
   const assignedToUsers = [
@@ -423,7 +461,10 @@ export default function AdminHome() {
                         <td>
                           <div className="action-buttons">
 
-                            <button className="table-action-button">
+                            <button
+                              className="table-action-button"
+                              onClick={() => setSelectedComplaint(complaint)}
+                            >
                               View
                             </button>
 
@@ -453,6 +494,206 @@ export default function AdminHome() {
         </section>
 
       </main>
+
+      {/* Complaint Details Modal */}
+      {selectedComplaint && (
+        <div
+          className="complaint-modal-overlay"
+          onClick={() => setSelectedComplaint(null)}
+        >
+          <div
+            className="complaint-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+
+            <div className="complaint-modal-header">
+
+              <div>
+                <h2>Complaint Details</h2>
+
+                <div className="complaint-meta">
+                  <span>#{selectedComplaint.id}</span>
+
+                  <span>•</span>
+
+                  <span>
+                    {getTimeSinceRaised(selectedComplaint.createdAt)}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                className="complaint-modal-close"
+                onClick={() => setSelectedComplaint(null)}
+              >
+                ×
+              </button>
+
+            </div>
+
+            <div className="complaint-details">
+
+              {/* Title */}
+              <div className="detail-item detail-item-full complaint-title-detail">
+
+                <span className="detail-label">
+                  Title
+                </span>
+
+                <span className="detail-title-value">
+                  {selectedComplaint.title || '—'}
+                </span>
+
+              </div>
+
+              {/* Category */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Category
+                </span>
+
+                <span className="detail-value detail-value-large">
+                  {selectedComplaint.category || '—'}
+                </span>
+
+              </div>
+
+              {/* Status */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Status
+                </span>
+
+                <span className="detail-value">
+
+                  <span
+                    className={`status-badge status-${selectedComplaint.status?.toLowerCase()}`}
+                  >
+                    {selectedComplaint.status || '—'}
+                  </span>
+
+                </span>
+
+              </div>
+
+              {/* Student Email */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Student Email
+                </span>
+
+                <span className="detail-value detail-value-large">
+                  {selectedComplaint.student?.email || 'No email'}
+                </span>
+
+              </div>
+
+              {/* Assigned To */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Assigned To
+                </span>
+
+                <span className="detail-value detail-value-large">
+                  {selectedComplaint.assignedTo || 'Unassigned'}
+                </span>
+
+              </div>
+
+              {/* Floor */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Floor
+                </span>
+
+                <span className="detail-value detail-value-large">
+                  {selectedComplaint.floor || '—'}
+                </span>
+
+              </div>
+
+              {/* Room */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Room No.
+                </span>
+
+                <span className="detail-value detail-value-large">
+                  {selectedComplaint.room || '—'}
+                </span>
+
+              </div>
+
+              {/* Description */}
+              <div className="detail-item detail-item-full">
+
+                <span className="detail-label">
+                  Description
+                </span>
+
+                <p className="detail-description">
+                  {selectedComplaint.description ||
+                    'No description provided.'}
+                </p>
+
+              </div>
+
+              {/* Created */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Created At
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.createdAt
+                    ? new Date(
+                      selectedComplaint.createdAt
+                    ).toLocaleString()
+                    : '—'}
+                </span>
+
+              </div>
+
+              {/* Updated */}
+              <div className="detail-item">
+
+                <span className="detail-label">
+                  Updated At
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.updatedAt
+                    ? new Date(
+                      selectedComplaint.updatedAt
+                    ).toLocaleString()
+                    : '—'}
+                </span>
+
+              </div>
+
+            </div>
+
+            <div className="complaint-modal-footer">
+
+              <button
+                className="reset-button"
+                onClick={() => setSelectedComplaint(null)}
+              >
+                Close
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   )
