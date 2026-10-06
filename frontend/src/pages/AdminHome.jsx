@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react'
 
 export default function AdminHome() {
   const [complaints, setComplaints] = useState([])
+  const [status, setStatus] = useState('')
+  const [category, setCategory] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -12,8 +16,28 @@ export default function AdminHome() {
       setLoading(true)
       setError('')
 
+      const params = new URLSearchParams()
+
+      if (status) {
+        params.append('status', status)
+      }
+
+      if (category) {
+        params.append('category', category)
+      }
+
+      // Backend currently supports date filtering only
+      // when both from and to are provided.
+      if (from && to) {
+        params.append('from', `${from}T00:00:00`)
+        params.append('to', `${to}T23:59:59`)
+      }
+
+      const queryString = params.toString()
+
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints`,
+        `${import.meta.env.VITE_API_URL}/admin/complaints${queryString ? `?${queryString}` : ''
+        }`,
         {
           headers: {
             Authorization: `Bearer ${idToken}`,
@@ -39,12 +63,76 @@ export default function AdminHome() {
     fetchComplaints()
   }, [])
 
+  const clearFilters = () => {
+    setStatus('')
+    setCategory('')
+    setFrom('')
+    setTo('')
+  }
+
   if (loading) return <h1>Loading complaints...</h1>
   if (error) return <h1>{error}</h1>
 
   return (
     <div>
       <h1>Admin Dashboard</h1>
+
+      <div>
+        <label>
+          Status:{' '}
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="">All</option>
+            <option value="PENDING">Pending</option>
+            <option value="ASSIGNED">Assigned</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="REJECTED">Rejected</option>
+          </select>
+        </label>
+
+        <label>
+          {' '}Category:{' '}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="">All</option>
+            <option value="Electrical">Electrical</option>
+            <option value="Plumbing">Plumbing</option>
+            <option value="Cleaning">Cleaning</option>
+            <option value="Other">Other</option>
+          </select>
+        </label>
+
+        <label>
+          {' '}From:{' '}
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+
+        <label>
+          {' '}To:{' '}
+          <input
+            type="date"
+            value={to}
+            onChange={(e) => setTo(e.target.value)}
+          />
+        </label>
+
+        <button onClick={fetchComplaints}>
+          Apply Filters
+        </button>
+
+        <button onClick={clearFilters}>
+          Clear Filters
+        </button>
+      </div>
 
       {complaints.length === 0 ? (
         <p>No complaints found.</p>
