@@ -2,8 +2,8 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Role;
-import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.model.Status;
+import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.specification.ComplaintSpecification;
