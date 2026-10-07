@@ -656,7 +656,10 @@ export default function AdminHome() {
                               </td>
 
                               <td>
-                                <strong className="complaint-title">
+                                <strong
+                                  className="complaint-title"
+                                  onClick={() => setSelectedComplaint(complaint)}
+                                >
                                   {complaint.title}
                                 </strong>
                               </td>
