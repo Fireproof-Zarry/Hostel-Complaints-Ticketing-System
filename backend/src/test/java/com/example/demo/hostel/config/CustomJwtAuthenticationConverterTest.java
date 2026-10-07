@@ -2,7 +2,7 @@ package com.example.demo.hostel.config;
 
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.User;
-import com.example.demo.hostel.repository.UserRepository;
+import com.example.demo.hostel.service.AuthService;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,8 +12,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 
-import java.util.Optional;
-
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
@@ -21,7 +19,7 @@ import static org.mockito.Mockito.*;
 class CustomJwtAuthenticationConverterTest {
 
     @Mock
-    private UserRepository userRepository;
+    private AuthService authService;
 
     @Mock
     private Jwt jwt;
@@ -33,14 +31,10 @@ class CustomJwtAuthenticationConverterTest {
         user.setEmail("admin@smail.iitm.ac.in");
         user.setRole(Role.ADMIN);
 
-        when(jwt.getClaimAsString("email"))
-                .thenReturn("admin@smail.iitm.ac.in");
-
-        when(userRepository.findByEmail("admin@smail.iitm.ac.in"))
-                .thenReturn(Optional.of(user));
+        when(authService.processGoogleLogin(jwt)).thenReturn(user);
 
         CustomJwtAuthenticationConverter converter =
-                new CustomJwtAuthenticationConverter(userRepository);
+                new CustomJwtAuthenticationConverter(authService);
 
         Authentication authentication = converter.convert(jwt);
 
@@ -50,8 +44,7 @@ class CustomJwtAuthenticationConverterTest {
                                 authority.getAuthority().equals("ROLE_ADMIN"))
         );
 
-        verify(userRepository)
-                .findByEmail("admin@smail.iitm.ac.in");
+        verify(authService).processGoogleLogin(jwt);
     }
 
     @Test
@@ -61,14 +54,10 @@ class CustomJwtAuthenticationConverterTest {
         user.setEmail("student@smail.iitm.ac.in");
         user.setRole(Role.STUDENT);
 
-        when(jwt.getClaimAsString("email"))
-                .thenReturn("student@smail.iitm.ac.in");
-
-        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
-                .thenReturn(Optional.of(user));
+        when(authService.processGoogleLogin(jwt)).thenReturn(user);
 
         CustomJwtAuthenticationConverter converter =
-                new CustomJwtAuthenticationConverter(userRepository);
+                new CustomJwtAuthenticationConverter(authService);
 
         Authentication authentication = converter.convert(jwt);
 
@@ -78,7 +67,6 @@ class CustomJwtAuthenticationConverterTest {
                                 authority.getAuthority().equals("ROLE_STUDENT"))
         );
 
-        verify(userRepository)
-                .findByEmail("student@smail.iitm.ac.in");
+        verify(authService).processGoogleLogin(jwt);
     }
 }
