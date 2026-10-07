@@ -34,15 +34,12 @@ Create `backend/.env` from the example and set your Supabase database password a
 ```bash
 cd ~/Hostel-Complaints-Ticketing-System/backend
 cp .env.example .env
-# Edit .env, replace the database password, and set ADMIN_EMAILS to the smail accounts that should be administrators.
+# Edit .env, replace the database password, and set ADMIN_EMAILS to the accounts that should be administrators.
 chmod +x mvnw
-set -a
-source .env
-set +a
 ./mvnw spring-boot:run
 ```
 
-The local `.env` file is ignored by Git. Do not commit database credentials. Student accounts must use a verified `@smail.iitm.ac.in` address; any email address explicitly listed in `ADMIN_EMAILS` can sign in as an administrator.
+Spring Boot automatically loads `backend/.env` when started from the `backend` directory. The local `.env` file is ignored by Git; do not commit database credentials. Student accounts must use a verified `@smail.iitm.ac.in` address; any email address explicitly listed in `ADMIN_EMAILS` can sign in as an administrator.
 
 ### 2. Verify login and student dashboard locally
 
