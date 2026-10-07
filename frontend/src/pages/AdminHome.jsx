@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ComingSoon from './ComingSoon'
 
 export default function AdminHome() {
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -8,6 +9,7 @@ export default function AdminHome() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [admins, setAdmins] = useState([])
+  const [comingSoonPage, setComingSoonPage] = useState(null)
 
   // Filter values
   const [statusFilter, setStatusFilter] = useState('')
@@ -391,28 +393,40 @@ export default function AdminHome() {
           }`}
       >
         <div className="sidebar-header">
-          <h2>Hostel Complaints</h2>
+          {sidebarOpen && <h2>Hostel Complaints</h2>}
         </div>
 
         <nav className="sidebar-nav">
-          <button className="nav-item active">
+          <button
+            className={`nav-item ${comingSoonPage === null ? 'active' : ''}`}
+            onClick={() => setComingSoonPage(null)}
+          >
             <span>⌂</span>
             {sidebarOpen && <span>Admin Home</span>}
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${comingSoonPage === 'Analytics' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Analytics')}
+          >
             <span>▦</span>
             {sidebarOpen && <span>Analytics</span>}
           </button>
 
-          <button className="nav-item">
+          <button
+            className={`nav-item ${comingSoonPage === 'History' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('History')}
+          >
             <span>◷</span>
             {sidebarOpen && <span>History</span>}
           </button>
         </nav>
 
         <div className="sidebar-bottom">
-          <button className="nav-item">
+          <button
+            className={`nav-item ${comingSoonPage === 'Profile' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Profile')}
+          >
             <span>◉</span>
             {sidebarOpen && <span>Profile</span>}
           </button>
@@ -431,7 +445,14 @@ export default function AdminHome() {
             ☰
           </button>
 
-          <h1>Admin Home</h1>
+          {/* {!sidebarOpen && <h2 className="collapsed-sidebar-title">Hostel Complaints</h2>} */}
+          {!sidebarOpen && (
+            <h2 className="collapsed-app-title">
+              Hostel Complaints
+            </h2>
+          )}
+
+          <h1>{comingSoonPage || 'Admin Home'}</h1>
 
           <div className="profile-button">
             ◉
@@ -440,284 +461,289 @@ export default function AdminHome() {
 
         {/* Content */}
         <section className="admin-content">
+          {comingSoonPage ? (
+            <ComingSoon title={comingSoonPage} />
+          ) : (
+            <>
+              {/* Search */}
+              <div className="search-section">
+                <input
+                  type="text"
+                  placeholder="Search complaints..."
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
 
-          {/* Search */}
-          <div className="search-section">
-            <input
-              type="text"
-              placeholder="Search complaints..."
-              className="search-input"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-
-            <button
-              className="search-button"
-              onClick={handleSearch}
-            >
-              Search
-            </button>
-          </div>
-
-          {/* Filters */}
-          <div className="filters-section">
-
-            <div className="filter-dropdown">
-              <label>Status</label>
-
-              <select
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value)
-                }
-              >
-                <option value="">All</option>
-                <option value="PENDING">PENDING</option>
-                <option value="ASSIGNED">ASSIGNED</option>
-                <option value="IN_PROGRESS">
-                  IN_PROGRESS
-                </option>
-                <option value="RESOLVED">RESOLVED</option>
-                <option value="REJECTED">REJECTED</option>
-              </select>
-            </div>
-
-            <div className="filter-dropdown">
-              <label>Category</label>
-
-              <select
-                value={categoryFilter}
-                onChange={(e) =>
-                  setCategoryFilter(e.target.value)
-                }
-              >
-                <option value="">All</option>
-                <option value="Electrical">
-                  Electrical
-                </option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Carpentry">Carpentry</option>
-                <option value="Cleaning">Cleaning</option>
-                <option value="IT">IT/Network</option>
-              </select>
-            </div>
-
-            <div className="filter-dropdown">
-              <label>Floor</label>
-
-              <select
-                value={floorFilter}
-                onChange={(e) =>
-                  setFloorFilter(e.target.value)
-                }
-              >
-                <option value="">All</option>
-                <option value="ground">Ground</option>
-                <option value="first">First</option>
-                <option value="second">Second</option>
-                <option value="third">Third</option>
-                <option value="fourth">Fourth</option>
-                <option value="fifth">Fifth</option>
-                <option value="sixth">Sixth</option>
-              </select>
-            </div>
-
-            <div className="date-filter">
-              <label>From</label>
-
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) =>
-                  setFromDate(e.target.value)
-                }
-              />
-            </div>
-
-            <div className="date-filter">
-              <label>To</label>
-
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) =>
-                  setToDate(e.target.value)
-                }
-              />
-            </div>
-
-            <div className="filter-dropdown">
-              <label>In-charge</label>
-
-              <select
-                value={assignedToFilter}
-                onChange={(e) =>
-                  setAssignedToFilter(e.target.value)
-                }
-              >
-                <option value="">All</option>
-
-                {assignedToUsers.map((email) => (
-                  <option key={email} value={email}>
-                    {email}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <button
-              className="apply-button"
-              onClick={handleApplyFilters}
-            >
-              Apply Filters
-            </button>
-
-            <button
-              className="reset-button"
-              onClick={handleResetFilters}
-            >
-              Reset
-            </button>
-          </div>
-
-          {/* Complaints */}
-          <div className="complaints-section">
-            <h2>Complaints</h2>
-
-            {loading && (
-              <div className="table-placeholder">
-                <p>Loading complaints...</p>
+                <button
+                  className="search-button"
+                  onClick={handleSearch}
+                >
+                  Search
+                </button>
               </div>
-            )}
 
-            {!loading && error && (
-              <div className="table-placeholder">
-                <p>{error}</p>
+              {/* Filters */}
+              <div className="filters-section">
+
+                <div className="filter-dropdown">
+                  <label>Status</label>
+
+                  <select
+                    value={statusFilter}
+                    onChange={(e) =>
+                      setStatusFilter(e.target.value)
+                    }
+                  >
+                    <option value="">All</option>
+                    <option value="PENDING">PENDING</option>
+                    <option value="ASSIGNED">ASSIGNED</option>
+                    <option value="IN_PROGRESS">
+                      IN_PROGRESS
+                    </option>
+                    <option value="RESOLVED">RESOLVED</option>
+                    <option value="REJECTED">REJECTED</option>
+                  </select>
+                </div>
+
+                <div className="filter-dropdown">
+                  <label>Category</label>
+
+                  <select
+                    value={categoryFilter}
+                    onChange={(e) =>
+                      setCategoryFilter(e.target.value)
+                    }
+                  >
+                    <option value="">All</option>
+                    <option value="Electrical">
+                      Electrical
+                    </option>
+                    <option value="Plumbing">Plumbing</option>
+                    <option value="Carpentry">Carpentry</option>
+                    <option value="Cleaning">Cleaning</option>
+                    <option value="IT">IT/Network</option>
+                  </select>
+                </div>
+
+                <div className="filter-dropdown">
+                  <label>Floor</label>
+
+                  <select
+                    value={floorFilter}
+                    onChange={(e) =>
+                      setFloorFilter(e.target.value)
+                    }
+                  >
+                    <option value="">All</option>
+                    <option value="ground">Ground</option>
+                    <option value="first">First</option>
+                    <option value="second">Second</option>
+                    <option value="third">Third</option>
+                    <option value="fourth">Fourth</option>
+                    <option value="fifth">Fifth</option>
+                    <option value="sixth">Sixth</option>
+                  </select>
+                </div>
+
+                <div className="date-filter">
+                  <label>From</label>
+
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) =>
+                      setFromDate(e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="date-filter">
+                  <label>To</label>
+
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) =>
+                      setToDate(e.target.value)
+                    }
+                  />
+                </div>
+
+                <div className="filter-dropdown">
+                  <label>In-charge</label>
+
+                  <select
+                    value={assignedToFilter}
+                    onChange={(e) =>
+                      setAssignedToFilter(e.target.value)
+                    }
+                  >
+                    <option value="">All</option>
+
+                    {assignedToUsers.map((email) => (
+                      <option key={email} value={email}>
+                        {email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  className="apply-button"
+                  onClick={handleApplyFilters}
+                >
+                  Apply Filters
+                </button>
+
+                <button
+                  className="reset-button"
+                  onClick={handleResetFilters}
+                >
+                  Reset
+                </button>
               </div>
-            )}
 
-            {!loading &&
-              !error &&
-              filteredComplaints.length === 0 && (
-                <div className="table-placeholder">
-                  <p>No complaints found.</p>
-                </div>
-              )}
+              {/* Complaints */}
+              <div className="complaints-section">
+                <h2>Complaints</h2>
 
-            {!loading &&
-              !error &&
-              filteredComplaints.length > 0 && (
-                <div className="complaints-table-wrapper">
-                  <table className="complaints-table">
-                    <thead>
-                      <tr>
-                        <th>Complaint No.</th>
-                        <th>Title</th>
-                        <th>Category</th>
-                        <th>Email</th>
-                        <th>Floor</th>
-                        <th>Room No.</th>
-                        <th>Status</th>
-                        <th>Assigned To</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
+                {loading && (
+                  <div className="table-placeholder">
+                    <p>Loading complaints...</p>
+                  </div>
+                )}
 
-                    <tbody>
-                      {filteredComplaints.map((complaint) => (
-                        <tr key={complaint.id}>
+                {!loading && error && (
+                  <div className="table-placeholder">
+                    <p>{error}</p>
+                  </div>
+                )}
 
-                          <td>
-                            #{complaint.id}
-                          </td>
+                {!loading &&
+                  !error &&
+                  filteredComplaints.length === 0 && (
+                    <div className="table-placeholder">
+                      <p>No complaints found.</p>
+                    </div>
+                  )}
 
-                          <td>
-                            <strong className="complaint-title">
-                              {complaint.title}
-                            </strong>
-                          </td>
+                {!loading &&
+                  !error &&
+                  filteredComplaints.length > 0 && (
+                    <div className="complaints-table-wrapper">
+                      <table className="complaints-table">
+                        <thead>
+                          <tr>
+                            <th>Complaint No.</th>
+                            <th>Title</th>
+                            <th>Category</th>
+                            <th>Email</th>
+                            <th>Floor</th>
+                            <th>Room No.</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
 
-                          <td>
-                            {complaint.category}
-                          </td>
+                        <tbody>
+                          {filteredComplaints.map((complaint) => (
+                            <tr key={complaint.id}>
 
-                          <td>
-                            {complaint.student?.email ||
-                              'No email'}
-                          </td>
+                              <td>
+                                #{complaint.id}
+                              </td>
 
-                          <td>
-                            {complaint.floor}
-                          </td>
+                              <td>
+                                <strong className="complaint-title">
+                                  {complaint.title}
+                                </strong>
+                              </td>
 
-                          <td>
-                            {complaint.room}
-                          </td>
+                              <td>
+                                {complaint.category}
+                              </td>
 
-                          <td>
-                            <span
-                              className={`status-badge status-${complaint.status?.toLowerCase()}`}
-                            >
-                              {complaint.status}
-                            </span>
-                          </td>
+                              <td>
+                                {complaint.student?.email ||
+                                  'No email'}
+                              </td>
 
-                          <td>
-                            {complaint.assignedTo ||
-                              'Unassigned'}
-                          </td>
+                              <td>
+                                {complaint.floor}
+                              </td>
 
-                          <td>
-                            <div className="action-buttons">
+                              <td>
+                                {complaint.room}
+                              </td>
 
-                              <button
-                                type="button"
-                                className="table-action-button"
-                                onClick={() =>
-                                  setSelectedComplaint(
-                                    complaint
-                                  )
-                                }
-                              >
-                                View
-                              </button>
+                              <td>
+                                <span
+                                  className={`status-badge status-${complaint.status?.toLowerCase()}`}
+                                >
+                                  {complaint.status}
+                                </span>
+                              </td>
 
-                              <button
-                                className="table-action-button"
-                                onClick={() => {
-                                  setAssignComplaint(complaint)
-                                  setSelectedAdmin(complaint.assignedTo || '')
-                                  setAssignError('')
-                                }}
-                              >
-                                Assign
-                              </button>
+                              <td>
+                                {complaint.assignedTo ||
+                                  'Unassigned'}
+                              </td>
 
-                              <button
-                                type="button"
-                                className="table-action-button"
-                                onClick={() => {
-                                  setStatusComplaint(
-                                    complaint
-                                  )
-                                  setNewStatus(
-                                    complaint.status || ''
-                                  )
-                                  setStatusError('')
-                                }}
-                              >
-                                Status
-                              </button>
+                              <td>
+                                <div className="action-buttons">
 
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-          </div>
+                                  <button
+                                    type="button"
+                                    className="table-action-button"
+                                    onClick={() =>
+                                      setSelectedComplaint(
+                                        complaint
+                                      )
+                                    }
+                                  >
+                                    View
+                                  </button>
+
+                                  <button
+                                    className="table-action-button"
+                                    onClick={() => {
+                                      setAssignComplaint(complaint)
+                                      setSelectedAdmin(complaint.assignedTo || '')
+                                      setAssignError('')
+                                    }}
+                                  >
+                                    Assign
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="table-action-button"
+                                    onClick={() => {
+                                      setStatusComplaint(
+                                        complaint
+                                      )
+                                      setNewStatus(
+                                        complaint.status || ''
+                                      )
+                                      setStatusError('')
+                                    }}
+                                  >
+                                    Status
+                                  </button>
+
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+              </div>
+            </>
+          )}
         </section>
       </main>
 
