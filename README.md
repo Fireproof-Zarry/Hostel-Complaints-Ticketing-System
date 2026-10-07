@@ -59,7 +59,7 @@ npm run dev
 
 Open `http://localhost:5173` and sign in with Google. If Google rejects the local app origin, add `http://localhost:5173` as an authorized JavaScript origin for the configured Google OAuth client.
 
-Use your `@smail.iitm.ac.in` account to check the student dashboard and complaint list. Accounts listed in `ADMIN_EMAILS` (for example, `cs23b051@smail.iitm.ac.in`) are assigned the admin role; other verified `@smail.iitm.ac.in` accounts are students. Admin emails may use any domain. Sign out and in again after changing the list so the backend refreshes the saved account role.
+Use your `@smail.iitm.ac.in` account to check the student dashboard and complaint list. Accounts listed in `ADMIN_EMAILS` (for example, `cs23b051@smail.iitm.ac.in`, `cs23b103@smail.iitm.ac.in`, and `bhadra@smail.iitm.ac.in`) are assigned the admin role; other verified `@smail.iitm.ac.in` accounts are students. Admin emails may use any domain. Sign out and in again after changing the list so the backend refreshes the saved account role.
 
 ## Backend - Docker
 
@@ -68,7 +68,7 @@ Use your `@smail.iitm.ac.in` account to check the student dashboard and complain
 ```bash
 cd backend
 docker build -t hostel-complaints-backend .
-docker run -d --name hostel-complaints-backend -p 8080:8080 -e DB_PASSWORD='YOUR_SUPABASE_PASSWORD' -e ADMIN_EMAILS='cs23b051@smail.iitm.ac.in' hostel-complaints-backend
+docker run -d --name hostel-complaints-backend -p 8080:8080 -e DB_PASSWORD='YOUR_SUPABASE_PASSWORD' -e ADMIN_EMAILS='cs23b051@smail.iitm.ac.in,cs23b103@smail.iitm.ac.in,bhadra@smail.iitm.ac.in' hostel-complaints-backend
 docker ps
 curl -i -u admin:YOUR_ADMIN_PASSWORD http://localhost:8080/health
 docker stop hostel-complaints-backend
