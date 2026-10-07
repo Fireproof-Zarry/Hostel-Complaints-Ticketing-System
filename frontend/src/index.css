@@ -385,6 +385,13 @@ body {
   white-space: nowrap;
 }
 
+.complaint-title {
+  cursor: pointer;
+}
+
+.complaint-title:hover {
+  text-decoration: underline;
+}
 
 /* =========================
    STATUS BADGES
