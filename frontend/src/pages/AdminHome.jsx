@@ -7,6 +7,7 @@ export default function AdminHome() {
   const [searchTerm, setSearchTerm] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [admins, setAdmins] = useState([])
 
   // Filter values
   const [statusFilter, setStatusFilter] = useState('')
@@ -24,6 +25,12 @@ export default function AdminHome() {
   const [newStatus, setNewStatus] = useState('')
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [statusError, setStatusError] = useState('')
+
+  // Complaint assignment
+  const [assignComplaint, setAssignComplaint] = useState(null)
+  const [selectedAdmin, setSelectedAdmin] = useState('')
+  const [assignUpdating, setAssignUpdating] = useState(false)
+  const [assignError, setAssignError] = useState('')
 
   // Success toast
   const [successMessage, setSuccessMessage] = useState('')
@@ -101,8 +108,33 @@ export default function AdminHome() {
     }
   }
 
+  const fetchAdmins = async () => {
+    const idToken = localStorage.getItem('idToken')
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/admins`,
+        {
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch admins: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setAdmins(data)
+    } catch (error) {
+      console.error('Failed to fetch admins:', error)
+    }
+  }
+
   useEffect(() => {
     fetchComplaints()
+    fetchAdmins()
   }, [])
 
   const handleSearch = () => {
@@ -233,6 +265,69 @@ export default function AdminHome() {
       )
     } finally {
       setStatusUpdating(false)
+    }
+  }
+
+  const handleAssignComplaint = async () => {
+    if (!assignComplaint || !selectedAdmin) {
+      return
+    }
+
+    const idToken = localStorage.getItem('idToken')
+
+    try {
+      setAssignUpdating(true)
+      setAssignError('')
+
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/${assignComplaint.id}/assign?email=${encodeURIComponent(selectedAdmin)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${idToken}`,
+          },
+        }
+      )
+
+      if (!response.ok) {
+        const message = await response.text()
+
+        throw new Error(
+          message || `Failed to assign complaint: ${response.status}`
+        )
+      }
+
+      const updatedComplaint = await response.json()
+
+      setComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === updatedComplaint.id
+            ? updatedComplaint
+            : complaint
+        )
+      )
+
+      setFilteredComplaints((currentComplaints) =>
+        currentComplaints.map((complaint) =>
+          complaint.id === updatedComplaint.id
+            ? updatedComplaint
+            : complaint
+        )
+      )
+
+      setAssignComplaint(null)
+      setSelectedAdmin('')
+      setAssignError('')
+
+      showSuccessMessage('Complaint assigned successfully')
+    } catch (error) {
+      console.error('Failed to assign complaint:', error)
+
+      setAssignError(
+        error.message || 'Failed to assign complaint.'
+      )
+    } finally {
+      setAssignUpdating(false)
     }
   }
 
@@ -588,8 +683,12 @@ export default function AdminHome() {
                               </button>
 
                               <button
-                                type="button"
                                 className="table-action-button"
+                                onClick={() => {
+                                  setAssignComplaint(complaint)
+                                  setSelectedAdmin(complaint.assignedTo || '')
+                                  setAssignError('')
+                                }}
                               >
                                 Assign
                               </button>
@@ -929,6 +1028,132 @@ export default function AdminHome() {
                 {statusUpdating
                   ? 'Updating...'
                   : 'Update Status'}
+              </button>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Complaint Modal */}
+      {assignComplaint && (
+        <div
+          className="complaint-modal-overlay"
+          onClick={() => {
+            if (!assignUpdating) {
+              setAssignComplaint(null)
+              setSelectedAdmin('')
+              setAssignError('')
+            }
+          }}
+        >
+          <div
+            className="complaint-modal assign-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="complaint-modal-header">
+              <div>
+                <h2>Assign Complaint</h2>
+
+                <div className="complaint-meta">
+                  Complaint #{assignComplaint.id}
+                </div>
+              </div>
+
+              <button
+                className="complaint-modal-close"
+                onClick={() => {
+                  if (!assignUpdating) {
+                    setAssignComplaint(null)
+                    setSelectedAdmin('')
+                    setAssignError('')
+                  }
+                }}
+                disabled={assignUpdating}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="complaint-details">
+
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  Current Assignee
+                </span>
+
+                <span className="detail-value">
+                  {assignComplaint.assignedTo || 'Unassigned'}
+                </span>
+              </div>
+
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  Assign To
+                </span>
+
+                <div className="admin-options">
+                  {admins.map((admin) => (
+                    <button
+                      key={admin.email}
+                      type="button"
+                      className={`admin-option ${selectedAdmin === admin.email
+                        ? 'selected'
+                        : ''
+                        }`}
+                      onClick={() =>
+                        setSelectedAdmin(admin.email)
+                      }
+                      disabled={assignUpdating}
+                    >
+                      <div className="admin-option-content">
+                        <span>
+                          {admin.name || admin.email}
+                        </span>
+
+                        <span className="admin-email">
+                          {admin.email}
+                        </span>
+                      </div>
+
+                      {selectedAdmin === admin.email && (
+                        <span className="admin-option-check">✓</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {assignError && (
+                <p className="status-error detail-item-full">
+                  {assignError}
+                </p>
+              )}
+
+            </div>
+
+            <div className="complaint-modal-footer">
+
+              <button
+                className="reset-button"
+                onClick={() => {
+                  setAssignComplaint(null)
+                  setSelectedAdmin('')
+                  setAssignError('')
+                }}
+                disabled={assignUpdating}
+              >
+                Cancel
+              </button>
+
+              <button
+                className="apply-button"
+                onClick={handleAssignComplaint}
+                disabled={assignUpdating || !selectedAdmin}
+              >
+                {assignUpdating
+                  ? 'Assigning...'
+                  : 'Assign Complaint'}
               </button>
 
             </div>

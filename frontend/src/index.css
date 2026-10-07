@@ -789,3 +789,86 @@ body {
   font-size: 13px;
   font-weight: 700;
 }
+
+/* Assignment modal */
+
+.assign-modal {
+  max-width: 560px;
+}
+
+.assign-modal .complaint-details {
+  gap: 18px;
+}
+
+.admin-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.admin-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  width: 85%;
+  padding: 11px 14px;
+  background: #202023;
+  color: #aaa;
+  border: 1px solid #333;
+  border-radius: 8px;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.admin-option:hover:not(:disabled) {
+  background: rgba(112, 64, 255, 0.08);
+  border-color: #c3bae7;
+  color: #fff;
+}
+
+.admin-option.selected {
+  background: rgba(112, 64, 255, 0.12);
+  border-color: #7040ff;
+  color: #b99cff;
+}
+
+.admin-option:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-option {
+  position: relative;
+}
+
+.admin-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.admin-option-check {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #b99cff;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.admin-email {
+  color: #777;
+  font-size: 12px;
+}
+
+.assign-modal .complaint-modal-footer {
+  padding-top: 18px;
+}

@@ -2,6 +2,7 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
+import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.service.AdminService;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -75,5 +76,10 @@ public class AdminController {
                     .status(HttpStatus.BAD_REQUEST)
                     .body(e.getMessage());
         }
+    }
+
+    @GetMapping("/admins")
+    public List<User> getAdmins() {
+        return adminService.getAdmins();
     }
 }
