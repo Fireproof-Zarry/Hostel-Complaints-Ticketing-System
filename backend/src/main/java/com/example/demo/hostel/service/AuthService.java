@@ -38,6 +38,10 @@ public class AuthService {
             throw new IllegalArgumentException("Your Google account did not provide an email address.");
         }
 
+        if (!Boolean.TRUE.equals(jwt.getClaim("email_verified"))) {
+            throw new IllegalArgumentException("Google must verify your email address before you can sign in.");
+        }
+
         email = email.toLowerCase(Locale.ROOT);
         String hostedDomain = jwt.getClaimAsString("hd");
         boolean isSmailAccount = email.endsWith("@" + STUDENT_DOMAIN)
