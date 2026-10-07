@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Wrench,
 } from 'lucide-react';
+import { getRoomHundredsForFloor, HOSTEL_FLOORS, isRoomOnFloor } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -22,25 +23,6 @@ const initialForm = {
   floor: 'Second',
   room: '',
 };
-
-function getExpectedRoomHundreds(floor) {
-  const normalizedFloor = floor?.trim().toLowerCase().replace(/\s+floor$/, '');
-  return {
-    ground: 1,
-    first: 2,
-    '1st': 2,
-    second: 3,
-    '2nd': 3,
-    third: 4,
-    '3rd': 4,
-    fourth: 5,
-    '4th': 5,
-    fifth: 6,
-    '5th': 6,
-    sixth: 7,
-    '6th': 7,
-  }[normalizedFloor];
-}
 
 const navigation = [
   { id: 'home', label: 'Home', icon: Home },
@@ -186,9 +168,9 @@ export default function StudentHome() {
       return matchesSearch && matchesStatus;
     });
   }, [complaints, search, statusFilter]);
-  const expectedRoomHundreds = getExpectedRoomHundreds(formData.floor);
+  const expectedRoomHundreds = getRoomHundredsForFloor(formData.floor);
   const roomLocationError = formData.room
-    && (!/^\d{3}$/.test(formData.room) || Number(formData.room[0]) !== expectedRoomHundreds)
+    && !isRoomOnFloor(formData.floor, formData.room)
     ? `Room numbers for the ${formData.floor.toLowerCase()} floor must be in the ${expectedRoomHundreds}00 range (for example, ${expectedRoomHundreds}01).`
     : '';
 
@@ -478,7 +460,7 @@ export default function StudentHome() {
                       onChange={updateForm('floor')}
                       className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                     >
-                      {['Ground', 'First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth'].map((floor) => (
+                      {HOSTEL_FLOORS.map(({ name: floor }) => (
                         <option key={floor}>{floor}</option>
                       ))}
                     </select>

@@ -18,6 +18,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import './AdminHome.css'
 
 function filterComplaintsBySearch(complaints, searchTerm) {
@@ -80,31 +81,8 @@ function getIstCalendarDay(date) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
 }
 
-function getExpectedRoomHundreds(floor) {
-  const normalizedFloor = floor?.trim().toLowerCase().replace(/\s+floor$/, '')
-  const roomHundredsByFloor = {
-    ground: 1,
-    first: 2,
-    '1st': 2,
-    second: 3,
-    '2nd': 3,
-    third: 4,
-    '3rd': 4,
-    fourth: 5,
-    '4th': 5,
-    fifth: 6,
-    '5th': 6,
-    sixth: 7,
-    '6th': 7,
-  }
-
-  return roomHundredsByFloor[normalizedFloor] ?? null
-}
-
 function hasFloorRoomMismatch(floor, room) {
-  const expectedHundreds = getExpectedRoomHundreds(floor)
-  const roomMatch = String(room ?? '').trim().match(/^([1-7])\d{2}(?:\b|$)/)
-  return expectedHundreds !== null && (!roomMatch || Number(roomMatch[1]) !== expectedHundreds)
+  return getRoomHundredsForFloor(floor) !== null && !isRoomOnFloor(floor, room)
 }
 
 export default function AdminHome() {

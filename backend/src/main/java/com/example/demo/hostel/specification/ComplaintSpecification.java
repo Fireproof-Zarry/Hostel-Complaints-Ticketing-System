@@ -6,6 +6,7 @@ import com.example.demo.hostel.model.Status;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 public class ComplaintSpecification {
 
@@ -33,7 +34,7 @@ public class ComplaintSpecification {
                         predicates,
                         criteriaBuilder.equal(
                                 criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("category"))),
-                                category.trim().toLowerCase()
+                                category.trim().toLowerCase(Locale.ROOT)
                         )
                 );
             }
@@ -43,7 +44,7 @@ public class ComplaintSpecification {
                         predicates,
                         criteriaBuilder.equal(
                                 criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("floor"))),
-                                floor.trim().toLowerCase()
+                                floor.trim().toLowerCase(Locale.ROOT)
                         )
                 );
             }
@@ -53,7 +54,7 @@ public class ComplaintSpecification {
                         predicates,
                         criteriaBuilder.equal(
                                 criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("assignedTo"))),
-                                assignedTo.trim().toLowerCase()
+                                assignedTo.trim().toLowerCase(Locale.ROOT)
                         )
                 );
             }

@@ -2,6 +2,7 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -9,7 +10,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 @RestController
@@ -17,9 +17,11 @@ import java.util.Map;
 public class ComplaintController {
 
     private final ComplaintService complaintService;
+    private final RoomLocationValidator roomLocationValidator;
 
-    public ComplaintController(ComplaintService complaintService) {
+    public ComplaintController(ComplaintService complaintService, RoomLocationValidator roomLocationValidator) {
         this.complaintService = complaintService;
+        this.roomLocationValidator = roomLocationValidator;
     }
 
     @PostMapping
@@ -39,29 +41,12 @@ public class ComplaintController {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!isRoomOnFloor(floor, room)) {
+        if (!roomLocationValidator.isRoomOnFloor(floor, room)) {
             return ResponseEntity.badRequest().build();
         }
 
         Complaint savedComplaint = complaintService.createComplaint(email, title, description, category, floor, room);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedComplaint);
-    }
-
-    private boolean isRoomOnFloor(String floor, String room) {
-        int expectedHundreds = switch (floor.trim().toLowerCase(Locale.ROOT).replaceAll("\\s+floor$", "")) {
-            case "ground" -> 1;
-            case "first", "1st" -> 2;
-            case "second", "2nd" -> 3;
-            case "third", "3rd" -> 4;
-            case "fourth", "4th" -> 5;
-            case "fifth", "5th" -> 6;
-            case "sixth", "6th" -> 7;
-            default -> -1;
-        };
-
-        return expectedHundreds > 0
-            && room.matches("[1-7][0-9]{2}")
-            && room.charAt(0) - '0' == expectedHundreds;
     }
 
     @GetMapping("/mine")
