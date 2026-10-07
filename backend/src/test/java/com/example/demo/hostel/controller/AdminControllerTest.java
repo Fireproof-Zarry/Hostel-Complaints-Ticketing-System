@@ -114,6 +114,24 @@ class AdminControllerTest {
         }
 
         @Test
+        void getComplaints_withFloorFilter_returns200() throws Exception {
+                AdminService adminService = mock(AdminService.class);
+
+                when(adminService.getComplaints(
+                                null, null, "Second", null, null, null))
+                                .thenReturn(List.of());
+
+                mockMvc(adminService)
+                                .perform(get("/api/admin/complaints")
+                                                .param("floor", "Second"))
+                                .andExpect(status().isOk());
+
+                verify(adminService)
+                                .getComplaints(
+                                                null, null, "Second", null, null, null);
+        }
+
+        @Test
         void getComplaints_withDateFilter_returns200() throws Exception {
                 AdminService adminService = mock(AdminService.class);
 

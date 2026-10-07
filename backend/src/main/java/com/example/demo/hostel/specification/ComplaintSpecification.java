@@ -31,21 +31,30 @@ public class ComplaintSpecification {
             if (category != null && !category.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("category"), category)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("category"))),
+                                category.trim().toLowerCase()
+                        )
                 );
             }
 
             if (floor != null && !floor.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("floor"), floor)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("floor"))),
+                                floor.trim().toLowerCase()
+                        )
                 );
             }
 
             if (assignedTo != null && !assignedTo.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("assignedTo"), assignedTo)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("assignedTo"))),
+                                assignedTo.trim().toLowerCase()
+                        )
                 );
             }
 
