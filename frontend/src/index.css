@@ -39,6 +39,10 @@ body {
 
 .admin-sidebar {
   width: 240px;
+  height: 100vh;
+  min-height: 100vh;
+  position: sticky;
+  top: 0;
   min-height: 100vh;
   background: #ffffff;
   border-right: 1px solid #e5e5e5;
@@ -54,13 +58,25 @@ body {
 }
 
 .sidebar-header {
-  padding: 24px 20px;
-  border-bottom: 1px solid #eeeeee;
+  height: 70px;
+  padding: 0 20px;
+  border-bottom: 1px solid #333;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-header h2 {
   margin: 0;
   font-size: 18px;
+  white-space: nowrap;
+}
+
+.collapsed-app-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 22px;
   white-space: nowrap;
 }
 
@@ -871,4 +887,27 @@ body {
 
 .assign-modal .complaint-modal-footer {
   padding-top: 18px;
+}
+
+/* Coming Soon */
+
+.coming-soon-page {
+  min-height: calc(100vh - 82px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.coming-soon-page h1 {
+  margin: 0 0 10px;
+  font-size: 32px;
+  color: #fff;
+}
+
+.coming-soon-page p {
+  margin: 0;
+  color: #888;
+  font-size: 15px;
 }
