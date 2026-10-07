@@ -1,7 +1,92 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  AlertCircle,
+  ArrowDownToLine,
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  ClipboardList,
+  Clock3,
+  Home,
+  LogOut,
+  Menu,
+  Search,
+  Settings,
+  ShieldCheck,
+  Users,
+  Wrench,
+} from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
+import './AdminHome.css'
+
+function filterComplaintsBySearch(complaints, searchTerm) {
+  const query = searchTerm.trim().toLowerCase()
+  if (!query) return complaints
+
+  const searchWords = query.replace(/#/g, ' ').split(/\s+/).filter(Boolean)
+  return complaints.filter((complaint) => {
+    const searchableText = [
+      complaint.id,
+      complaint.title,
+      complaint.description,
+      complaint.category,
+      complaint.student?.email,
+      complaint.student?.name,
+      complaint.floor,
+      complaint.room,
+      complaint.assignedTo,
+      complaint.status,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+
+    return searchWords.every((word) => searchableText.includes(word))
+  })
+}
+
+const IST_TIME_ZONE = 'Asia/Kolkata'
+const istDateFormatter = new Intl.DateTimeFormat('en-IN', {
+  timeZone: IST_TIME_ZONE,
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+const istCalendarFormatter = new Intl.DateTimeFormat('en-CA', {
+  timeZone: IST_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+function parseComplaintDate(value) {
+  if (!value) return null
+
+  // The API serializes LocalDateTime without an offset; interpret it as UTC.
+  const normalizedValue = /(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? value : `${value}Z`
+  const date = new Date(normalizedValue)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatComplaintDateTime(value) {
+  const date = parseComplaintDate(value)
+  return date ? istDateFormatter.format(date) : '—'
+}
+
+function getIstCalendarDay(date) {
+  const parts = Object.fromEntries(
+    istCalendarFormatter.formatToParts(date).map(({ type, value }) => [type, value])
+  )
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
+}
+
+function hasFloorRoomMismatch(floor, room) {
+  return getRoomHundredsForFloor(floor) !== null && !isRoomOnFloor(floor, room)
+}
 
 export default function AdminHome() {
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [complaints, setComplaints] = useState([])
   const [filteredComplaints, setFilteredComplaints] = useState([])
@@ -18,6 +103,7 @@ export default function AdminHome() {
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [assignedToFilter, setAssignedToFilter] = useState('')
+  const hasInvalidDateRange = Boolean(fromDate && toDate && toDate < fromDate)
 
   // Selected complaint for View
   const [selectedComplaint, setSelectedComplaint] = useState(null)
@@ -45,7 +131,7 @@ export default function AdminHome() {
     }, 4000)
   }
 
-  const fetchComplaints = async (filters = {}) => {
+  const fetchComplaints = async (filters = {}, query = searchTerm) => {
     const idToken = localStorage.getItem('idToken')
 
     try {
@@ -75,7 +161,7 @@ export default function AdminHome() {
       }
 
       if (filters.to) {
-        params.append('to', `${filters.to}T23:59:59`)
+        params.append('to', `${filters.to}T23:59:59.999999999`)
       }
 
       const queryString = params.toString()
@@ -97,7 +183,7 @@ export default function AdminHome() {
       const data = await response.json()
 
       setComplaints(data)
-      setFilteredComplaints(data)
+      setFilteredComplaints(filterComplaintsBySearch(data, query))
 
       return true
     } catch (error) {
@@ -140,44 +226,12 @@ export default function AdminHome() {
   }, [])
 
   const handleSearch = () => {
-    const query = searchTerm.trim().toLowerCase()
-
-    if (!query) {
-      setFilteredComplaints(complaints)
-      return
-    }
-
-    const filtered = complaints.filter((complaint) => {
-      const searchableText = [
-        complaint.id,
-        complaint.title,
-        complaint.description,
-        complaint.category,
-        complaint.student?.email,
-        complaint.student?.name,
-        complaint.floor,
-        complaint.room,
-        complaint.assignedTo,
-        complaint.status,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      const searchWords = query
-        .replace(/#/g, ' ')
-        .split(/\s+/)
-        .filter(Boolean)
-
-      return searchWords.every((word) =>
-        searchableText.includes(word)
-      )
-    })
-
-    setFilteredComplaints(filtered)
+    setFilteredComplaints(filterComplaintsBySearch(complaints, searchTerm))
   }
 
   const handleApplyFilters = async () => {
+    if (hasInvalidDateRange) return
+
     const success = await fetchComplaints({
       status: statusFilter,
       category: categoryFilter,
@@ -199,8 +253,9 @@ export default function AdminHome() {
     setFromDate('')
     setToDate('')
     setAssignedToFilter('')
+    setSearchTerm('')
 
-    const success = await fetchComplaints()
+    const success = await fetchComplaints({}, '')
 
     if (success) {
       showSuccessMessage('Filters reset')
@@ -334,27 +389,11 @@ export default function AdminHome() {
   }
 
   const getTimeSinceRaised = (createdAt) => {
-    if (!createdAt) {
-      return ''
-    }
-
-    const createdDate = new Date(createdAt)
-    const today = new Date()
-
-    const createdDay = new Date(
-      createdDate.getFullYear(),
-      createdDate.getMonth(),
-      createdDate.getDate()
-    )
-
-    const todayDay = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    )
+    const createdDate = parseComplaintDate(createdAt)
+    if (!createdDate) return ''
 
     const differenceDays = Math.floor(
-      (todayDay - createdDay) / (1000 * 60 * 60 * 24)
+      (getIstCalendarDay(new Date()) - getIstCalendarDay(createdDate)) / 86_400_000
     )
 
     if (differenceDays === 0) {
@@ -370,8 +409,10 @@ export default function AdminHome() {
 
   const assignedToUsers = [
     ...new Set(
-      complaints
-        .map((complaint) => complaint.assignedTo)
+      [
+        ...admins.map((admin) => admin.email),
+        ...complaints.map((complaint) => complaint.assignedTo),
+      ]
         .filter(Boolean)
     ),
   ]
@@ -384,238 +425,315 @@ export default function AdminHome() {
     'REJECTED',
   ]
 
-  return (
-    <div className="admin-layout">
+  const statusCounts = {
+    total: complaints.length,
+    pending: complaints.filter((complaint) => complaint.status === 'PENDING').length,
+    inProgress: complaints.filter((complaint) => complaint.status === 'IN_PROGRESS').length,
+    resolved: complaints.filter((complaint) => complaint.status === 'RESOLVED').length,
+  }
 
-      {/* Sidebar */}
-      <aside
-        className={`admin-sidebar ${sidebarOpen ? 'open' : 'closed'
-          }`}
-      >
-        <div className="sidebar-header">
-          {sidebarOpen && <h2>Hostel Complaints</h2>}
+  const handleLogout = () => {
+    localStorage.removeItem('idToken')
+    navigate('/login', { replace: true })
+  }
+
+  const handleQuickStatusFilter = async (status) => {
+    setStatusFilter(status)
+    await fetchComplaints({
+      status,
+      category: categoryFilter,
+      floor: floorFilter,
+      assignedTo: assignedToFilter,
+      from: fromDate,
+      to: toDate,
+    })
+  }
+
+  const handleRefreshComplaints = () => fetchComplaints({
+    status: statusFilter,
+    category: categoryFilter,
+    floor: floorFilter,
+    assignedTo: assignedToFilter,
+    from: fromDate,
+    to: toDate,
+  })
+
+  return (
+    <div className={`admin-shell ${sidebarOpen ? '' : 'admin-shell-collapsed'}`}>
+      <aside className="admin-sidebar">
+        <div className="admin-brand">
+          <span className="admin-brand-icon"><Wrench size={21} /></span>
+          {sidebarOpen && (
+            <span className="admin-brand-copy">
+              <strong>HostelFix</strong>
+              <small>ADMIN CONSOLE</small>
+            </span>
+          )}
         </div>
 
-        <nav className="sidebar-nav">
+        <p className="admin-nav-label">{sidebarOpen ? 'WORKSPACE' : 'NAV'}</p>
+        <nav className="admin-nav" aria-label="Admin navigation">
           <button
-            className={`nav-item ${comingSoonPage === null ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(null)}
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === 'Dashboard' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Dashboard')}
+            title="Dashboard"
           >
-            <span>⌂</span>
-            {sidebarOpen && <span>Admin Home</span>}
+            <Home size={19} />
+            {sidebarOpen && <span>Dashboard</span>}
+            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
           </button>
-
           <button
-            className={`nav-item ${comingSoonPage === 'Analytics' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Analytics')}
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
+            onClick={() => {
+              setComingSoonPage(null)
+              setError('')
+            }}
+            title="Complaints"
           >
-            <span>▦</span>
-            {sidebarOpen && <span>Analytics</span>}
+            <ClipboardList size={19} />
+            {sidebarOpen && <span>Complaints</span>}
+            {sidebarOpen && <span className="admin-nav-count">{statusCounts.total}</span>}
           </button>
-
           <button
-            className={`nav-item ${comingSoonPage === 'History' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('History')}
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === 'Staff Management' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Staff Management')}
+            title="Staff management"
           >
-            <span>◷</span>
-            {sidebarOpen && <span>History</span>}
+            <Users size={19} />
+            {sidebarOpen && <span>Staff management</span>}
+            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
+          </button>
+          <button
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === 'Settings' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Settings')}
+            title="Settings"
+          >
+            <Settings size={19} />
+            {sidebarOpen && <span>Settings</span>}
+            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
           </button>
         </nav>
 
-        <div className="sidebar-bottom">
-          <button
-            className={`nav-item ${comingSoonPage === 'Profile' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Profile')}
-          >
-            <span>◉</span>
-            {sidebarOpen && <span>Profile</span>}
+        <div className="admin-sidebar-bottom">
+          <div className="admin-user-card">
+            <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
+            {sidebarOpen && (
+              <span className="admin-user-copy">
+                <strong>Administrator</strong>
+                <small>Hostel support team</small>
+              </span>
+            )}
+          </div>
+          <button type="button" className="admin-nav-item admin-logout" onClick={handleLogout} title="Log out">
+            <LogOut size={18} />
+            {sidebarOpen && <span>Log out</span>}
           </button>
         </div>
       </aside>
 
-      {/* Main Area */}
       <main className="admin-main">
-
-        {/* Header */}
         <header className="admin-header">
           <button
-            className="menu-button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
+            type="button"
+            className="admin-menu-button"
+            aria-label={sidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            onClick={() => setSidebarOpen((open) => !open)}
           >
-            ☰
+            <Menu size={21} />
           </button>
-
-          {/* {!sidebarOpen && <h2 className="collapsed-sidebar-title">Hostel Complaints</h2>} */}
-          {!sidebarOpen && (
-            <h2 className="collapsed-app-title">
-              Hostel Complaints
-            </h2>
-          )}
-
-          <h1>{comingSoonPage || 'Admin Home'}</h1>
-
-          <div className="profile-button">
-            ◉
+          <div className="admin-header-title">
+            <span>HOSTELFIX / {comingSoonPage ? comingSoonPage.toUpperCase() : 'COMPLAINTS'}</span>
+            <h1>{comingSoonPage || 'Complaints'}</h1>
+          </div>
+          <div className="admin-header-actions">
+            <button
+              type="button"
+              className="admin-header-icon"
+              aria-label="Notifications (work in progress)"
+              title="Notifications are a work in progress"
+              onClick={() => setComingSoonPage('Notifications')}
+            >
+              <Bell size={19} />
+              <i />
+            </button>
           </div>
         </header>
 
-        {/* Content */}
         <section className="admin-content">
           {comingSoonPage ? (
-            <ComingSoon title={comingSoonPage} />
+            <div className="admin-work-in-progress">
+              <ComingSoon title={comingSoonPage} />
+              <p>This section is under development. Complaint management remains available in the Complaints workspace.</p>
+              <button type="button" className="admin-primary-button" onClick={() => setComingSoonPage(null)}>
+                <ClipboardList size={17} /> Go to complaints
+              </button>
+            </div>
           ) : (
             <>
-              {/* Search */}
-              <div className="search-section">
-                <input
-                  type="text"
-                  placeholder="Search complaints..."
-                  className="search-input"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-
-                <button
-                  className="search-button"
-                  onClick={handleSearch}
-                >
-                  Search
+              <div className="admin-page-heading">
+                <div>
+                  <p className="admin-eyebrow">OPERATIONS OVERVIEW</p>
+                  <h2>Complaint management</h2>
+                  <p>Review requests, apply filters, and keep hostel issues moving.</p>
+                </div>
+                <button type="button" className="admin-secondary-button" onClick={handleRefreshComplaints}>
+                  <ArrowDownToLine size={17} /> Refresh data
                 </button>
               </div>
 
-              {/* Filters */}
-              <div className="filters-section">
-
-                <div className="filter-dropdown">
-                  <label>Status</label>
-
-                  <select
-                    value={statusFilter}
-                    onChange={(e) =>
-                      setStatusFilter(e.target.value)
-                    }
-                  >
-                    <option value="">All</option>
-                    <option value="PENDING">PENDING</option>
-                    <option value="ASSIGNED">ASSIGNED</option>
-                    <option value="IN_PROGRESS">
-                      IN_PROGRESS
-                    </option>
-                    <option value="RESOLVED">RESOLVED</option>
-                    <option value="REJECTED">REJECTED</option>
-                  </select>
-                </div>
-
-                <div className="filter-dropdown">
-                  <label>Category</label>
-
-                  <select
-                    value={categoryFilter}
-                    onChange={(e) =>
-                      setCategoryFilter(e.target.value)
-                    }
-                  >
-                    <option value="">All</option>
-                    <option value="Electrical">
-                      Electrical
-                    </option>
-                    <option value="Plumbing">Plumbing</option>
-                    <option value="Carpentry">Carpentry</option>
-                    <option value="Cleaning">Cleaning</option>
-                    <option value="IT">IT/Network</option>
-                  </select>
-                </div>
-
-                <div className="filter-dropdown">
-                  <label>Floor</label>
-
-                  <select
-                    value={floorFilter}
-                    onChange={(e) =>
-                      setFloorFilter(e.target.value)
-                    }
-                  >
-                    <option value="">All</option>
-                    <option value="ground">Ground</option>
-                    <option value="first">First</option>
-                    <option value="second">Second</option>
-                    <option value="third">Third</option>
-                    <option value="fourth">Fourth</option>
-                    <option value="fifth">Fifth</option>
-                    <option value="sixth">Sixth</option>
-                  </select>
-                </div>
-
-                <div className="date-filter">
-                  <label>From</label>
-
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) =>
-                      setFromDate(e.target.value)
-                    }
-                  />
-                </div>
-
-                <div className="date-filter">
-                  <label>To</label>
-
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) =>
-                      setToDate(e.target.value)
-                    }
-                  />
-                </div>
-
-                <div className="filter-dropdown">
-                  <label>In-charge</label>
-
-                  <select
-                    value={assignedToFilter}
-                    onChange={(e) =>
-                      setAssignedToFilter(e.target.value)
-                    }
-                  >
-                    <option value="">All</option>
-
-                    {assignedToUsers.map((email) => (
-                      <option key={email} value={email}>
-                        {email}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <button
-                  className="apply-button"
-                  onClick={handleApplyFilters}
-                >
-                  Apply Filters
+              <div className="admin-summary-grid">
+                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('')}>
+                  <span className="admin-summary-icon summary-indigo"><ClipboardList size={19} /></span>
+                  <span className="admin-summary-copy"><small>Total complaints</small><strong>{loading ? '—' : statusCounts.total}</strong></span>
+                  <span className="admin-summary-caption">All requests</span>
                 </button>
-
-                <button
-                  className="reset-button"
-                  onClick={handleResetFilters}
-                >
-                  Reset
+                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('PENDING')}>
+                  <span className="admin-summary-icon summary-amber"><AlertCircle size={19} /></span>
+                  <span className="admin-summary-copy"><small>Pending</small><strong>{loading ? '—' : statusCounts.pending}</strong></span>
+                  <span className="admin-summary-caption">Needs review</span>
+                </button>
+                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('IN_PROGRESS')}>
+                  <span className="admin-summary-icon summary-blue"><Clock3 size={19} /></span>
+                  <span className="admin-summary-copy"><small>In progress</small><strong>{loading ? '—' : statusCounts.inProgress}</strong></span>
+                  <span className="admin-summary-caption">Being handled</span>
+                </button>
+                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('RESOLVED')}>
+                  <span className="admin-summary-icon summary-green"><CheckCircle2 size={19} /></span>
+                  <span className="admin-summary-copy"><small>Resolved</small><strong>{loading ? '—' : statusCounts.resolved}</strong></span>
+                  <span className="admin-summary-caption">Completed</span>
                 </button>
               </div>
 
-              {/* Complaints */}
-              <div className="complaints-section">
-                <h2>Complaints</h2>
+              <div className="admin-workspace-card">
+                <div className="admin-workspace-heading">
+                  <div>
+                    <h3>All complaints</h3>
+                    <p>Search and filter submitted hostel requests.</p>
+                  </div>
+                  <span className="admin-result-count">{loading ? 'Loading…' : `${filteredComplaints.length} results`}</span>
+                </div>
 
+                <div className="admin-search-row">
+                  <label className="admin-search-box">
+                    <Search size={18} />
+                    <input
+                      type="search"
+                      placeholder="Search title, student, room, or ID…"
+                      value={searchTerm}
+                      onChange={(event) => setSearchTerm(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') handleSearch()
+                      }}
+                    />
+                  </label>
+                  <button type="button" className="admin-primary-button" onClick={handleSearch}>
+                    Search
+                  </button>
+                </div>
+
+                <div className="admin-filter-grid">
+                  <label className="admin-filter-control">
+                    <span>Status</span>
+                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                      <option value="">All statuses</option>
+                      <option value="PENDING">Pending</option>
+                      <option value="ASSIGNED">Assigned</option>
+                      <option value="IN_PROGRESS">In progress</option>
+                      <option value="RESOLVED">Resolved</option>
+                      <option value="REJECTED">Rejected</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>Category</span>
+                    <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                      <option value="">All categories</option>
+                      <option value="Electrical">Electrical</option>
+                      <option value="Plumbing">Plumbing</option>
+                      <option value="Carpentry">Carpentry</option>
+                      <option value="Cleaning">Cleaning</option>
+                      <option value="IT">IT/Network</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>Floor</span>
+                    <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)}>
+                      <option value="">All floors</option>
+                      <option value="Ground">Ground</option>
+                      <option value="First">First</option>
+                      <option value="Second">Second</option>
+                      <option value="Third">Third</option>
+                      <option value="Fourth">Fourth</option>
+                      <option value="Fifth">Fifth</option>
+                      <option value="Sixth">Sixth</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>In-charge</span>
+                    <select value={assignedToFilter} onChange={(event) => setAssignedToFilter(event.target.value)}>
+                      <option value="">All staff</option>
+                      {assignedToUsers.map((email) => <option key={email} value={email}>{email}</option>)}
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>From date</span>
+                    <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>To date</span>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(event) => setToDate(event.target.value)}
+                      aria-invalid={hasInvalidDateRange}
+                      aria-describedby={hasInvalidDateRange ? 'admin-date-range-notice' : undefined}
+                    />
+                  </label>
+                </div>
+
+                {hasInvalidDateRange && (
+                  <p id="admin-date-range-notice" className="admin-date-range-notice" role="alert">
+                    “To date” must be the same as or later than “From date”.
+                  </p>
+                )}
+
+                <div className="admin-filter-actions">
+                  <button type="button" className="admin-secondary-button" onClick={handleResetFilters}>Reset filters</button>
+                  <button
+                    type="button"
+                    className="admin-primary-button"
+                    onClick={handleApplyFilters}
+                    disabled={hasInvalidDateRange}
+                  >
+                    Apply filters
+                  </button>
+                </div>
+              </div>
+
+              <div className="admin-complaints-card">
+                <div className="admin-complaints-heading">
+                  <div>
+                    <h3>Complaint records</h3>
+                    <p>Open a complaint to review its details or manage its status and assignment.</p>
+                  </div>
+                  <span><BarChart3 size={17} /> {filteredComplaints.length} shown</span>
+                </div>
                 {loading && (
-                  <div className="table-placeholder">
+                  <div className="table-placeholder admin-table-state">
                     <p>Loading complaints...</p>
                   </div>
                 )}
 
                 {!loading && error && (
-                  <div className="table-placeholder">
+                  <div className="table-placeholder admin-table-state">
                     <p>{error}</p>
                   </div>
                 )}
@@ -623,7 +741,7 @@ export default function AdminHome() {
                 {!loading &&
                   !error &&
                   filteredComplaints.length === 0 && (
-                    <div className="table-placeholder">
+                    <div className="table-placeholder admin-table-state">
                       <p>No complaints found.</p>
                     </div>
                   )}
@@ -631,7 +749,7 @@ export default function AdminHome() {
                 {!loading &&
                   !error &&
                   filteredComplaints.length > 0 && (
-                    <div className="complaints-table-wrapper">
+                    <div className="complaints-table-wrapper admin-table-wrapper">
                       <table className="complaints-table">
                         <thead>
                           <tr>
@@ -659,6 +777,13 @@ export default function AdminHome() {
                                 <strong
                                   className="complaint-title"
                                   onClick={() => setSelectedComplaint(complaint)}
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter' || event.key === ' ') {
+                                      setSelectedComplaint(complaint)
+                                    }
+                                  }}
                                 >
                                   {complaint.title}
                                 </strong>
@@ -674,7 +799,15 @@ export default function AdminHome() {
                               </td>
 
                               <td>
-                                {complaint.floor}
+                                <span>{complaint.floor || '—'}</span>
+                                {hasFloorRoomMismatch(complaint.floor, complaint.room) && (
+                                  <span
+                                    className="admin-location-warning"
+                                    title="The room number does not match the selected floor."
+                                  >
+                                    Check location
+                                  </span>
+                                )}
                               </td>
 
                               <td>
@@ -888,11 +1021,7 @@ export default function AdminHome() {
                 </span>
 
                 <span className="detail-value">
-                  {selectedComplaint.createdAt
-                    ? new Date(
-                      selectedComplaint.createdAt
-                    ).toLocaleString()
-                    : '—'}
+                  {formatComplaintDateTime(selectedComplaint.createdAt)}
                 </span>
               </div>
 
@@ -902,11 +1031,7 @@ export default function AdminHome() {
                 </span>
 
                 <span className="detail-value">
-                  {selectedComplaint.updatedAt
-                    ? new Date(
-                      selectedComplaint.updatedAt
-                    ).toLocaleString()
-                    : '—'}
+                  {formatComplaintDateTime(selectedComplaint.updatedAt)}
                 </span>
               </div>
 

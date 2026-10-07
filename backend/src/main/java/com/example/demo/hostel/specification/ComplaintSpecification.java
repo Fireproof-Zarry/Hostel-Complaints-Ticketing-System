@@ -6,6 +6,7 @@ import com.example.demo.hostel.model.Status;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 
 public class ComplaintSpecification {
 
@@ -31,21 +32,30 @@ public class ComplaintSpecification {
             if (category != null && !category.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("category"), category)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("category"))),
+                                category.trim().toLowerCase(Locale.ROOT)
+                        )
                 );
             }
 
             if (floor != null && !floor.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("floor"), floor)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("floor"))),
+                                floor.trim().toLowerCase(Locale.ROOT)
+                        )
                 );
             }
 
             if (assignedTo != null && !assignedTo.isBlank()) {
                 predicates = criteriaBuilder.and(
                         predicates,
-                        criteriaBuilder.equal(root.get("assignedTo"), assignedTo)
+                        criteriaBuilder.equal(
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("assignedTo"))),
+                                assignedTo.trim().toLowerCase(Locale.ROOT)
+                        )
                 );
             }
 
