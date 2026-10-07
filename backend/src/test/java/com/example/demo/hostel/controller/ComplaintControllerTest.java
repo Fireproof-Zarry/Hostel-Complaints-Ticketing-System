@@ -2,6 +2,7 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -26,7 +27,7 @@ class ComplaintControllerTest {
         ComplaintService complaintService = mock(ComplaintService.class);
         when(complaintService.createComplaint(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
             .thenReturn(new Complaint());
-        ComplaintController controller = new ComplaintController(complaintService);
+        ComplaintController controller = new ComplaintController(complaintService, new RoomLocationValidator());
 
         Map<String, String> floorRooms = Map.of(
             "Ground", "101",
@@ -50,7 +51,7 @@ class ComplaintControllerTest {
     @Test
     void rejectsRoomsOutsideTheirFloorRange() {
         ComplaintService complaintService = mock(ComplaintService.class);
-        ComplaintController controller = new ComplaintController(complaintService);
+        ComplaintController controller = new ComplaintController(complaintService, new RoomLocationValidator());
 
         Map<String, String> floorRooms = Map.of(
             "Ground", "201",
@@ -75,7 +76,7 @@ class ComplaintControllerTest {
     @Test
     void rejectsRoomNumbersThatAreNotThreeDigits() {
         ComplaintService complaintService = mock(ComplaintService.class);
-        ComplaintController controller = new ComplaintController(complaintService);
+        ComplaintController controller = new ComplaintController(complaintService, new RoomLocationValidator());
 
         assertEquals(
             HttpStatus.BAD_REQUEST,

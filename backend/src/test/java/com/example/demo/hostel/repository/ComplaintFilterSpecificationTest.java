@@ -47,8 +47,8 @@ class ComplaintFilterSpecificationTest {
         to = now.plusDays(1);
 
         complaintRepository.save(complaint(
-                student, "Second", "Plumbing", Status.PENDING,
-                "admin@smail.iitm.ac.in", now
+                student, " Second ", " Plumbing ", Status.PENDING,
+                " ADMIN@SMAIL.IITM.AC.IN ", now
         ));
         complaintRepository.save(complaint(
                 student, "First", "Electrical", Status.PENDING,
@@ -74,7 +74,7 @@ class ComplaintFilterSpecificationTest {
         );
 
         assertThat(results).hasSize(1);
-        assertThat(results.getFirst().getFloor()).isEqualTo("Second");
+        assertThat(results.getFirst().getFloor()).isEqualTo(" Second ");
     }
 
     private Complaint complaint(
