@@ -42,14 +42,14 @@ public class AuthService {
         String hostedDomain = jwt.getClaimAsString("hd");
         boolean isSmailAccount = email.endsWith("@" + STUDENT_DOMAIN)
                 && STUDENT_DOMAIN.equals(hostedDomain);
+        boolean isAdmin = adminEmails.contains(email);
 
-        if (!isSmailAccount) {
+        if (!isSmailAccount && !isAdmin) {
             throw new IllegalArgumentException(
-                    "Use your verified @smail.iitm.ac.in account."
+                    "Use your verified @smail.iitm.ac.in student account or an approved administrator account."
             );
         }
 
-        boolean isAdmin = adminEmails.contains(email);
         String name = jwt.getClaimAsString("name");
         Role role = isAdmin ? Role.ADMIN : Role.STUDENT;
         User user = userRepository.findByEmail(email).orElse(null);

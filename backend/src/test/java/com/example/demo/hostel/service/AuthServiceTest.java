@@ -53,13 +53,16 @@ class AuthServiceTest {
     }
 
     @Test
-    void allowlistedPersonalEmailIsStillRejected() {
-        assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
-                        "admin@example.com", "Admin", null
-                ))
-        );
-        verifyNoInteractions(userRepository);
+    void allowlistedPersonalEmailIsCreatedAsAdmin() {
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User user = new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
+                "admin@example.com", "Admin", null
+        ));
+
+        assertEquals(Role.ADMIN, user.getRole());
+        verify(userRepository).save(user);
     }
 
     @Test
