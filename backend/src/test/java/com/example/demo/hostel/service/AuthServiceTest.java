@@ -28,7 +28,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User user = new AuthService(userRepository, "").processGoogleLogin(jwt(
-                "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in"
+                "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", true
         ));
 
         assertEquals(Role.STUDENT, user.getRole());
@@ -45,7 +45,7 @@ class AuthServiceTest {
         when(userRepository.save(existingUser)).thenReturn(existingUser);
 
         User user = new AuthService(userRepository, existingUser.getEmail()).processGoogleLogin(jwt(
-                existingUser.getEmail(), "Administrator", "smail.iitm.ac.in"
+                existingUser.getEmail(), "Administrator", "smail.iitm.ac.in", true
         ));
 
         assertEquals(Role.ADMIN, user.getRole());
@@ -58,7 +58,7 @@ class AuthServiceTest {
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         User user = new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
-                "admin@example.com", "Admin", null
+                "admin@example.com", "Admin", null, true
         ));
 
         assertEquals(Role.ADMIN, user.getRole());
@@ -69,19 +69,52 @@ class AuthServiceTest {
     void otherPersonalEmailIsRejected() {
         assertThrows(IllegalArgumentException.class, () ->
                 new AuthService(userRepository, "").processGoogleLogin(jwt(
-                        "someone@gmail.com", "Someone", null
+                        "someone@gmail.com", "Someone", null, true
                 ))
         );
         verifyNoInteractions(userRepository);
     }
 
-    private Jwt jwt(String email, String name, String hostedDomain) {
+    @Test
+    void unverifiedSmailEmailIsRejected() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                        "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", false
+                ))
+        );
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void missingEmailVerifiedClaimIsRejected() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                        "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", null
+                ))
+        );
+        verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void unverifiedConfiguredAdminEmailIsRejected() {
+        assertThrows(IllegalArgumentException.class, () ->
+                new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
+                        "admin@example.com", "Admin", null, false
+                ))
+        );
+        verifyNoInteractions(userRepository);
+    }
+
+    private Jwt jwt(String email, String name, String hostedDomain, Boolean emailVerified) {
         Jwt.Builder builder = Jwt.withTokenValue("test-token")
                 .header("alg", "none")
                 .claim("email", email)
                 .claim("name", name);
         if (hostedDomain != null) {
             builder.claim("hd", hostedDomain);
+        }
+        if (emailVerified != null) {
+            builder.claim("email_verified", emailVerified);
         }
         return builder.build();
     }
