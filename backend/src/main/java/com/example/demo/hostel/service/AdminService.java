@@ -31,6 +31,10 @@ public class AdminService {
         this.userRepository = userRepository;
     }
 
+    public List<User> getAdmins() {
+        return userRepository.findByRole(Role.ADMIN);
+    }
+
     public List<Complaint> getComplaints(
             Status status,
             String category,
