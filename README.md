@@ -5,7 +5,7 @@
 ## Frontend 
 ### 1. Install Node.js using NVM
 
-Since you're using WSL, install Node through NVM inside WSL.
+If you're using WSL, install Node through NVM inside WSL.
 
 ```bash
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
