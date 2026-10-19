@@ -1,9 +1,13 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.repository.CategoryRepository;
 import com.example.demo.hostel.repository.ComplaintRepository;
+import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,12 @@ public class ComplaintServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CategoryRepository categoryRepository;
+
+    @Mock
+    private LocationRepository locationRepository;
+
     @InjectMocks
     private ComplaintService complaintService;
 
@@ -47,6 +57,12 @@ public class ComplaintServiceTest {
         when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
         when(complaintRepository.countByStudentAndStatusIn(testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
                 .thenReturn(3L); 
+
+        Category electrical = new Category();
+        electrical.setName("Electrical");
+        when(categoryRepository.findByNameIgnoreCase("Electrical")).thenReturn(Optional.of(electrical));
+        when(locationRepository.findByFloorAndRoomNumberAndWingIsNull("2nd Floor", "312"))
+                .thenReturn(Optional.of(new Location()));
 
         Complaint savedComplaint = new Complaint();
         savedComplaint.setTitle("Broken Fan");
@@ -88,6 +104,28 @@ public class ComplaintServiceTest {
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
         assertTrue(exception.getReason().contains("5 open complaints"));
         
+        verify(complaintRepository, never()).save(any(Complaint.class));
+    }
+
+    @Test
+    void whenCategoryUnknown_thenThrowsBadRequest() {
+        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
+        when(complaintRepository.countByStudentAndStatusIn(testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
+                .thenReturn(0L);
+        when(categoryRepository.findByNameIgnoreCase("Gardening")).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+            complaintService.createComplaint(
+                "student@smail.iitm.ac.in",
+                "Overgrown hedge",
+                "Blocking the path",
+                "Gardening",
+                "2nd Floor",
+                "312"
+            )
+        );
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verify(complaintRepository, never()).save(any(Complaint.class));
     }
 }

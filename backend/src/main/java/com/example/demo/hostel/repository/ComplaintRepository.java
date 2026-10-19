@@ -1,5 +1,6 @@
 package com.example.demo.hostel.repository;
 
+import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
@@ -32,7 +33,7 @@ public interface ComplaintRepository
         // Admin filters
         List<Complaint> findByStatus(Status status);
 
-        List<Complaint> findByCategory(String category);
+        List<Complaint> findByCategory(Category category);
 
         List<Complaint> findByCreatedAtBetween(
                         LocalDateTime from,
@@ -40,7 +41,7 @@ public interface ComplaintRepository
 
         List<Complaint> findByStatusAndCategory(
                         Status status,
-                        String category);
+                        Category category);
 
         List<Complaint> findByStatusAndCreatedAtBetween(
                         Status status,
@@ -48,13 +49,13 @@ public interface ComplaintRepository
                         LocalDateTime to);
 
         List<Complaint> findByCategoryAndCreatedAtBetween(
-                        String category,
+                        Category category,
                         LocalDateTime from,
                         LocalDateTime to);
 
         List<Complaint> findByStatusAndCategoryAndCreatedAtBetween(
                         Status status,
-                        String category,
+                        Category category,
                         LocalDateTime from,
                         LocalDateTime to);
 }

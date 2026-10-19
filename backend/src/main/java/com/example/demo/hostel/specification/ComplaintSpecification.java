@@ -33,7 +33,7 @@ public class ComplaintSpecification {
                 predicates = criteriaBuilder.and(
                         predicates,
                         criteriaBuilder.equal(
-                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("category"))),
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.get("category").<String>get("name"))),
                                 category.trim().toLowerCase(Locale.ROOT)
                         )
                 );
@@ -43,7 +43,7 @@ public class ComplaintSpecification {
                 predicates = criteriaBuilder.and(
                         predicates,
                         criteriaBuilder.equal(
-                                criteriaBuilder.lower(criteriaBuilder.trim(root.<String>get("floor"))),
+                                criteriaBuilder.lower(criteriaBuilder.trim(root.get("location").<String>get("floor"))),
                                 floor.trim().toLowerCase(Locale.ROOT)
                         )
                 );
