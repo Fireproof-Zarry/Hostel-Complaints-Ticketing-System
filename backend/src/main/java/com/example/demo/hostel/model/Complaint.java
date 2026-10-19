@@ -1,5 +1,7 @@
 package com.example.demo.hostel.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
@@ -19,14 +21,15 @@ public class Complaint {
     @Column(nullable = false, length = 1000)
     private String description;
 
-    @Column(nullable = false)
-    private String category;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
-    @Column(nullable = false)
-    private String floor;
-
-    @Column(nullable = false)
-    private String room;
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "location_id", nullable = false)
+    private Location location;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -50,12 +53,12 @@ public class Complaint {
     public void setTitle(String title) { this.title = title; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
-    public String getFloor() { return floor; }
-    public void setFloor(String floor) { this.floor = floor; }
-    public String getRoom() { return room; }
-    public void setRoom(String room) { this.room = room; }
+    @JsonIgnore
+    public Category getCategory() { return category; }
+    public void setCategory(Category category) { this.category = category; }
+    @JsonIgnore
+    public Location getLocation() { return location; }
+    public void setLocation(Location location) { this.location = location; }
     public String getAssignedTo() { return assignedTo; }
     public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -68,4 +71,12 @@ public class Complaint {
     public void setStatus(Status status) { this.status = status; }
     public User getStudent() { return student; }
     public void setStudent(User student) { this.student = student; }
+
+    // Flattened read-only views that keep the existing JSON response shape
+    @JsonProperty("category")
+    public String getCategoryName() { return category == null ? null : category.getName(); }
+    @JsonProperty("floor")
+    public String getFloor() { return location == null ? null : location.getFloor(); }
+    @JsonProperty("room")
+    public String getRoom() { return location == null ? null : location.getRoomNumber(); }
 }

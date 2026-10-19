@@ -1,6 +1,8 @@
 package com.example.demo.hostel.repository;
 
+import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
@@ -30,6 +32,12 @@ class ComplaintFilterSpecificationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private CategoryRepository categoryRepository;
+
+    @Autowired
+    private LocationRepository locationRepository;
 
     private LocalDateTime from;
     private LocalDateTime to;
@@ -87,9 +95,15 @@ class ComplaintFilterSpecificationTest {
         Complaint complaint = new Complaint();
         complaint.setTitle("Test complaint");
         complaint.setDescription("Filter test");
-        complaint.setFloor(floor);
-        complaint.setRoom("201");
-        complaint.setCategory(category);
+        Location location = new Location();
+        location.setFloor(floor);
+        location.setRoomNumber("201");
+        complaint.setLocation(locationRepository.save(location));
+
+        Category complaintCategory = new Category();
+        complaintCategory.setName(category);
+        complaintCategory.setDefaultSlaHours(48);
+        complaint.setCategory(categoryRepository.save(complaintCategory));
         complaint.setStatus(status);
         complaint.setAssignedTo(assignedTo);
         complaint.setStudent(student);

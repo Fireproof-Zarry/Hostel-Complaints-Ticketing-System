@@ -1,9 +1,13 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.repository.CategoryRepository;
 import com.example.demo.hostel.repository.ComplaintRepository;
+import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -16,10 +20,18 @@ public class ComplaintService {
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
+    private final CategoryRepository categoryRepository;
+    private final LocationRepository locationRepository;
 
-    public ComplaintService(ComplaintRepository complaintRepository, UserRepository userRepository) {
+    public ComplaintService(
+            ComplaintRepository complaintRepository,
+            UserRepository userRepository,
+            CategoryRepository categoryRepository,
+            LocationRepository locationRepository) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
+        this.categoryRepository = categoryRepository;
+        this.locationRepository = locationRepository;
     }
 
     public Complaint createComplaint(String email, String title, String description, String category, String floor, String room) {
@@ -35,12 +47,22 @@ public class ComplaintService {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "You cannot have more than 5 open complaints at a time.");
         }
 
+        Category complaintCategory = categoryRepository.findByNameIgnoreCase(category)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown category: " + category));
+
+        Location location = locationRepository.findByFloorAndRoomNumberAndWingIsNull(floor, room)
+                .orElseGet(() -> {
+                    Location newLocation = new Location();
+                    newLocation.setFloor(floor);
+                    newLocation.setRoomNumber(room);
+                    return locationRepository.save(newLocation);
+                });
+
         Complaint complaint = new Complaint();
         complaint.setTitle(title);
         complaint.setDescription(description);
-        complaint.setCategory(category);
-        complaint.setFloor(floor);
-        complaint.setRoom(room);
+        complaint.setCategory(complaintCategory);
+        complaint.setLocation(location);
         complaint.setStudent(student);
         
         return complaintRepository.save(complaint);
