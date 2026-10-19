@@ -12,7 +12,7 @@ class ComplaintTransitionServiceTest {
 
     @BeforeEach
     void setUp() {
-        transitionService = new ComplaintTransitionService();
+        transitionService = new ComplaintTransitionService(null, null, null, null);
     }
 
     @Test
