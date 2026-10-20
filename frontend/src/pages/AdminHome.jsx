@@ -1015,6 +1015,32 @@ export default function AdminHome() {
                 </p>
               </div>
 
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  Photo
+                </span>
+
+                {selectedComplaint.imageUrl ? (
+                  <a
+                    href={selectedComplaint.imageUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="detail-photo-link"
+                    title="Open full-size photo"
+                  >
+                    <img
+                      src={selectedComplaint.imageUrl}
+                      alt={`Photo attached to complaint #${selectedComplaint.id}`}
+                      className="detail-photo"
+                    />
+                  </a>
+                ) : (
+                  <span className="detail-value">
+                    No photo attached
+                  </span>
+                )}
+              </div>
+
               <div className="detail-item">
                 <span className="detail-label">
                   Created At

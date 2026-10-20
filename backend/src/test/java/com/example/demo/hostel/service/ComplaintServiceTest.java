@@ -16,6 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -39,6 +40,9 @@ public class ComplaintServiceTest {
 
     @Mock
     private LocationRepository locationRepository;
+
+    @Mock
+    private SupabaseStorageService storageService;
 
     @InjectMocks
     private ComplaintService complaintService;
@@ -126,6 +130,36 @@ public class ComplaintServiceTest {
         );
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(complaintRepository, never()).save(any(Complaint.class));
+    }
+
+    @Test
+    void attachImage_uploadsAndSavesUrlOnOwnComplaint() {
+        Complaint complaint = new Complaint();
+        MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1});
+        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
+        when(complaintRepository.findByIdAndStudent(7L, testStudent)).thenReturn(Optional.of(complaint));
+        when(storageService.uploadImage(file)).thenReturn("https://cdn/a.jpg");
+        when(complaintRepository.save(complaint)).thenReturn(complaint);
+
+        Complaint result = complaintService.attachImage(7L, "student@smail.iitm.ac.in", file);
+
+        assertEquals("https://cdn/a.jpg", result.getImageUrl());
+        verify(complaintRepository).save(complaint);
+    }
+
+    @Test
+    void attachImage_onOtherStudentsComplaint_isNotFoundAndNothingUploaded() {
+        MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1});
+        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
+        when(complaintRepository.findByIdAndStudent(7L, testStudent)).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+            complaintService.attachImage(7L, "student@smail.iitm.ac.in", file)
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verifyNoInteractions(storageService);
         verify(complaintRepository, never()).save(any(Complaint.class));
     }
 }
