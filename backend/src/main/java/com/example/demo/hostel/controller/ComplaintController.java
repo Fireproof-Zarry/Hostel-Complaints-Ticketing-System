@@ -4,10 +4,12 @@ import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -59,5 +61,14 @@ public class ComplaintController {
     public ResponseEntity<Complaint> getComplaintById(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(complaintService.getComplaintById(id, email));
+    }
+
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Complaint> uploadImage(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return ResponseEntity.ok(complaintService.attachImage(id, email, file));
     }
 }

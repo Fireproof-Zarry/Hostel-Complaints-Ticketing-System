@@ -11,6 +11,7 @@ import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -22,16 +23,19 @@ public class ComplaintService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final LocationRepository locationRepository;
+    private final SupabaseStorageService storageService;
 
     public ComplaintService(
             ComplaintRepository complaintRepository,
             UserRepository userRepository,
             CategoryRepository categoryRepository,
-            LocationRepository locationRepository) {
+            LocationRepository locationRepository,
+            SupabaseStorageService storageService) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.locationRepository = locationRepository;
+        this.storageService = storageService;
     }
 
     public Complaint createComplaint(String email, String title, String description, String category, String floor, String room) {
@@ -77,5 +81,12 @@ public class ComplaintService {
         User student = userRepository.findByEmail(email).orElseThrow();
         return complaintRepository.findByIdAndStudent(id, student)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found or you do not have permission to view it."));
+    }
+
+    public Complaint attachImage(Long id, String email, MultipartFile file) {
+        // Ownership check first, so nothing is uploaded for someone else's complaint
+        Complaint complaint = getComplaintById(id, email);
+        complaint.setImageUrl(storageService.uploadImage(file));
+        return complaintRepository.save(complaint);
     }
 }

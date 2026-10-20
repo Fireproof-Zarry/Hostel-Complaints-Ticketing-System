@@ -37,6 +37,9 @@ public class Complaint {
 
     private String assignedTo; 
 
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -61,6 +64,8 @@ public class Complaint {
     public void setLocation(Location location) { this.location = location; }
     public String getAssignedTo() { return assignedTo; }
     public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

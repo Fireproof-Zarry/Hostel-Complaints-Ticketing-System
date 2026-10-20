@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Wrench,
 } from 'lucide-react';
+import ImageUpload from '../components/ImageUpload';
 import { getRoomHundredsForFloor, HOSTEL_FLOORS, isRoomOnFloor } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -76,6 +77,16 @@ function ComplaintCard({ complaint }) {
         </span>
       </div>
       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{complaint.description}</p>
+      {complaint.imageUrl && (
+        <a href={complaint.imageUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block">
+          <img
+            src={complaint.imageUrl}
+            alt={`Photo for complaint #${complaint.id}`}
+            loading="lazy"
+            className="h-32 w-auto max-w-full rounded-lg border border-slate-200 object-cover"
+          />
+        </a>
+      )}
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays className="h-4 w-4" />
@@ -98,6 +109,7 @@ export default function StudentHome() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const imageUploadRef = useRef(null);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('idToken');
@@ -223,7 +235,22 @@ export default function StudentHome() {
         throw new Error('Failed to submit the complaint. Please check your details and try again.');
       }
 
+      const createdComplaint = await response.json();
+
+      // The image endpoint needs the new complaint's id, so upload afterwards.
+      // A failed upload keeps the complaint; resubmitting would create a duplicate.
+      if (imageUploadRef.current?.hasFile()) {
+        const upload = await imageUploadRef.current.upload(
+          `${apiBaseUrl}/complaints/${createdComplaint.id}/image`,
+          token
+        );
+        if (!upload.ok) {
+          setError(`Your complaint was submitted, but the photo was not attached: ${upload.error}`);
+        }
+      }
+
       setFormData(initialForm);
+      imageUploadRef.current?.reset();
       setSuccess('Complaint submitted successfully.');
       const updatedComplaints = await requestMyComplaints();
       if (updatedComplaints) setComplaints(updatedComplaints);
@@ -503,6 +530,7 @@ export default function StudentHome() {
                     className="w-full resize-y rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
+                <ImageUpload ref={imageUploadRef} disabled={isSubmitting} />
                 <button
                   type="submit"
                   disabled={isSubmitting}
