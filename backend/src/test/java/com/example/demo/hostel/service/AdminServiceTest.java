@@ -148,60 +148,84 @@ class AdminServiceTest {
     }
 
     @Test
-    void updateStatus_whenTransitionIsValid_thenSavesComplaint() {
+    void updateStatus_delegatesToTransactionalTransitionWithActor() {
 
-        Complaint complaint = new Complaint();
-        complaint.setStatus(Status.PENDING);
+        User admin = new User();
+        admin.setId("admin-1");
+        admin.setEmail("admin@smail.iitm.ac.in");
+        admin.setRole(Role.ADMIN);
+
+        Complaint updated = new Complaint();
+        updated.setStatus(Status.ASSIGNED);
+
+        when(userRepository.findByEmail("admin@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(admin));
 
         when(complaintRepository.findById(1L))
-                .thenReturn(Optional.of(complaint));
-
-        when(complaintRepository.save(complaint))
-                .thenReturn(complaint);
+                .thenReturn(Optional.of(updated));
 
         Complaint result = adminService.updateStatus(
                 1L,
-                Status.ASSIGNED
+                Status.ASSIGNED,
+                "admin@smail.iitm.ac.in",
+                "Electrician scheduled"
         );
 
         verify(transitionService)
-                .validateTransition(
-                        Status.PENDING,
-                        Status.ASSIGNED
+                .changeComplaintStatus(
+                        1L,
+                        "admin-1",
+                        "ASSIGNED",
+                        "Electrician scheduled"
                 );
-
-        verify(complaintRepository)
-                .save(complaint);
 
         assertEquals(Status.ASSIGNED, result.getStatus());
     }
 
     @Test
-    void updateStatus_whenTransitionIsInvalid_thenDoesNotSave() {
+    void updateStatus_whenTransitionIsInvalid_thenPropagatesError() {
 
-        Complaint complaint = new Complaint();
-        complaint.setStatus(Status.PENDING);
+        User admin = new User();
+        admin.setId("admin-1");
 
-        when(complaintRepository.findById(1L))
-                .thenReturn(Optional.of(complaint));
+        when(userRepository.findByEmail("admin@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(admin));
 
         doThrow(new IllegalArgumentException("Invalid status transition"))
                 .when(transitionService)
-                .validateTransition(
-                        Status.PENDING,
-                        Status.RESOLVED
-                );
+                .changeComplaintStatus(1L, "admin-1", "RESOLVED", null);
 
         assertThrows(
                 IllegalArgumentException.class,
                 () -> adminService.updateStatus(
                         1L,
-                        Status.RESOLVED
+                        Status.RESOLVED,
+                        "admin@smail.iitm.ac.in",
+                        null
                 )
         );
 
         verify(complaintRepository, never())
-                .save(complaint);
+                .findById(1L);
+    }
+
+    @Test
+    void updateStatus_whenAdminUnknown_thenDoesNotChangeStatus() {
+
+        when(userRepository.findByEmail("ghost@smail.iitm.ac.in"))
+                .thenReturn(Optional.empty());
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> adminService.updateStatus(
+                        1L,
+                        Status.RESOLVED,
+                        "ghost@smail.iitm.ac.in",
+                        null
+                )
+        );
+
+        verifyNoInteractions(transitionService);
     }
 
     @Test

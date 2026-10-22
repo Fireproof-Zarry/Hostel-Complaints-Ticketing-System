@@ -56,21 +56,22 @@ public class AdminService {
         return complaintRepository.findAll(specification);
     }
 
-    public Complaint updateStatus(Long id, Status newStatus) {
-        Complaint complaint = complaintRepository.findById(id)
+    public Complaint updateStatus(Long id, Status newStatus, String actorEmail, String reason) {
+        User actor = userRepository.findByEmail(actorEmail)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Complaint not found"));
+                        new IllegalArgumentException("Admin user not found"));
 
-        Status currentStatus = complaint.getStatus();
-
-        transitionService.validateTransition(
-                currentStatus,
-                newStatus
+        // Status change and its complaint_history row commit atomically
+        transitionService.changeComplaintStatus(
+                id,
+                actor.getId(),
+                newStatus.name(),
+                reason
         );
 
-        complaint.setStatus(newStatus);
-
-        return complaintRepository.save(complaint);
+        return complaintRepository.findById(id)
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Complaint not found"));
     }
 
     public Complaint assignComplaint(Long id, String email) {
