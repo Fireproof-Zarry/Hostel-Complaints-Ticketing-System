@@ -1,5 +1,6 @@
 package com.example.demo.hostel.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
 @Entity
@@ -20,6 +21,11 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    // Device token for push notifications; never exposed in API responses
+    @JsonIgnore
+    @Column(name = "fcm_token", length = 4096)
+    private String fcmToken;
+
     // Getters and Setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -29,4 +35,7 @@ public class User {
     public void setName(String name) { this.name = name; }
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+    @JsonIgnore
+    public String getFcmToken() { return fcmToken; }
+    public void setFcmToken(String fcmToken) { this.fcmToken = fcmToken; }
 }

@@ -29,4 +29,20 @@ class ComplaintJsonTest {
         assertThat(json.has("location")).isFalse();
         assertThat(json.has("categoryName")).isFalse();
     }
+
+    @Test
+    void neverSerializesStudentDeviceToken() {
+        User student = new User();
+        student.setEmail("student@smail.iitm.ac.in");
+        student.setFcmToken("secret-device-token");
+
+        Complaint complaint = new Complaint();
+        complaint.setStudent(student);
+
+        JsonNode json = JsonMapper.builder().build().valueToTree(complaint);
+
+        assertThat(json.get("student").get("email").asString()).isEqualTo("student@smail.iitm.ac.in");
+        assertThat(json.get("student").has("fcmToken")).isFalse();
+        assertThat(json.toString()).doesNotContain("secret-device-token");
+    }
 }

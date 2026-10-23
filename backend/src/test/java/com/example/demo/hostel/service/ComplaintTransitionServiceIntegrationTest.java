@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -25,7 +26,10 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 @SpringBootTest(properties = {
@@ -61,12 +65,19 @@ class ComplaintTransitionServiceIntegrationTest {
     @MockitoSpyBean
     private ComplaintHistoryRepository complaintHistoryRepository;
 
+    @MockitoBean
+    private FcmNotificationService fcmNotificationService;
+
     private Long complaintId;
     private String adminId;
+    private String studentId;
 
     @BeforeEach
     void setUp() {
-        User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
+        User student = user("student@smail.iitm.ac.in", Role.STUDENT);
+        student.setFcmToken("student-device-token");
+        student = userRepository.save(student);
+        studentId = student.getId();
         adminId = userRepository.save(user("admin@smail.iitm.ac.in", Role.ADMIN)).getId();
 
         Category category = new Category();
@@ -115,6 +126,10 @@ class ComplaintTransitionServiceIntegrationTest {
             assertThat(entry.getReason()).isEqualTo("Plumber assigned");
             assertThat(entry.getChangedAt()).isNotNull();
         });
+
+        // Sent after commit, on the async executor
+        verify(fcmNotificationService, timeout(2000))
+                .sendStatusUpdateNotification("student-device-token", "Leaking tap", "IN_PROGRESS");
     }
 
     @Test
@@ -132,6 +147,40 @@ class ComplaintTransitionServiceIntegrationTest {
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.PENDING);
         assertThat(complaintHistoryRepository.count()).isZero();
+
+        // A rolled-back change must never notify the student
+        verify(fcmNotificationService, never())
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void changeComplaintStatus_notifiesOnlyAfterCommit() {
+        // The status change completes, but the surrounding transaction rolls back
+        transactionTemplate.executeWithoutResult(tx -> {
+            transitionService.changeComplaintStatus(complaintId, adminId, "RESOLVED", null);
+            verify(fcmNotificationService, never())
+                    .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+            tx.setRollbackOnly();
+        });
+
+        assertThat(complaintRepository.findById(complaintId).orElseThrow().getStatus())
+                .isEqualTo(Status.PENDING);
+        verify(fcmNotificationService, never())
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void changeComplaintStatus_withoutDeviceToken_doesNotNotify() {
+        User student = userRepository.findById(studentId).orElseThrow();
+        student.setFcmToken(null);
+        userRepository.save(student);
+
+        transitionService.changeComplaintStatus(complaintId, adminId, "RESOLVED", null);
+
+        assertThat(complaintRepository.findById(complaintId).orElseThrow().getStatus())
+                .isEqualTo(Status.RESOLVED);
+        verify(fcmNotificationService, never())
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
     }
 
     private User user(String email, Role role) {

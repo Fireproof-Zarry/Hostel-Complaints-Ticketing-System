@@ -13,6 +13,8 @@ import com.example.demo.hostel.repository.WorkOrderRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -25,16 +27,19 @@ public class ComplaintTransitionService {
     private final UserRepository userRepository;
     private final WorkOrderRepository workOrderRepository;
     private final ComplaintHistoryRepository complaintHistoryRepository;
+    private final FcmNotificationService fcmNotificationService;
 
     public ComplaintTransitionService(
             ComplaintRepository complaintRepository,
             UserRepository userRepository,
             WorkOrderRepository workOrderRepository,
-            ComplaintHistoryRepository complaintHistoryRepository) {
+            ComplaintHistoryRepository complaintHistoryRepository,
+            FcmNotificationService fcmNotificationService) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
         this.workOrderRepository = workOrderRepository;
         this.complaintHistoryRepository = complaintHistoryRepository;
+        this.fcmNotificationService = fcmNotificationService;
     }
 
     public void validateTransition(Status current, Status next) {
@@ -69,6 +74,29 @@ public class ComplaintTransitionService {
         history.setNewStatus(nextStatus);
         history.setReason(reason == null || reason.isBlank() ? null : reason.trim());
         complaintHistoryRepository.save(history);
+
+        User student = complaint.getStudent();
+        String fcmToken = student == null ? null : student.getFcmToken();
+        if (fcmToken != null && !fcmToken.isBlank() && oldStatus != nextStatus) {
+            String title = complaint.getTitle();
+            String status = nextStatus.name();
+            runAfterCommit(() -> fcmNotificationService.sendStatusUpdateNotification(fcmToken, title, status));
+        }
+    }
+
+    // Notify only once the change is committed, so a rolled-back update never
+    // reaches the student's phone
+    private static void runAfterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
     }
 
     private Status parseStatus(String status) {
