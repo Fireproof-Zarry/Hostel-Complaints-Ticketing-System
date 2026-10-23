@@ -1,5 +1,6 @@
 package com.example.demo.hostel.controller;
 
+import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
@@ -12,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/complaints")
@@ -26,29 +26,48 @@ public class ComplaintController {
         this.roomLocationValidator = roomLocationValidator;
     }
 
+    private static final int MAX_WING_LENGTH = 100;
+    private static final int MAX_TIME_SLOT_LENGTH = 500;
+
     @PostMapping
-    public ResponseEntity<Complaint> createComplaint(@AuthenticationPrincipal Jwt jwt, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<Complaint> createComplaint(@AuthenticationPrincipal Jwt jwt, @RequestBody CreateComplaintRequest payload) {
         String email = jwt.getClaimAsString("email");
-        String title = payload.get("title");
-        String description = payload.get("description");
-        String category = payload.get("category");
-        String floor = payload.get("floor");
-        String room = payload.get("room");
+        String title = trimToNull(payload.title());
+        String description = trimToNull(payload.description());
+        String category = trimToNull(payload.category());
+        String availableTimeSlot = trimToNull(payload.availableTimeSlot());
 
-        if (title == null || title.trim().isEmpty()
-            || description == null || description.trim().isEmpty()
-            || category == null
-            || floor == null
-            || room == null) {
+        if (title == null || description == null || category == null
+                || (availableTimeSlot != null && availableTimeSlot.length() > MAX_TIME_SLOT_LENGTH)) {
             return ResponseEntity.badRequest().build();
         }
 
-        if (!roomLocationValidator.isRoomOnFloor(floor, room)) {
-            return ResponseEntity.badRequest().build();
+        String floor = null;
+        String wing = null;
+        if (payload.communityArea()) {
+            // Community areas have no room; the floor and wing locate the issue
+            floor = roomLocationValidator.canonicalFloor(payload.floor());
+            wing = trimToNull(payload.wing());
+            if (floor == null || wing == null || wing.length() > MAX_WING_LENGTH) {
+                return ResponseEntity.badRequest().build();
+            }
         }
+        // Personal issues: the room comes from the student's profile, so any
+        // floor/room in the payload is ignored
 
-        Complaint savedComplaint = complaintService.createComplaint(email, title, description, category, floor, room);
+        CreateComplaintRequest request = new CreateComplaintRequest(
+                title, description, category, payload.communityArea(), floor, null, wing,
+                availableTimeSlot, payload.keyLeftWithSecurity());
+        Complaint savedComplaint = complaintService.createComplaint(email, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedComplaint);
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @GetMapping("/mine")

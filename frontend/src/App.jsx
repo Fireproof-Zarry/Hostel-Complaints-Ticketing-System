@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import Login from './pages/Login'
 import StudentHome from './pages/StudentHome'
 import AdminHome from './pages/AdminHome'
+import Profile from './pages/Profile'
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
@@ -26,7 +27,10 @@ function NotFound() {
   )
 }
 
+// requiredRole may be a single role or a list of allowed roles
 function RoleRoute({ requiredRole, children }) {
+  // A string key keeps the effect stable when an inline array is passed
+  const allowedRoles = [requiredRole].flat().join(',')
   const token = localStorage.getItem('idToken')
   const [access, setAccess] = useState(() => (
     token ? { status: 'checking' } : { status: 'unauthenticated' }
@@ -53,7 +57,7 @@ function RoleRoute({ requiredRole, children }) {
 
         const user = await response.json()
         setAccess({
-          status: user.role === requiredRole ? 'allowed' : 'notFound',
+          status: allowedRoles.split(',').includes(user.role) ? 'allowed' : 'notFound',
         })
       })
       .catch((error) => {
@@ -63,7 +67,7 @@ function RoleRoute({ requiredRole, children }) {
       })
 
     return () => controller.abort()
-  }, [requiredRole, retry, token])
+  }, [allowedRoles, retry, token])
 
   if (access.status === 'unauthenticated') {
     return <Navigate to="/login" replace />
@@ -122,6 +126,14 @@ export default function App() {
             element={
               <RoleRoute requiredRole="ADMIN">
                 <AdminHome />
+              </RoleRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RoleRoute requiredRole={['STUDENT', 'ADMIN']}>
+                <Profile />
               </RoleRoute>
             }
           />

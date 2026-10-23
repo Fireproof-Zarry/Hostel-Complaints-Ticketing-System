@@ -10,10 +10,12 @@ import {
   Home,
   LogOut,
   RefreshCw,
+  KeyRound,
+  UserRound,
   Wrench,
 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
-import { getRoomHundredsForFloor, HOSTEL_FLOORS, isRoomOnFloor } from '../utils/hostelLocation';
+import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -21,14 +23,20 @@ const initialForm = {
   title: '',
   description: '',
   category: 'Electrical',
+  isCommunityArea: false,
+  // Floor and wing are only used for community-area issues; personal issues
+  // use the room number from the student's profile
   floor: 'Second',
-  room: '',
+  wing: '',
+  availableTimeSlot: '',
+  keyWithSecurity: false,
 };
 
 const navigation = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'submit', label: 'File Complaint', icon: FilePlus2 },
   { id: 'complaints', label: 'My Complaints', icon: ClipboardList },
+  { id: 'profile', label: 'My Profile', icon: UserRound },
 ];
 
 function statusClasses(status) {
@@ -92,7 +100,17 @@ function ComplaintCard({ complaint }) {
           <CalendarDays className="h-4 w-4" />
           Filed {formatDate(complaint.createdAt)}
         </span>
-        <span>{complaint.floor || 'Floor unavailable'} · Room {complaint.room || 'N/A'}</span>
+        <span>
+          {complaint.floor || 'Floor unavailable'} ·{' '}
+          {complaint.communityArea ? complaint.wing || 'Community area' : `Room ${complaint.room || 'N/A'}`}
+        </span>
+        {complaint.availableTimeSlot && <span>Available: {complaint.availableTimeSlot}</span>}
+        {complaint.keyWithSecurity && (
+          <span className="inline-flex items-center gap-1.5">
+            <KeyRound className="h-4 w-4" />
+            Key with security
+          </span>
+        )}
       </div>
     </article>
   );
@@ -110,6 +128,7 @@ export default function StudentHome() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const imageUploadRef = useRef(null);
+  const [profile, setProfile] = useState(null);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('idToken');
@@ -141,6 +160,22 @@ export default function StudentHome() {
       throw new Error('The server returned an unexpected complaints response.');
     }
     return data;
+  }, [token]);
+
+  // Personal complaints use the room from the profile, so load it up front
+  useEffect(() => {
+    if (!token) return undefined;
+    const controller = new AbortController();
+    fetch(`${apiBaseUrl}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data) setProfile(data);
+      })
+      .catch(() => {});
+    return () => controller.abort();
   }, [token]);
 
   useEffect(() => {
@@ -175,16 +210,15 @@ export default function StudentHome() {
         complaint.description,
         complaint.category,
         complaint.room,
+        complaint.wing,
       ].some((value) => value?.toLowerCase().includes(query));
       const matchesStatus = statusFilter === 'ALL' || complaint.status?.toUpperCase() === statusFilter;
       return matchesSearch && matchesStatus;
     });
   }, [complaints, search, statusFilter]);
-  const expectedRoomHundreds = getRoomHundredsForFloor(formData.floor);
-  const roomLocationError = formData.room
-    && !isRoomOnFloor(formData.floor, formData.room)
-    ? `Room numbers for the ${formData.floor.toLowerCase()} floor must be in the ${expectedRoomHundreds}00 range (for example, ${expectedRoomHundreds}01).`
-    : '';
+  const profileRoom = profile?.roomNumber ?? '';
+  const profileRoomFloor = getFloorForRoom(profileRoom);
+  const missingProfileRoom = !formData.isCommunityArea && profile !== null && !profileRoomFloor;
 
   if (!token) return <Navigate to="/login" replace />;
 
@@ -207,8 +241,12 @@ export default function StudentHome() {
     event.preventDefault();
     setError('');
     setSuccess('');
-    if (roomLocationError) {
-      setError(roomLocationError);
+    if (missingProfileRoom) {
+      setError('Add your room number in My Profile before filing a complaint about your room.');
+      return;
+    }
+    if (formData.isCommunityArea && !formData.wing.trim()) {
+      setError('Enter the wing or area for a community-area complaint.');
       return;
     }
     setIsSubmitting(true);
@@ -220,7 +258,16 @@ export default function StudentHome() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          isCommunityArea: formData.isCommunityArea,
+          // The backend takes the room from the profile for personal issues
+          ...(formData.isCommunityArea && { floor: formData.floor, wing: formData.wing }),
+          availableTimeSlot: formData.availableTimeSlot,
+          keyWithSecurity: !formData.isCommunityArea && formData.keyWithSecurity,
+        }),
       });
 
       if (response.status === 401) {
@@ -230,6 +277,9 @@ export default function StudentHome() {
       if (response.status === 429) {
         setError('You have reached the limit of 5 open complaints. Please wait for some to be resolved.');
         return;
+      }
+      if (response.status === 422) {
+        throw new Error('Add a valid room number in My Profile before filing a complaint about your room.');
       }
       if (!response.ok) {
         throw new Error('Failed to submit the complaint. Please check your details and try again.');
@@ -286,6 +336,10 @@ export default function StudentHome() {
               type="button"
               aria-current={activeTab === id ? 'page' : undefined}
               onClick={() => {
+                if (id === 'profile') {
+                  navigate('/profile');
+                  return;
+                }
                 setActiveTab(id);
                 setError('');
                 setSuccess('');
@@ -463,60 +517,103 @@ export default function StudentHome() {
                     className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label htmlFor="complaint-category" className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
-                    <select
-                      id="complaint-category"
-                      value={formData.category}
-                      onChange={updateForm('category')}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    >
-                      <option>Electrical</option>
-                      <option>Plumbing</option>
-                      <option>Carpentry</option>
-                      <option>Cleaning</option>
-                      <option>IT</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="complaint-floor" className="mb-1.5 block text-sm font-medium text-slate-700">Floor</label>
-                    <select
-                      id="complaint-floor"
-                      value={formData.floor}
-                      onChange={updateForm('floor')}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                    >
-                      {HOSTEL_FLOORS.map(({ name: floor }) => (
-                        <option key={floor}>{floor}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
                 <div>
-                  <label htmlFor="complaint-room" className="mb-1.5 block text-sm font-medium text-slate-700">Room number</label>
-                  <input
-                    id="complaint-room"
-                    required
-                    type="text"
-                    inputMode="numeric"
-                    pattern={`${expectedRoomHundreds}[0-9]{2}`}
-                    maxLength={3}
-                    value={formData.room}
-                    onChange={updateForm('room')}
-                    placeholder={`e.g. ${expectedRoomHundreds}01`}
-                    aria-invalid={Boolean(roomLocationError)}
-                    aria-describedby={roomLocationError ? 'complaint-room-location-error' : 'complaint-room-location-hint'}
-                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-                  />
-                  <p
-                    id={roomLocationError ? 'complaint-room-location-error' : 'complaint-room-location-hint'}
-                    className={`mt-1.5 text-sm ${roomLocationError ? 'text-rose-700' : 'text-slate-500'}`}
-                    role={roomLocationError ? 'alert' : undefined}
+                  <label htmlFor="complaint-category" className="mb-1.5 block text-sm font-medium text-slate-700">Category</label>
+                  <select
+                    id="complaint-category"
+                    value={formData.category}
+                    onChange={updateForm('category')}
+                    className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   >
-                    {roomLocationError || `Enter a 3-digit room number in the ${expectedRoomHundreds}00 range.`}
-                  </p>
+                    <option>Electrical</option>
+                    <option>Plumbing</option>
+                    <option>Carpentry</option>
+                    <option>Cleaning</option>
+                    <option>IT</option>
+                  </select>
                 </div>
+
+                <fieldset>
+                  <legend className="mb-1.5 block text-sm font-medium text-slate-700">Where is the issue?</legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {[
+                      { value: false, title: 'My room', hint: 'Uses the room number from your profile' },
+                      { value: true, title: 'Community area', hint: 'Corridor, washroom, common room…' },
+                    ].map((option) => (
+                      <label
+                        key={option.title}
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition ${
+                          formData.isCommunityArea === option.value
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
+                            : 'border-slate-300 hover:border-blue-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="complaint-location-type"
+                          checked={formData.isCommunityArea === option.value}
+                          onChange={() => setFormData((current) => ({ ...current, isCommunityArea: option.value }))}
+                          className="mt-0.5 accent-blue-600"
+                        />
+                        <span>
+                          <span className="block font-medium text-slate-800">{option.title}</span>
+                          <span className="text-slate-500">{option.hint}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {formData.isCommunityArea ? (
+                  <div className="grid gap-5 sm:grid-cols-2">
+                    <div>
+                      <label htmlFor="complaint-floor" className="mb-1.5 block text-sm font-medium text-slate-700">Floor</label>
+                      <select
+                        id="complaint-floor"
+                        value={formData.floor}
+                        onChange={updateForm('floor')}
+                        className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      >
+                        {HOSTEL_FLOORS.map(({ name: floor }) => (
+                          <option key={floor}>{floor}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="complaint-wing" className="mb-1.5 block text-sm font-medium text-slate-700">Wing / area</label>
+                      <input
+                        id="complaint-wing"
+                        required
+                        maxLength={100}
+                        value={formData.wing}
+                        onChange={updateForm('wing')}
+                        placeholder="e.g. East wing washroom"
+                        className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+                  </div>
+                ) : missingProfileRoom ? (
+                  <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <p>Add your room number to your profile to file a complaint about your room.</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/profile')}
+                      className="rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700"
+                    >
+                      Add room number
+                    </button>
+                  </div>
+                ) : (
+                  <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                    {profileRoomFloor
+                      ? <>Room <strong className="text-slate-900">{profileRoom}</strong> ({profileRoomFloor} floor), from your profile.</>
+                      : 'Loading your room from your profile…'}{' '}
+                    <button type="button" onClick={() => navigate('/profile')} className="font-medium text-blue-700 hover:underline">
+                      Change
+                    </button>
+                  </p>
+                )}
+
                 <div>
                   <label htmlFor="complaint-description" className="mb-1.5 block text-sm font-medium text-slate-700">Description</label>
                   <textarea
@@ -530,10 +627,34 @@ export default function StudentHome() {
                     className="w-full resize-y rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
+                <div>
+                  <label htmlFor="complaint-available-time" className="mb-1.5 block text-sm font-medium text-slate-700">
+                    Available time <span className="font-normal text-slate-500">(optional)</span>
+                  </label>
+                  <input
+                    id="complaint-available-time"
+                    maxLength={500}
+                    value={formData.availableTimeSlot}
+                    onChange={updateForm('availableTimeSlot')}
+                    placeholder="e.g. Mon: 2 PM - 5 PM, Tue: 12 PM - 5 PM"
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                  />
+                </div>
+                {!formData.isCommunityArea && (
+                  <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 p-3 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={formData.keyWithSecurity}
+                      onChange={(event) => setFormData((current) => ({ ...current, keyWithSecurity: event.target.checked }))}
+                      className="mt-0.5 h-4 w-4 accent-blue-600"
+                    />
+                    I am not available in my room during working hours and will leave my key with security
+                  </label>
+                )}
                 <ImageUpload ref={imageUploadRef} disabled={isSubmitting} />
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || missingProfileRoom}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
                 >
                   {isSubmitting && <RefreshCw className="h-4 w-4 animate-spin" />}

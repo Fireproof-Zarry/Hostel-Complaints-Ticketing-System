@@ -24,15 +24,39 @@ public class RoomLocationValidator {
             Map.entry("6th", 7)
     );
 
+    private static final String[] FLOOR_NAMES_BY_HUNDREDS = {
+            null, "Ground", "First", "Second", "Third", "Fourth", "Fifth", "Sixth"
+    };
+
+    /** Canonical floor name ("Second") for any accepted spelling ("2nd floor"), or null. */
+    public String canonicalFloor(String floor) {
+        if (floor == null) {
+            return null;
+        }
+        Integer hundreds = ROOM_HUNDREDS_BY_FLOOR.get(normalize(floor));
+        return hundreds == null ? null : FLOOR_NAMES_BY_HUNDREDS[hundreds];
+    }
+
+    /** Floor a room belongs to ("301" -> "Second"), or null if the room number is invalid. */
+    public String floorForRoom(String room) {
+        if (room == null || !room.matches("[1-7][0-9]{2}")) {
+            return null;
+        }
+        return FLOOR_NAMES_BY_HUNDREDS[room.charAt(0) - '0'];
+    }
+
     public boolean isRoomOnFloor(String floor, String room) {
         if (floor == null || room == null) {
             return false;
         }
 
-        String normalizedFloor = floor.trim().toLowerCase(Locale.ROOT).replaceFirst("\\s+floor$", "");
-        Integer expectedHundreds = ROOM_HUNDREDS_BY_FLOOR.get(normalizedFloor);
+        Integer expectedHundreds = ROOM_HUNDREDS_BY_FLOOR.get(normalize(floor));
         return expectedHundreds != null
                 && room.matches("[1-7][0-9]{2}")
                 && room.charAt(0) - '0' == expectedHundreds;
+    }
+
+    private static String normalize(String floor) {
+        return floor.trim().toLowerCase(Locale.ROOT).replaceFirst("\\s+floor$", "");
     }
 }

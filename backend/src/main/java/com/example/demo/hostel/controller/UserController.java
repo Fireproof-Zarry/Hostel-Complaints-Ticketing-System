@@ -1,5 +1,7 @@
 package com.example.demo.hostel.controller;
 
+import com.example.demo.hostel.dto.ProfileUpdateRequest;
+import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.service.UserService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -31,6 +33,15 @@ public class UserController {
         String fcmToken = token != null ? token : payload == null ? null : payload.get("token");
         userService.updateFcmToken(id, jwt.getClaimAsString("email"), fcmToken);
         return ResponseEntity.noContent().build();
+    }
+
+    /** Updates the caller's profile and returns the saved user. */
+    @PutMapping("/{id}/profile")
+    public ResponseEntity<User> updateProfile(
+            @PathVariable String id,
+            @RequestBody ProfileUpdateRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(userService.updateProfile(id, jwt.getClaimAsString("email"), request));
     }
 
     @DeleteMapping("/{id}/fcm-token")
