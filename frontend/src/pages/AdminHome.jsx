@@ -19,8 +19,12 @@ import {
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import ProfileForm from '../components/ProfileForm'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import './AdminHome.css'
+
+// Shown in the main area like the other sidebar pages
+const PROFILE_VIEW = 'My Profile'
 
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
@@ -522,8 +526,8 @@ export default function AdminHome() {
         <div className="admin-sidebar-bottom">
           <button
             type="button"
-            className="admin-nav-item"
-            onClick={() => navigate('/profile')}
+            className={`admin-nav-item ${comingSoonPage === PROFILE_VIEW ? 'active' : ''}`}
+            onClick={() => setComingSoonPage(PROFILE_VIEW)}
             title="My profile"
           >
             <UserRound size={19} />
@@ -574,7 +578,9 @@ export default function AdminHome() {
         </header>
 
         <section className="admin-content">
-          {comingSoonPage ? (
+          {comingSoonPage === PROFILE_VIEW ? (
+            <ProfileForm />
+          ) : comingSoonPage ? (
             <div className="admin-work-in-progress">
               <ComingSoon title={comingSoonPage} />
               <p>This section is under development. Complaint management remains available in the Complaints workspace.</p>

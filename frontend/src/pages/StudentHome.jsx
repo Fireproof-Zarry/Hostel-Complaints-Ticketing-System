@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   Bell,
@@ -7,14 +7,13 @@ import {
   CheckCircle2,
   ClipboardList,
   FilePlus2,
-  Home,
   LogOut,
   RefreshCw,
   KeyRound,
-  UserRound,
-  Wrench,
 } from 'lucide-react';
 import ImageUpload from '../components/ImageUpload';
+import StudentSidebar from '../components/StudentSidebar';
+import { STUDENT_NAVIGATION } from '../components/studentNavigation';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -31,13 +30,6 @@ const initialForm = {
   availableTimeSlot: '',
   keyWithSecurity: false,
 };
-
-const navigation = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'submit', label: 'File Complaint', icon: FilePlus2 },
-  { id: 'complaints', label: 'My Complaints', icon: ClipboardList },
-  { id: 'profile', label: 'My Profile', icon: UserRound },
-];
 
 function statusClasses(status) {
   switch (status?.toUpperCase()) {
@@ -118,7 +110,9 @@ function ComplaintCard({ complaint }) {
 
 export default function StudentHome() {
   const [complaints, setComplaints] = useState([]);
-  const [activeTab, setActiveTab] = useState('home');
+  const location = useLocation();
+  // The Profile page's sidebar links back here with the tab to open
+  const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
   const [formData, setFormData] = useState(initialForm);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -318,51 +312,23 @@ export default function StudentHome() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 md:flex">
-      <aside className="flex w-full flex-col bg-slate-900 text-slate-300 md:min-h-screen md:w-64 md:shrink-0">
-        <div className="flex items-center gap-3 p-5 md:p-6">
-          <div className="rounded-lg bg-indigo-500 p-2 text-white">
-            <Wrench className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="font-bold leading-tight text-white">HostelFix</h1>
-            <p className="text-xs text-slate-400">Student Portal</p>
-          </div>
-        </div>
-
-        <nav aria-label="Student dashboard" className="flex gap-2 overflow-x-auto px-4 pb-4 md:flex-1 md:flex-col md:gap-1 md:pt-5">
-          {navigation.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              aria-current={activeTab === id ? 'page' : undefined}
-              onClick={() => {
-                if (id === 'profile') {
-                  navigate('/profile');
-                  return;
-                }
-                setActiveTab(id);
-                setError('');
-                setSuccess('');
-              }}
-              className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors md:w-full ${
-                activeTab === id ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </button>
-          ))}
-        </nav>
-
-        <div className="hidden border-t border-slate-800 p-4 text-xs leading-5 text-slate-400 md:block">
-          Your submitted complaints and their current status.
-        </div>
-      </aside>
+      <StudentSidebar
+        activeId={activeTab}
+        onSelect={(id) => {
+          if (id === 'profile') {
+            navigate('/profile');
+            return;
+          }
+          setActiveTab(id);
+          setError('');
+          setSuccess('');
+        }}
+      />
 
       <main className="min-w-0 flex-1">
         <header className="flex min-h-16 items-center justify-between gap-4 border-b border-slate-200 bg-white px-4 shadow-sm md:px-8">
           <h2 className="text-lg font-semibold text-slate-800">
-            {navigation.find((item) => item.id === activeTab)?.label}
+            {STUDENT_NAVIGATION.find((item) => item.id === activeTab)?.label}
           </h2>
           <button
             type="button"

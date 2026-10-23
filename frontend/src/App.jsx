@@ -132,7 +132,7 @@ export default function App() {
           <Route
             path="/profile"
             element={
-              <RoleRoute requiredRole={['STUDENT', 'ADMIN']}>
+              <RoleRoute requiredRole="STUDENT">
                 <Profile />
               </RoleRoute>
             }
