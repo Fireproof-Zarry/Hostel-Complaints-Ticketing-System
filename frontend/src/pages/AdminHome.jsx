@@ -14,12 +14,17 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  UserRound,
   Users,
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import ProfileForm from '../components/ProfileForm'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import './AdminHome.css'
+
+// Shown in the main area like the other sidebar pages
+const PROFILE_VIEW = 'My Profile'
 
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
@@ -519,6 +524,15 @@ export default function AdminHome() {
         </nav>
 
         <div className="admin-sidebar-bottom">
+          <button
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === PROFILE_VIEW ? 'active' : ''}`}
+            onClick={() => setComingSoonPage(PROFILE_VIEW)}
+            title="My profile"
+          >
+            <UserRound size={19} />
+            {sidebarOpen && <span>My profile</span>}
+          </button>
           <div className="admin-user-card">
             <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
             {sidebarOpen && (
@@ -564,7 +578,9 @@ export default function AdminHome() {
         </header>
 
         <section className="admin-content">
-          {comingSoonPage ? (
+          {comingSoonPage === PROFILE_VIEW ? (
+            <ProfileForm />
+          ) : comingSoonPage ? (
             <div className="admin-work-in-progress">
               <ComingSoon title={comingSoonPage} />
               <p>This section is under development. Complaint management remains available in the Complaints workspace.</p>
@@ -800,7 +816,7 @@ export default function AdminHome() {
 
                               <td>
                                 <span>{complaint.floor || '—'}</span>
-                                {hasFloorRoomMismatch(complaint.floor, complaint.room) && (
+                                {complaint.room && hasFloorRoomMismatch(complaint.floor, complaint.room) && (
                                   <span
                                     className="admin-location-warning"
                                     title="The room number does not match the selected floor."
@@ -811,7 +827,9 @@ export default function AdminHome() {
                               </td>
 
                               <td>
-                                {complaint.room}
+                                {complaint.communityArea
+                                  ? complaint.wing || 'Community area'
+                                  : complaint.room}
                               </td>
 
                               <td>
@@ -996,11 +1014,61 @@ export default function AdminHome() {
 
               <div className="detail-item">
                 <span className="detail-label">
-                  Room No.
+                  {selectedComplaint.communityArea ? 'Community area' : 'Room No.'}
                 </span>
 
                 <span className="detail-value detail-value-large">
-                  {selectedComplaint.room || '—'}
+                  {(selectedComplaint.communityArea
+                    ? selectedComplaint.wing
+                    : selectedComplaint.room) || '—'}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">
+                  Student
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.student?.fullName ||
+                    selectedComplaint.student?.name ||
+                    '—'}
+                  {selectedComplaint.student?.rollNumber &&
+                    ` (${selectedComplaint.student.rollNumber})`}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">
+                  Student Phone
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.student?.phoneNumber || 'Not provided'}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">
+                  Available Time
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.availableTimeSlot || 'Not specified'}
+                </span>
+              </div>
+
+              <div className="detail-item">
+                <span className="detail-label">
+                  Room Key
+                </span>
+
+                <span className="detail-value">
+                  {selectedComplaint.communityArea
+                    ? 'Not applicable'
+                    : selectedComplaint.keyWithSecurity
+                      ? 'Left with security'
+                      : 'With student'}
                 </span>
               </div>
 

@@ -37,3 +37,10 @@ export function isRoomOnFloor(floor, room) {
     && /^\d{3}$/.test(normalizedRoom)
     && Number(normalizedRoom[0]) === roomHundreds;
 }
+
+// Floor a room belongs to ("301" -> "Second"), or null for an invalid room number
+export function getFloorForRoom(room) {
+  const normalizedRoom = String(room ?? '').trim();
+  if (!/^[1-7]\d{2}$/.test(normalizedRoom)) return null;
+  return HOSTEL_FLOORS.find(({ roomHundreds }) => roomHundreds === Number(normalizedRoom[0]))?.name ?? null;
+}

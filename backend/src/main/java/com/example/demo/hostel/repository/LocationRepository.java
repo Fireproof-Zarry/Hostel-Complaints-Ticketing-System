@@ -13,4 +13,7 @@ public interface LocationRepository extends JpaRepository<Location, UUID> {
 
         // Rooms in the single-wing hostel have no wing value
         Optional<Location> findByFloorAndRoomNumberAndWingIsNull(String floor, String roomNumber);
+
+        // Community areas (corridors, washrooms, common rooms) have a wing but no room
+        Optional<Location> findByFloorAndWingIgnoreCaseAndRoomNumberIsNull(String floor, String wing);
 }

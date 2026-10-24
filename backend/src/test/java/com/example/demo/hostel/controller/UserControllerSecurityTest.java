@@ -1,6 +1,8 @@
 package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.config.SecurityConfig;
+import com.example.demo.hostel.dto.ProfileUpdateRequest;
+import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.service.AuthService;
 import com.example.demo.hostel.service.UserService;
@@ -18,12 +20,16 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(UserController.class)
@@ -95,5 +101,39 @@ class UserControllerSecurityTest {
                 .andExpect(status().isNoContent());
 
         verify(userService).clearFcmToken("u1", EMAIL);
+    }
+
+    @Test
+    void updatesOwnProfileAcceptingSnakeCaseFields() throws Exception {
+        User saved = new User();
+        saved.setId("u1");
+        saved.setFullName("Ragini Z");
+        saved.setRoomNumber("312");
+        saved.setFcmToken("device-token");
+        ProfileUpdateRequest expected = new ProfileUpdateRequest("Ragini Z", "9876543210", "CS23B051", "312");
+        when(userService.updateProfile("u1", EMAIL, expected)).thenReturn(saved);
+
+        mockMvc.perform(put("/api/users/u1/profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"full_name\":\"Ragini Z\",\"phone_number\":\"9876543210\","
+                                + "\"roll_number\":\"CS23B051\",\"room_number\":\"312\"}")
+                        .with(jwt().jwt(token -> token.claim("email", EMAIL))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Ragini Z"))
+                .andExpect(jsonPath("$.roomNumber").value("312"))
+                .andExpect(jsonPath("$.fcmToken").doesNotExist());
+    }
+
+    @Test
+    void anotherUsersProfileIsForbidden() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
+                .when(userService).updateProfile(eq("someone-else"),
+                        eq(EMAIL), any());
+
+        mockMvc.perform(put("/api/users/someone-else/profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fullName\":\"Hacked\"}")
+                        .with(jwt().jwt(token -> token.claim("email", EMAIL))))
+                .andExpect(status().isForbidden());
     }
 }
