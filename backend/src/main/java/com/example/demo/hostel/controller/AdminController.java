@@ -87,6 +87,12 @@ public class AdminController {
         }
     }
 
+    // Admin-only: everything under /api/admin requires ROLE_ADMIN (SecurityConfig)
+    @GetMapping("/archived")
+    public List<Complaint> getArchivedComplaints() {
+        return adminService.getArchivedComplaints();
+    }
+
     @GetMapping("/admins")
     public List<User> getAdmins() {
         return adminService.getAdmins();

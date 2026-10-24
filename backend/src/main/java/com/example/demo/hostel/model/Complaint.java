@@ -48,6 +48,11 @@ public class Complaint {
     @Column(name = "key_with_security")
     private Boolean keyWithSecurity = false;
 
+    // Soft-archived by ComplaintArchivalService once resolved/rejected for 30 days;
+    // archived complaints are hidden from the admin dashboard
+    @Column(name = "is_archived", nullable = false)
+    private boolean isArchived = false;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -85,7 +90,15 @@ public class Complaint {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Status getStatus() { return status; }
-    public void setStatus(Status status) { this.status = status; }
+    public void setStatus(Status status) {
+        this.status = status;
+        // Reopening a complaint brings it back onto the dashboard
+        if (status != Status.RESOLVED && status != Status.REJECTED) {
+            this.isArchived = false;
+        }
+    }
+    public boolean isArchived() { return isArchived; }
+    public void setArchived(boolean archived) { this.isArchived = archived; }
     public User getStudent() { return student; }
     public void setStudent(User student) { this.student = student; }
 
