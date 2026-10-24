@@ -1,6 +1,11 @@
 HELP.md
 target/
 .env
+
+### Firebase service account credentials ###
+*firebase-adminsdk*.json
+firebase-service-account*.json
+serviceAccountKey*.json
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
