@@ -4,7 +4,12 @@ import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.service.AdminService;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -18,35 +23,58 @@ import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standal
 
 class AdminControllerTest {
 
+        private static final String ADMIN_EMAIL = "admin@smail.iitm.ac.in";
+
         private MockMvc mockMvc(AdminService adminService) {
-                return standaloneSetup(new AdminController(adminService)).build();
+                return standaloneSetup(new AdminController(adminService))
+                                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
+                                .build();
+        }
+
+        // Standalone MockMvc has no security filter chain, so set the
+        // authenticated admin directly; the full chain is covered in
+        // AdminStatusUpdateIntegrationTest.
+        private static void authenticateAsAdmin() {
+                Jwt jwt = Jwt.withTokenValue("token")
+                                .header("alg", "none")
+                                .claim("email", ADMIN_EMAIL)
+                                .build();
+                SecurityContextHolder.getContext().setAuthentication(new JwtAuthenticationToken(jwt));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+                SecurityContextHolder.clearContext();
         }
 
         @Test
         void updateStatus_withValidTransition_returns200() throws Exception {
                 AdminService adminService = mock(AdminService.class);
+                authenticateAsAdmin();
 
                 Complaint complaint = new Complaint();
                 complaint.setStatus(Status.ASSIGNED);
 
-                when(adminService.updateStatus(1L, Status.ASSIGNED))
+                when(adminService.updateStatus(1L, Status.ASSIGNED, ADMIN_EMAIL, "Electrician scheduled"))
                                 .thenReturn(complaint);
 
                 mockMvc(adminService)
                                 .perform(
                                                 patch("/api/admin/complaints/1/status")
-                                                                .param("status", "ASSIGNED"))
+                                                                .param("status", "ASSIGNED")
+                                                                .param("reason", "Electrician scheduled"))
                                 .andExpect(status().isOk());
 
                 verify(adminService)
-                                .updateStatus(1L, Status.ASSIGNED);
+                                .updateStatus(1L, Status.ASSIGNED, ADMIN_EMAIL, "Electrician scheduled");
         }
 
         @Test
         void updateStatus_withInvalidTransition_returns400() throws Exception {
                 AdminService adminService = mock(AdminService.class);
+                authenticateAsAdmin();
 
-                when(adminService.updateStatus(1L, Status.RESOLVED))
+                when(adminService.updateStatus(1L, Status.RESOLVED, ADMIN_EMAIL, null))
                                 .thenThrow(new IllegalArgumentException(
                                                 "Invalid status transition"));
 
@@ -57,7 +85,7 @@ class AdminControllerTest {
                                 .andExpect(status().isBadRequest());
 
                 verify(adminService)
-                                .updateStatus(1L, Status.RESOLVED);
+                                .updateStatus(1L, Status.RESOLVED, ADMIN_EMAIL, null);
         }
 
         @Test

@@ -8,6 +8,8 @@ import com.example.demo.hostel.service.AdminService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -49,10 +51,17 @@ public class AdminController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
-            @RequestParam Status status) {
+            @RequestParam Status status,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal Jwt jwt) {
 
         try {
-            Complaint complaint = adminService.updateStatus(id, status);
+            Complaint complaint = adminService.updateStatus(
+                    id,
+                    status,
+                    jwt.getClaimAsString("email"),
+                    reason
+            );
             return ResponseEntity.ok(complaint);
 
         } catch (IllegalArgumentException e) {
