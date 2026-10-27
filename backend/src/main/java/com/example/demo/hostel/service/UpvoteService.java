@@ -13,8 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Optional;
-
 /**
  * Upvotes ("this affects me too") on community-area complaints. Personal
  * room complaints are private to their student and cannot be upvoted.
@@ -58,9 +56,10 @@ public class UpvoteService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found");
         }
 
-        Optional<Upvote> existing = upvoteRepository.findById(new UpvoteId(complaintId, userId));
-        if (existing.isPresent()) {
-            upvoteRepository.delete(existing.get());
+        UpvoteId upvoteId = new UpvoteId(complaintId, userId);
+        if (upvoteRepository.existsById(upvoteId)) {
+            // Bulk delete: a concurrent request may already have removed it
+            upvoteRepository.deleteUpvote(upvoteId);
             return false;
         }
         // Flush now so a concurrent duplicate fails here (primary key) rather than at commit

@@ -22,6 +22,14 @@ import org.springframework.http.HttpStatus;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -170,6 +178,73 @@ class UpvoteServiceIntegrationTest {
         complaintRepository.deleteById(communityComplaint);
 
         assertThat(upvoteRepository.count()).isZero();
+    }
+
+    @Test
+    void databaseAcceptsOnlyOneOfManyConcurrentDuplicateInserts() throws Exception {
+        int threads = 12;
+        // Bypasses UpvoteService: proves the (complaint_id, user_id) primary key alone
+        // stops duplicates even when every insert races past an existence check
+        List<Throwable> unexpected = runConcurrently(threads, () -> transactionTemplate.execute(tx -> {
+            Complaint complaint = complaintRepository.findById(communityComplaint).orElseThrow();
+            User user = userRepository.findById(neighbour.getId()).orElseThrow();
+            return upvoteRepository.saveAndFlush(new Upvote(complaint, user));
+        }));
+
+        assertThat(unexpected).isEmpty();
+        assertThat(upvoteService.countUpvotes(communityComplaint)).isEqualTo(1);
+    }
+
+    @Test
+    void concurrentTogglesBySameStudentNeverCreateMoreThanOneUpvote() throws Exception {
+        int threads = 12;
+        for (int round = 0; round < 20; round++) {
+            // Alternate the starting state so both concurrent adds and concurrent removes are exercised
+            boolean startUpvoted = round % 2 == 1;
+            if (startUpvoted != (upvoteService.countUpvotes(communityComplaint) == 1)) {
+                upvoteService.toggleUpvote(communityComplaint, neighbour.getId());
+            }
+
+            List<Throwable> unexpected = runConcurrently(threads,
+                    () -> upvoteService.toggleUpvote(communityComplaint, neighbour.getId()));
+
+            assertThat(unexpected).as("round %d unexpected errors", round).isEmpty();
+            assertThat(upvoteService.countUpvotes(communityComplaint)).as("round %d", round).isBetween(0L, 1L);
+        }
+    }
+
+    /**
+     * Fires the call from many threads at once. A DataIntegrityViolationException
+     * is expected (the primary key rejecting a duplicate, which the controller
+     * reports as "upvoted"); anything else would surface as a 500.
+     */
+    private static List<Throwable> runConcurrently(int threads, Callable<?> call) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        try {
+            List<Future<?>> futures = new ArrayList<>();
+            for (int i = 0; i < threads; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return call.call();
+                }));
+            }
+            start.countDown();
+
+            List<Throwable> unexpected = new ArrayList<>();
+            for (Future<?> future : futures) {
+                try {
+                    future.get();
+                } catch (java.util.concurrent.ExecutionException e) {
+                    if (!(e.getCause() instanceof DataIntegrityViolationException)) {
+                        unexpected.add(e.getCause());
+                    }
+                }
+            }
+            return unexpected;
+        } finally {
+            pool.shutdownNow();
+        }
     }
 
     private Long complaint(Category category, Location location) {
