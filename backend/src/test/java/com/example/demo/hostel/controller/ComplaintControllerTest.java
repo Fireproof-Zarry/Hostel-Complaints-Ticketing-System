@@ -3,6 +3,7 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,7 @@ class ComplaintControllerTest {
     void setUp() {
         complaintService = mock(ComplaintService.class);
         when(complaintService.createComplaint(eq(EMAIL), any())).thenReturn(new Complaint());
-        controller = new ComplaintController(complaintService, new RoomLocationValidator());
+        controller = new ComplaintController(complaintService, new RoomLocationValidator(), mock(UpvoteService.class));
     }
 
     @Test
@@ -104,7 +105,7 @@ class ComplaintControllerTest {
 
     private void assertBadRequest(CreateComplaintRequest payload) {
         ComplaintService untouched = mock(ComplaintService.class);
-        ComplaintController guarded = new ComplaintController(untouched, new RoomLocationValidator());
+        ComplaintController guarded = new ComplaintController(untouched, new RoomLocationValidator(), mock(UpvoteService.class));
 
         assertEquals(HttpStatus.BAD_REQUEST, guarded.createComplaint(JWT, payload).getStatusCode());
         verifyNoInteractions(untouched);
