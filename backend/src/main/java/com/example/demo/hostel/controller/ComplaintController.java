@@ -3,7 +3,9 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +14,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/complaints")
@@ -20,10 +24,15 @@ public class ComplaintController {
 
     private final ComplaintService complaintService;
     private final RoomLocationValidator roomLocationValidator;
+    private final UpvoteService upvoteService;
 
-    public ComplaintController(ComplaintService complaintService, RoomLocationValidator roomLocationValidator) {
+    public ComplaintController(
+            ComplaintService complaintService,
+            RoomLocationValidator roomLocationValidator,
+            UpvoteService upvoteService) {
         this.complaintService = complaintService;
         this.roomLocationValidator = roomLocationValidator;
+        this.upvoteService = upvoteService;
     }
 
     private static final int MAX_WING_LENGTH = 100;
@@ -89,5 +98,28 @@ public class ComplaintController {
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(complaintService.attachImage(id, email, file));
+    }
+
+    /**
+     * Toggles the signed-in student's upvote on a community-area complaint.
+     * Returns {"complaintId", "upvoted", "upvoteCount"}.
+     */
+    @PostMapping("/{id}/upvote")
+    public ResponseEntity<Map<String, Object>> toggleUpvote(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+        String userId = upvoteService.userIdForEmail(jwt.getClaimAsString("email"));
+
+        boolean upvoted;
+        try {
+            upvoted = upvoteService.toggleUpvote(id, userId);
+        } catch (DataIntegrityViolationException e) {
+            // A simultaneous request (double click) already added this upvote
+            upvoted = true;
+        }
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("complaintId", id);
+        body.put("upvoted", upvoted);
+        body.put("upvoteCount", upvoteService.countUpvotes(id));
+        return ResponseEntity.ok(body);
     }
 }

@@ -123,6 +123,19 @@ class ComplaintArchivalServiceIntegrationTest {
     }
 
     @Test
+    void onlyTheOldResolvedComplaintIsArchivedNotThePendingOne() {
+        // Exactly the two-complaint scenario: an old RESOLVED and an old PENDING complaint
+        complaintRepository.deleteAllById(List.of(oldRejected, recentResolved, oldInProgress));
+
+        int archived = archivalService.archiveOldComplaints();
+
+        assertThat(archived).isEqualTo(1);
+        assertThat(isArchived(oldResolved)).isTrue();
+        assertThat(isArchived(oldPending)).isFalse();
+        assertThat(ids(complaintRepository.findByIsArchivedTrue())).containsExactly(oldResolved);
+    }
+
+    @Test
     void archivingKeepsTheOriginalUpdatedAt() {
         LocalDateTime before = updatedAt(oldResolved);
 

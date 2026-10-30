@@ -5,6 +5,7 @@ import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.service.AuthService;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ class ComplaintImageUploadSecurityTest {
 
     @MockitoBean
     private ComplaintService complaintService;
+
+    @MockitoBean
+    private UpvoteService upvoteService;
 
     @MockitoBean
     private UserRepository userRepository;
