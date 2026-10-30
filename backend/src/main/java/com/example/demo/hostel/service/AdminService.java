@@ -12,6 +12,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -33,6 +34,15 @@ public class AdminService {
 
     public List<User> getAdmins() {
         return userRepository.findByRole(Role.ADMIN);
+    }
+
+    /** Archived complaints, most recently updated first. */
+    public List<Complaint> getArchivedComplaints() {
+        return complaintRepository.findByIsArchivedTrue().stream()
+                .sorted(Comparator.comparing(
+                        Complaint::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
     }
 
     public List<Complaint> getComplaints(

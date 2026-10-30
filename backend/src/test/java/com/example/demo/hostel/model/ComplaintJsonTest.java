@@ -45,4 +45,27 @@ class ComplaintJsonTest {
         assertThat(json.get("student").has("fcmToken")).isFalse();
         assertThat(json.toString()).doesNotContain("secret-device-token");
     }
+
+    @Test
+    void reopeningClearsArchivedFlagButFinalStatusesKeepIt() {
+        Complaint complaint = new Complaint();
+        complaint.setStatus(Status.RESOLVED);
+        complaint.setArchived(true);
+
+        complaint.setStatus(Status.REJECTED);
+        assertThat(complaint.isArchived()).isTrue();
+
+        complaint.setStatus(Status.PENDING);
+        assertThat(complaint.isArchived()).isFalse();
+    }
+
+    @Test
+    void serializesArchivedFlag() {
+        Complaint complaint = new Complaint();
+        complaint.setArchived(true);
+
+        JsonNode json = JsonMapper.builder().build().valueToTree(complaint);
+
+        assertThat(json.get("archived").asBoolean()).isTrue();
+    }
 }

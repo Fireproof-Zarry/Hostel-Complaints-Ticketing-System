@@ -20,7 +20,9 @@ public class ComplaintSpecification {
 
         return (root, query, criteriaBuilder) -> {
 
-            var predicates = criteriaBuilder.conjunction();
+            // The dashboard only shows active complaints; archived ones are
+            // available through the admin archive endpoint
+            var predicates = criteriaBuilder.isFalse(root.get("isArchived"));
 
             if (status != null) {
                 predicates = criteriaBuilder.and(
