@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { HOSTEL_FLOORS, isRoomOnFloor } from './hostelLocation.js';
+import { getFloorForRoom, HOSTEL_FLOORS, isRoomOnFloor } from './hostelLocation.js';
 
 test('frontend floor-to-room ranges match the seven-floor convention', () => {
   const expectedRanges = [
@@ -35,4 +35,13 @@ test('rejects room values that are not exactly three digits', () => {
   assert.equal(isRoomOnFloor('Ground', ' 100'), false);
   assert.equal(isRoomOnFloor('Ground', '100 '), false);
   assert.equal(isRoomOnFloor('Ground', '1000'), false);
+});
+
+test('derives the floor from a room number', () => {
+  assert.equal(getFloorForRoom('101'), 'Ground');
+  assert.equal(getFloorForRoom(' 312 '), 'Second');
+  assert.equal(getFloorForRoom('799'), 'Sixth');
+  assert.equal(getFloorForRoom('812'), null);
+  assert.equal(getFloorForRoom('31'), null);
+  assert.equal(getFloorForRoom(null), null);
 });

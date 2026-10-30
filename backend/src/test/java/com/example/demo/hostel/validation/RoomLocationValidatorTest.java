@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class RoomLocationValidatorTest {
@@ -45,5 +47,26 @@ class RoomLocationValidatorTest {
             String beforeRange,
             String afterRange
     ) {
+    }
+
+    @Test
+    void derivesFloorFromRoomNumber() {
+        RoomLocationValidator validator = new RoomLocationValidator();
+
+        assertEquals("Ground", validator.floorForRoom("101"));
+        assertEquals("Second", validator.floorForRoom("312"));
+        assertEquals("Sixth", validator.floorForRoom("799"));
+        assertNull(validator.floorForRoom("812"));
+        assertNull(validator.floorForRoom("31"));
+        assertNull(validator.floorForRoom(null));
+    }
+
+    @Test
+    void canonicalizesFloorSpellings() {
+        RoomLocationValidator validator = new RoomLocationValidator();
+
+        assertEquals("Second", validator.canonicalFloor(" 2nd floor "));
+        assertEquals("Ground", validator.canonicalFloor("ground"));
+        assertNull(validator.canonicalFloor("Basement"));
     }
 }

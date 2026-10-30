@@ -40,6 +40,14 @@ public class Complaint {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
+    // When the student is available for a worker visit, e.g. "Mon: 2 PM - 5 PM"
+    @Column(name = "available_time_slot", length = 500)
+    private String availableTimeSlot;
+
+    // Student is away during working hours and leaves the room key with security
+    @Column(name = "key_with_security")
+    private Boolean keyWithSecurity = false;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -66,6 +74,10 @@ public class Complaint {
     public void setAssignedTo(String assignedTo) { this.assignedTo = assignedTo; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getAvailableTimeSlot() { return availableTimeSlot; }
+    public void setAvailableTimeSlot(String availableTimeSlot) { this.availableTimeSlot = availableTimeSlot; }
+    public boolean isKeyWithSecurity() { return Boolean.TRUE.equals(keyWithSecurity); }
+    public void setKeyWithSecurity(boolean keyWithSecurity) { this.keyWithSecurity = keyWithSecurity; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
@@ -84,4 +96,8 @@ public class Complaint {
     public String getFloor() { return location == null ? null : location.getFloor(); }
     @JsonProperty("room")
     public String getRoom() { return location == null ? null : location.getRoomNumber(); }
+    @JsonProperty("wing")
+    public String getWing() { return location == null ? null : location.getWing(); }
+    @JsonProperty("communityArea")
+    public boolean isCommunityArea() { return location != null && location.isCommunityArea(); }
 }
