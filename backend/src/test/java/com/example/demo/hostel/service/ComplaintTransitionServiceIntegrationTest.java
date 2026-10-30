@@ -17,9 +17,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 
@@ -32,15 +36,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
+@Testcontainers
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:h2:mem:complaint-transition-test",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
+        "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect",
+        "spring.sql.init.mode=never"
 })
 class ComplaintTransitionServiceIntegrationTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres =
+            new PostgreSQLContainer<>("postgres:16-alpine");
 
     @Autowired
     private ComplaintTransitionService transitionService;
@@ -108,14 +115,17 @@ class ComplaintTransitionServiceIntegrationTest {
 
     @Test
     void changeComplaintStatus_savesComplaintAndHistory() {
-        transitionService.changeComplaintStatus(complaintId, adminId, "in_progress", " Plumber assigned ");
+        transitionService.changeComplaintStatus(
+                complaintId, adminId, "in_progress", " Plumber assigned ");
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.IN_PROGRESS);
 
-        // History associations are lazy, so read them inside a transaction
+        // History associations are lazy, so read them inside a transaction.
         transactionTemplate.executeWithoutResult(tx -> {
-            List<ComplaintHistory> history = complaintHistoryRepository.findByComplaintOrderByChangedAtAsc(complaint);
+            List<ComplaintHistory> history =
+                    complaintHistoryRepository.findByComplaintOrderByChangedAtAsc(complaint);
+
             assertThat(history).hasSize(1);
 
             ComplaintHistory entry = history.getFirst();
@@ -127,9 +137,10 @@ class ComplaintTransitionServiceIntegrationTest {
             assertThat(entry.getChangedAt()).isNotNull();
         });
 
-        // Sent after commit, on the async executor
+        // Sent after commit, on the async executor.
         verify(fcmNotificationService, timeout(2000))
-                .sendStatusUpdateNotification("student-device-token", "Leaking tap", "IN_PROGRESS");
+                .sendStatusUpdateNotification(
+                        "student-device-token", "Leaking tap", "IN_PROGRESS");
     }
 
     @Test
@@ -138,33 +149,37 @@ class ComplaintTransitionServiceIntegrationTest {
                 .when(complaintHistoryRepository).save(any(ComplaintHistory.class));
 
         assertThatThrownBy(() ->
-                transitionService.changeComplaintStatus(complaintId, adminId, "RESOLVED", "Fixed")
+                transitionService.changeComplaintStatus(
+                        complaintId, adminId, "RESOLVED", "Fixed")
         ).hasMessageContaining("simulated history failure");
 
-        // The failure happened after the complaint was updated and saved
         verify(complaintHistoryRepository).save(any(ComplaintHistory.class));
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.PENDING);
         assertThat(complaintHistoryRepository.count()).isZero();
 
-        // A rolled-back change must never notify the student
+        // A rolled-back change must never notify the student.
         verify(fcmNotificationService, never())
                 .sendStatusUpdateNotification(anyString(), anyString(), anyString());
     }
 
     @Test
     void changeComplaintStatus_notifiesOnlyAfterCommit() {
-        // The status change completes, but the surrounding transaction rolls back
+        // The status change completes, but the surrounding transaction rolls back.
         transactionTemplate.executeWithoutResult(tx -> {
-            transitionService.changeComplaintStatus(complaintId, adminId, "RESOLVED", null);
+            transitionService.changeComplaintStatus(
+                    complaintId, adminId, "RESOLVED", null);
+
             verify(fcmNotificationService, never())
                     .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+
             tx.setRollbackOnly();
         });
 
         assertThat(complaintRepository.findById(complaintId).orElseThrow().getStatus())
                 .isEqualTo(Status.PENDING);
+
         verify(fcmNotificationService, never())
                 .sendStatusUpdateNotification(anyString(), anyString(), anyString());
     }
@@ -175,10 +190,12 @@ class ComplaintTransitionServiceIntegrationTest {
         student.setFcmToken(null);
         userRepository.save(student);
 
-        transitionService.changeComplaintStatus(complaintId, adminId, "RESOLVED", null);
+        transitionService.changeComplaintStatus(
+                complaintId, adminId, "RESOLVED", null);
 
         assertThat(complaintRepository.findById(complaintId).orElseThrow().getStatus())
                 .isEqualTo(Status.RESOLVED);
+
         verify(fcmNotificationService, never())
                 .sendStatusUpdateNotification(anyString(), anyString(), anyString());
     }
