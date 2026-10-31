@@ -3,10 +3,12 @@ package com.example.demo.hostel.service;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.ComplaintHistory;
 import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.CategoryRepository;
+import com.example.demo.hostel.repository.ComplaintHistoryRepository;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
@@ -30,7 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class ComplaintServiceTest {
+class ComplaintServiceTest {
 
     @Mock
     private ComplaintRepository complaintRepository;
@@ -50,6 +52,9 @@ public class ComplaintServiceTest {
     @Spy
     private RoomLocationValidator roomLocationValidator = new RoomLocationValidator();
 
+    @Mock
+    private ComplaintHistoryRepository complaintHistoryRepository;
+
     @InjectMocks
     private ComplaintService complaintService;
 
@@ -63,20 +68,31 @@ public class ComplaintServiceTest {
     }
 
     private static CreateComplaintRequest personal(String category, boolean keyWithSecurity) {
-        return new CreateComplaintRequest("Broken Fan", "Making a loud noise", category,
-                false, null, null, null, "Mon: 2 PM - 5 PM", keyWithSecurity);
+        return new CreateComplaintRequest(
+                "Broken Fan",
+                "Making a loud noise",
+                category,
+                false,
+                null,
+                null,
+                null,
+                "Mon: 2 PM - 5 PM",
+                keyWithSecurity);
     }
 
     private void stubStudentUnderCap() {
-        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
-        when(complaintRepository.countByStudentAndStatusIn(testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+        when(complaintRepository.countByStudentAndStatusIn(
+                testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
                 .thenReturn(3L);
     }
 
     private void stubCategory(String name) {
         Category category = new Category();
         category.setName(name);
-        when(categoryRepository.findByNameIgnoreCase(name)).thenReturn(Optional.of(category));
+        when(categoryRepository.findByNameIgnoreCase(name))
+                .thenReturn(Optional.of(category));
     }
 
     @Test
@@ -84,17 +100,21 @@ public class ComplaintServiceTest {
         testStudent.setRoomNumber("312");
         stubStudentUnderCap();
         stubCategory("Electrical");
+
         Location room = new Location();
         when(locationRepository.findByFloorAndRoomNumberAndWingIsNull("Second", "312"))
                 .thenReturn(Optional.of(room));
-        when(complaintRepository.save(any(Complaint.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(complaintRepository.save(any(Complaint.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
-        Complaint result = complaintService.createComplaint("student@smail.iitm.ac.in", personal("Electrical", true));
+        Complaint result = complaintService.createComplaint(
+                "student@smail.iitm.ac.in", personal("Electrical", true));
 
         assertSame(room, result.getLocation());
         assertEquals("Mon: 2 PM - 5 PM", result.getAvailableTimeSlot());
         assertTrue(result.isKeyWithSecurity());
-        verify(locationRepository, never()).findByFloorAndWingIgnoreCaseAndRoomNumberIsNull(any(), any());
+        verify(locationRepository, never())
+                .findByFloorAndWingIgnoreCaseAndRoomNumberIsNull(any(), any());
     }
 
     @Test
@@ -102,11 +122,16 @@ public class ComplaintServiceTest {
         testStudent.setRoomNumber("512");
         stubStudentUnderCap();
         stubCategory("Electrical");
-        when(locationRepository.findByFloorAndRoomNumberAndWingIsNull("Fourth", "512")).thenReturn(Optional.empty());
-        when(locationRepository.save(any(Location.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(complaintRepository.save(any(Complaint.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Complaint result = complaintService.createComplaint("student@smail.iitm.ac.in", personal("Electrical", false));
+        when(locationRepository.findByFloorAndRoomNumberAndWingIsNull("Fourth", "512"))
+                .thenReturn(Optional.empty());
+        when(locationRepository.save(any(Location.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(complaintRepository.save(any(Complaint.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        Complaint result = complaintService.createComplaint(
+                "student@smail.iitm.ac.in", personal("Electrical", false));
 
         assertEquals("Fourth", result.getFloor());
         assertEquals("512", result.getRoom());
@@ -118,9 +143,10 @@ public class ComplaintServiceTest {
         stubStudentUnderCap();
         stubCategory("Electrical");
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-            complaintService.createComplaint("student@smail.iitm.ac.in", personal("Electrical", false))
-        );
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> complaintService.createComplaint(
+                        "student@smail.iitm.ac.in", personal("Electrical", false)));
 
         assertEquals(HttpStatus.UNPROCESSABLE_CONTENT, exception.getStatusCode());
         verify(complaintRepository, never()).save(any(Complaint.class));
@@ -131,32 +157,50 @@ public class ComplaintServiceTest {
         testStudent.setRoomNumber("312");
         stubStudentUnderCap();
         stubCategory("Cleaning");
-        when(locationRepository.findByFloorAndWingIgnoreCaseAndRoomNumberIsNull("First", "East wing washroom"))
-                .thenReturn(Optional.empty());
-        when(locationRepository.save(any(Location.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(complaintRepository.save(any(Complaint.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CreateComplaintRequest request = new CreateComplaintRequest("Dirty floor", "Not cleaned today", "Cleaning",
-                true, "First", null, "East wing washroom", null, true);
-        Complaint result = complaintService.createComplaint("student@smail.iitm.ac.in", request);
+        when(locationRepository.findByFloorAndWingIgnoreCaseAndRoomNumberIsNull(
+                "First", "East wing washroom"))
+                .thenReturn(Optional.empty());
+        when(locationRepository.save(any(Location.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(complaintRepository.save(any(Complaint.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        CreateComplaintRequest request = new CreateComplaintRequest(
+                "Dirty floor",
+                "Not cleaned today",
+                "Cleaning",
+                true,
+                "First",
+                null,
+                "East wing washroom",
+                null,
+                true);
+
+        Complaint result = complaintService.createComplaint(
+                "student@smail.iitm.ac.in", request);
 
         assertTrue(result.isCommunityArea());
         assertEquals("First", result.getFloor());
         assertEquals("East wing washroom", result.getWing());
         assertNull(result.getRoom());
         assertFalse(result.isKeyWithSecurity());
-        verify(locationRepository, never()).findByFloorAndRoomNumberAndWingIsNull(any(), any());
+        verify(locationRepository, never())
+                .findByFloorAndRoomNumberAndWingIsNull(any(), any());
     }
 
     @Test
     void whenAtCap_thenThrowsTooManyRequests() {
-        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
-        when(complaintRepository.countByStudentAndStatusIn(testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+        when(complaintRepository.countByStudentAndStatusIn(
+                testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
                 .thenReturn(5L);
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-            complaintService.createComplaint("student@smail.iitm.ac.in", personal("Plumbing", false))
-        );
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> complaintService.createComplaint(
+                        "student@smail.iitm.ac.in", personal("Plumbing", false)));
 
         assertEquals(HttpStatus.TOO_MANY_REQUESTS, exception.getStatusCode());
         assertTrue(exception.getReason().contains("5 open complaints"));
@@ -166,11 +210,13 @@ public class ComplaintServiceTest {
     @Test
     void whenCategoryUnknown_thenThrowsBadRequest() {
         stubStudentUnderCap();
-        when(categoryRepository.findByNameIgnoreCase("Gardening")).thenReturn(Optional.empty());
+        when(categoryRepository.findByNameIgnoreCase("Gardening"))
+                .thenReturn(Optional.empty());
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-            complaintService.createComplaint("student@smail.iitm.ac.in", personal("Gardening", false))
-        );
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> complaintService.createComplaint(
+                        "student@smail.iitm.ac.in", personal("Gardening", false)));
 
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         verify(complaintRepository, never()).save(any(Complaint.class));
@@ -179,13 +225,18 @@ public class ComplaintServiceTest {
     @Test
     void attachImage_uploadsAndSavesUrlOnOwnComplaint() {
         Complaint complaint = new Complaint();
-        MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1});
-        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
-        when(complaintRepository.findByIdAndStudent(7L, testStudent)).thenReturn(Optional.of(complaint));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "a.jpg", "image/jpeg", new byte[] { 1 });
+
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+        when(complaintRepository.findByIdAndStudent(7L, testStudent))
+                .thenReturn(Optional.of(complaint));
         when(storageService.uploadImage(file)).thenReturn("https://cdn/a.jpg");
         when(complaintRepository.save(complaint)).thenReturn(complaint);
 
-        Complaint result = complaintService.attachImage(7L, "student@smail.iitm.ac.in", file);
+        Complaint result = complaintService.attachImage(
+                7L, "student@smail.iitm.ac.in", file);
 
         assertEquals("https://cdn/a.jpg", result.getImageUrl());
         verify(complaintRepository).save(complaint);
@@ -193,16 +244,44 @@ public class ComplaintServiceTest {
 
     @Test
     void attachImage_onOtherStudentsComplaint_isNotFoundAndNothingUploaded() {
-        MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[]{1});
-        when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.of(testStudent));
-        when(complaintRepository.findByIdAndStudent(7L, testStudent)).thenReturn(Optional.empty());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "a.jpg", "image/jpeg", new byte[] { 1 });
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
-            complaintService.attachImage(7L, "student@smail.iitm.ac.in", file)
-        );
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+        when(complaintRepository.findByIdAndStudent(7L, testStudent))
+                .thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> complaintService.attachImage(
+                        7L, "student@smail.iitm.ac.in", file));
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verifyNoInteractions(storageService);
         verify(complaintRepository, never()).save(any(Complaint.class));
+    }
+
+    @Test
+    void getComplaintHistory_onOtherStudentsComplaint_isNotFound() {
+        Complaint complaint = new Complaint();
+        complaint.setId(7L);
+
+        User anotherStudent = new User();
+        anotherStudent.setId("2");
+        complaint.setStudent(anotherStudent);
+
+        when(complaintRepository.findById(7L))
+                .thenReturn(Optional.of(complaint));
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> complaintService.getComplaintHistory(
+                        7L, "student@smail.iitm.ac.in"));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        verifyNoInteractions(complaintHistoryRepository);
     }
 }
