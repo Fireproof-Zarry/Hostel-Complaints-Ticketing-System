@@ -4,6 +4,7 @@ import com.example.demo.hostel.config.SecurityConfig;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.service.AuthService;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,9 @@ class ComplaintUpvoteSecurityTest {
 
     @MockitoBean
     private UpvoteService upvoteService;
+
+    @MockitoBean
+    private DuplicateDetectionService duplicateDetectionService;
 
     @MockitoBean
     private ComplaintService complaintService;

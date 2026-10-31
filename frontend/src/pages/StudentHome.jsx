@@ -11,9 +11,11 @@ import {
   RefreshCw,
   KeyRound,
 } from 'lucide-react';
+import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -123,6 +125,9 @@ export default function StudentHome() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const imageUploadRef = useRef(null);
   const [profile, setProfile] = useState(null);
+  const [duplicateResult, setDuplicateResult] = useState({ key: '', candidates: [] });
+  const [dismissedDuplicateKey, setDismissedDuplicateKey] = useState('');
+  const [upvotingId, setUpvotingId] = useState(null);
 
   const navigate = useNavigate();
   const token = localStorage.getItem('idToken');
@@ -171,6 +176,41 @@ export default function StudentHome() {
       .catch(() => {});
     return () => controller.abort();
   }, [token]);
+
+  // Duplicate detection only applies to community areas (rooms are single-occupancy).
+  // One key for everything the search depends on, debounced while the student types.
+  const duplicateQueryKey = formData.isCommunityArea && formData.title.trim().length >= 4
+    ? JSON.stringify([formData.title.trim(), formData.floor, formData.wing.trim()])
+    : '';
+  const debouncedDuplicateKey = useDebouncedValue(duplicateQueryKey, 500);
+
+  useEffect(() => {
+    if (!token || !debouncedDuplicateKey) return undefined;
+    const [title, floor, wing] = JSON.parse(debouncedDuplicateKey);
+    const params = new URLSearchParams({ title, floor });
+    if (wing) params.set('wing', wing);
+
+    // Aborting drops responses for inputs the student has already changed
+    const controller = new AbortController();
+    fetch(`${apiBaseUrl}/complaints/potential-duplicates?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((candidates) => {
+        setDuplicateResult({ key: debouncedDuplicateKey, candidates: Array.isArray(candidates) ? candidates : [] });
+      })
+      // A failed check must never block filing the complaint
+      .catch(() => {});
+    return () => controller.abort();
+  }, [debouncedDuplicateKey, token]);
+
+  // Shown only for the current inputs, and not after "No, mine is different"
+  const visibleDuplicates = debouncedDuplicateKey
+    && duplicateResult.key === debouncedDuplicateKey
+    && dismissedDuplicateKey !== debouncedDuplicateKey
+    ? duplicateResult.candidates
+    : [];
 
   useEffect(() => {
     if (!token) return;
@@ -293,8 +333,7 @@ export default function StudentHome() {
         }
       }
 
-      setFormData(initialForm);
-      imageUploadRef.current?.reset();
+      resetComplaintForm();
       setSuccess('Complaint submitted successfully.');
       const updatedComplaints = await requestMyComplaints();
       if (updatedComplaints) setComplaints(updatedComplaints);
@@ -303,6 +342,51 @@ export default function StudentHome() {
       setError(submitError instanceof Error ? submitError.message : 'Network error. Please try again later.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const resetComplaintForm = () => {
+    setFormData(initialForm);
+    imageUploadRef.current?.reset();
+    setDuplicateResult({ key: '', candidates: [] });
+  };
+
+  // "Yes, this is my issue": upvote the existing ticket instead of filing a duplicate
+  const handleUpvoteDuplicate = async (candidate) => {
+    setError('');
+    setSuccess('');
+    setUpvotingId(candidate.id);
+    try {
+      const upvote = () => fetch(`${apiBaseUrl}/complaints/${candidate.id}/upvote`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      let response = await upvote();
+      if (response.status === 401) {
+        handleLogout();
+        return;
+      }
+      if (!response.ok) {
+        throw new Error('That complaint can no longer be upvoted. You can still submit your own complaint.');
+      }
+      let result = await response.json();
+      // The endpoint toggles: if an upvote already existed it was just removed, so add it back
+      if (!result.upvoted) {
+        response = await upvote();
+        if (!response.ok) throw new Error('Your upvote could not be saved. Please try again.');
+        result = await response.json();
+      }
+
+      resetComplaintForm();
+      setSuccess(
+        `Thanks! Your upvote was added to "${candidate.title}" (#${candidate.id}), which now has ${result.upvoteCount} `
+        + `${result.upvoteCount === 1 ? 'upvote' : 'upvotes'}. You don't need to file a new complaint.`
+      );
+    } catch (upvoteError) {
+      setError(upvoteError instanceof Error ? upvoteError.message : 'Network error. Please try again later.');
+    } finally {
+      setUpvotingId(null);
     }
   };
 
@@ -578,6 +662,15 @@ export default function StudentHome() {
                       Change
                     </button>
                   </p>
+                )}
+
+                {formData.isCommunityArea && visibleDuplicates.length > 0 && (
+                  <DuplicateWarning
+                    candidates={visibleDuplicates}
+                    upvotingId={upvotingId}
+                    onUpvote={handleUpvoteDuplicate}
+                    onDismiss={() => setDismissedDuplicateKey(debouncedDuplicateKey)}
+                  />
                 )}
 
                 <div>

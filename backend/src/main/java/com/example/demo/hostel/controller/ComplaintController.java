@@ -1,8 +1,10 @@
 package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.dto.CreateComplaintRequest;
+import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,14 +27,17 @@ public class ComplaintController {
     private final ComplaintService complaintService;
     private final RoomLocationValidator roomLocationValidator;
     private final UpvoteService upvoteService;
+    private final DuplicateDetectionService duplicateDetectionService;
 
     public ComplaintController(
             ComplaintService complaintService,
             RoomLocationValidator roomLocationValidator,
-            UpvoteService upvoteService) {
+            UpvoteService upvoteService,
+            DuplicateDetectionService duplicateDetectionService) {
         this.complaintService = complaintService;
         this.roomLocationValidator = roomLocationValidator;
         this.upvoteService = upvoteService;
+        this.duplicateDetectionService = duplicateDetectionService;
     }
 
     private static final int MAX_WING_LENGTH = 100;
@@ -83,6 +88,20 @@ public class ComplaintController {
     public ResponseEntity<List<Complaint>> getMyComplaints(@AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(complaintService.getMyComplaints(email));
+    }
+
+    /**
+     * Open community-area complaints on the same floor similar to the title a
+     * student is typing (up to 3, most similar first; same wing breaks ties).
+     */
+    @GetMapping("/potential-duplicates")
+    public ResponseEntity<List<DuplicateCandidate>> getPotentialDuplicates(
+            @RequestParam String title,
+            @RequestParam String floor,
+            @RequestParam(required = false) String wing,
+            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return ResponseEntity.ok(duplicateDetectionService.findPotentialDuplicates(email, title, floor, wing));
     }
 
     @GetMapping("/{id}")
