@@ -74,7 +74,7 @@ class DuplicateDetectionServiceTest {
                 .thenReturn(List.of(new Object[]{12L, 4L}, new Object[]{5L, 1L}));
         when(upvoteRepository.findUpvotedComplaintIds("u-neighbour", List.of(12L, 5L, 9L))).thenReturn(List.of(5L));
 
-        List<DuplicateCandidate> result = service.findPotentialDuplicates(EMAIL, "  Washroom tap leaking ", "1st floor", " East wing ");
+        List<DuplicateCandidate> result = service.findPotentialDuplicates(EMAIL, "  Washroom tap leaking ", true, "1st floor", " East wing ");
 
         assertThat(result).extracting(DuplicateCandidate::id).containsExactly(12L, 5L, 9L);
         assertThat(result).extracting(DuplicateCandidate::upvoteCount).containsExactly(4L, 1L, 0L);
@@ -92,7 +92,7 @@ class DuplicateDetectionServiceTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(neighbour));
         when(complaintRepository.findSimilarOpenCommunityComplaintIds("Dirty washroom", "Second", "")).thenReturn(List.of());
 
-        assertThat(service.findPotentialDuplicates(EMAIL, "Dirty washroom", "Second", null)).isEmpty();
+        assertThat(service.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "Second", null)).isEmpty();
     }
 
     @Test
@@ -100,20 +100,56 @@ class DuplicateDetectionServiceTest {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(neighbour));
         when(complaintRepository.findSimilarOpenCommunityComplaintIds(anyString(), anyString(), anyString())).thenReturn(List.of());
 
-        assertThat(service.findPotentialDuplicates(EMAIL, "Dirty washroom", "Second", "West")).isEmpty();
+        assertThat(service.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "Second", "West")).isEmpty();
         verifyNoInteractions(upvoteRepository);
     }
 
     @Test
+    void personalIssueSearchesTheStudentsProfileRoom() {
+        neighbour.setRoomNumber("204");
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(neighbour));
+        when(complaintRepository.findSimilarOpenRoomComplaintIds("Fan not working", "First", "204"))
+                .thenReturn(List.of(31L));
+        Location room = new Location();
+        room.setFloor("First");
+        room.setRoomNumber("204");
+        Complaint roommates = complaint(31L, "Ceiling fan not working", reporter);
+        roommates.setLocation(room);
+        when(complaintRepository.findAllById(List.of(31L))).thenReturn(List.of(roommates));
+        when(upvoteRepository.countByComplaintIds(List.of(31L))).thenReturn(List.of());
+        when(upvoteRepository.findUpvotedComplaintIds("u-neighbour", List.of(31L))).thenReturn(List.of());
+
+        // Floor and wing from the request are ignored for personal issues
+        List<DuplicateCandidate> result = service.findPotentialDuplicates(EMAIL, "Fan not working", false, null, "ignored");
+
+        assertThat(result).singleElement().satisfies(candidate -> {
+            assertThat(candidate.id()).isEqualTo(31L);
+            assertThat(candidate.floor()).isEqualTo("First");
+            assertThat(candidate.room()).isEqualTo("204");
+            assertThat(candidate.wing()).isNull();
+        });
+        verify(complaintRepository, org.mockito.Mockito.never())
+                .findSimilarOpenCommunityComplaintIds(any(), any(), any());
+    }
+
+    @Test
+    void personalIssueWithoutProfileRoomFindsNothing() {
+        when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(neighbour));
+
+        assertThat(service.findPotentialDuplicates(EMAIL, "Fan not working", false, null, null)).isEmpty();
+        verify(complaintRepository, org.mockito.Mockito.never()).findSimilarOpenRoomComplaintIds(any(), any(), any());
+    }
+
+    @Test
     void shortTitlesReturnNothingWithoutQuerying() {
-        assertThat(service.findPotentialDuplicates(EMAIL, " fan ", "Second", null)).isEmpty();
-        assertThat(service.findPotentialDuplicates(EMAIL, null, "Second", null)).isEmpty();
+        assertThat(service.findPotentialDuplicates(EMAIL, " fan ", true, "Second", null)).isEmpty();
+        assertThat(service.findPotentialDuplicates(EMAIL, null, true, "Second", null)).isEmpty();
         verifyNoInteractions(complaintRepository, upvoteRepository, userRepository);
     }
 
     @Test
     void invalidFloorIsRejected() {
-        assertThatThrownBy(() -> service.findPotentialDuplicates(EMAIL, "Dirty washroom", "Basement", null))
+        assertThatThrownBy(() -> service.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "Basement", null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         verifyNoInteractions(complaintRepository);
@@ -123,7 +159,7 @@ class DuplicateDetectionServiceTest {
     void unknownUserIsNotFound() {
         when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.findPotentialDuplicates(EMAIL, "Dirty washroom", "Second", null))
+        assertThatThrownBy(() -> service.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "Second", null))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
         verify(complaintRepository, org.mockito.Mockito.never()).findSimilarOpenCommunityComplaintIds(any(), any(), any());

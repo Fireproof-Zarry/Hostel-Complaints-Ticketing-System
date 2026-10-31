@@ -177,18 +177,24 @@ export default function StudentHome() {
     return () => controller.abort();
   }, [token]);
 
-  // Duplicate detection only applies to community areas (rooms are single-occupancy).
-  // One key for everything the search depends on, debounced while the student types.
-  const duplicateQueryKey = formData.isCommunityArea && formData.title.trim().length >= 4
-    ? JSON.stringify([formData.title.trim(), formData.floor, formData.wing.trim()])
+  // Duplicate detection: community issues are matched on the same floor (and
+  // wing); personal issues in the student's profile room (the backend reads the
+  // room). One key for everything the search depends on, debounced while typing.
+  const duplicateMode = formData.isCommunityArea ? 'community' : 'room';
+  const hasProfileRoom = Boolean(getFloorForRoom(profile?.roomNumber));
+  const duplicateQueryKey = formData.title.trim().length >= 4 && (formData.isCommunityArea || hasProfileRoom)
+    ? JSON.stringify([duplicateMode, formData.title.trim(), formData.floor, formData.wing.trim()])
     : '';
   const debouncedDuplicateKey = useDebouncedValue(duplicateQueryKey, 500);
 
   useEffect(() => {
     if (!token || !debouncedDuplicateKey) return undefined;
-    const [title, floor, wing] = JSON.parse(debouncedDuplicateKey);
-    const params = new URLSearchParams({ title, floor });
-    if (wing) params.set('wing', wing);
+    const [mode, title, floor, wing] = JSON.parse(debouncedDuplicateKey);
+    const params = new URLSearchParams({ title, communityArea: String(mode === 'community') });
+    if (mode === 'community') {
+      params.set('floor', floor);
+      if (wing) params.set('wing', wing);
+    }
 
     // Aborting drops responses for inputs the student has already changed
     const controller = new AbortController();
@@ -205,8 +211,9 @@ export default function StudentHome() {
     return () => controller.abort();
   }, [debouncedDuplicateKey, token]);
 
-  // Shown only for the current inputs, and not after "No, mine is different"
+  // Shown only for the current inputs and location type, and not after "No, mine is different"
   const visibleDuplicates = debouncedDuplicateKey
+    && JSON.parse(debouncedDuplicateKey)[0] === duplicateMode
     && duplicateResult.key === debouncedDuplicateKey
     && dismissedDuplicateKey !== debouncedDuplicateKey
     ? duplicateResult.candidates
@@ -664,8 +671,9 @@ export default function StudentHome() {
                   </p>
                 )}
 
-                {formData.isCommunityArea && visibleDuplicates.length > 0 && (
+                {visibleDuplicates.length > 0 && (
                   <DuplicateWarning
+                    scope={duplicateMode}
                     candidates={visibleDuplicates}
                     upvotingId={upvotingId}
                     onUpvote={handleUpvoteDuplicate}

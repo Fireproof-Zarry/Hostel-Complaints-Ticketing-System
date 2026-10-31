@@ -74,6 +74,29 @@ public interface ComplaintRepository
                         @Param("wing") String wing);
 
         /**
+         * Same search for personal complaints in one room (floor + room number),
+         * e.g. roommates in a multiple-occupancy room reporting the same issue.
+         */
+        @Query(value = """
+                SELECT c.id
+                FROM complaints c
+                JOIN locations l ON l.location_id = c.location_id
+                WHERE l.is_community_area = false
+                  AND c.is_archived = false
+                  AND c.status IN ('PENDING', 'ASSIGNED', 'IN_PROGRESS')
+                  AND l.floor = :floor
+                  AND l.room_number = :room
+                  AND (c.title % :title OR :title <% c.description)
+                ORDER BY GREATEST(similarity(c.title, :title), word_similarity(:title, c.description)) DESC,
+                         c.created_at DESC
+                LIMIT 3
+                """, nativeQuery = true)
+        List<Long> findSimilarOpenRoomComplaintIds(
+                        @Param("title") String title,
+                        @Param("floor") String floor,
+                        @Param("room") String room);
+
+        /**
          * Archives complaints in the given statuses last updated before the
          * cutoff, in a single UPDATE. Bypasses @UpdateTimestamp on purpose so
          * updated_at keeps showing when the complaint was resolved.

@@ -16,9 +16,11 @@ import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
 import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,9 +62,9 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void returnsCandidatesWithoutStudentDetails() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", "First", "East wing"))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", "East wing"))
                 .thenReturn(List.of(new DuplicateCandidate(
-                        7L, "Washroom not cleaned", Status.PENDING, "First", "East wing washroom",
+                        7L, "Washroom not cleaned", Status.PENDING, "First", "East wing washroom", null,
                         3L, LocalDateTime.of(2026, 10, 30, 9, 0), false, true)));
 
         mockMvc.perform(get("/api/complaints/potential-duplicates")
@@ -82,7 +84,7 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void wingIsOptional() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", "First", null))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", null))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/complaints/potential-duplicates")
@@ -94,13 +96,30 @@ class PotentialDuplicatesControllerTest {
     }
 
     @Test
-    void floorIsRequired() throws Exception {
+    void communityAreaWithoutFloorIsRejectedByTheService() throws Exception {
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, null, null))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid floor is required"));
+
         mockMvc.perform(get("/api/complaints/potential-duplicates")
                         .param("title", "Dirty washroom")
                         .with(jwt().jwt(token -> token.claim("email", EMAIL))))
                 .andExpect(status().isBadRequest());
+    }
 
-        verifyNoInteractions(duplicateDetectionService);
+    @Test
+    void personalIssueNeedsNoLocation() throws Exception {
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Fan not working", false, null, null))
+                .thenReturn(List.of(new DuplicateCandidate(
+                        31L, "Ceiling fan not working", Status.PENDING, "First", null, "204",
+                        0L, LocalDateTime.of(2026, 10, 30, 9, 0), true, false)));
+
+        mockMvc.perform(get("/api/complaints/potential-duplicates")
+                        .param("title", "Fan not working")
+                        .param("communityArea", "false")
+                        .with(jwt().jwt(token -> token.claim("email", EMAIL))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].room").value("204"))
+                .andExpect(jsonPath("$[0].reportedByYou").value(true));
     }
 
     @Test

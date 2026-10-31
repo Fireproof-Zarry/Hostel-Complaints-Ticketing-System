@@ -91,17 +91,21 @@ public class ComplaintController {
     }
 
     /**
-     * Open community-area complaints on the same floor similar to the title a
-     * student is typing (up to 3, most similar first; same wing breaks ties).
+     * Open complaints similar to the title a student is typing (up to 3, most
+     * similar first). Community-area issues (the default) need a floor and
+     * optionally a wing; personal issues (communityArea=false) search the
+     * student's own profile room, so no location is sent.
      */
     @GetMapping("/potential-duplicates")
     public ResponseEntity<List<DuplicateCandidate>> getPotentialDuplicates(
             @RequestParam String title,
-            @RequestParam String floor,
+            @RequestParam(defaultValue = "true") boolean communityArea,
+            @RequestParam(required = false) String floor,
             @RequestParam(required = false) String wing,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
-        return ResponseEntity.ok(duplicateDetectionService.findPotentialDuplicates(email, title, floor, wing));
+        return ResponseEntity.ok(
+                duplicateDetectionService.findPotentialDuplicates(email, title, communityArea, floor, wing));
     }
 
     @GetMapping("/{id}")

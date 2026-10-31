@@ -21,9 +21,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * Finds open community-area complaints similar to one a student is about to
- * file, so they can upvote the existing ticket instead of creating a duplicate.
- * Personal room complaints are never searched (rooms are single-occupancy).
+ * Finds open complaints similar to one a student is about to file, so they can
+ * upvote the existing ticket instead of creating a duplicate. Community-area
+ * issues are matched on the same floor; personal issues are matched in the
+ * student's own room (useful for multiple-occupancy rooms, and in
+ * single-occupancy hostels it catches a student re-filing their own issue).
  */
 @Service
 public class DuplicateDetectionService {
@@ -52,22 +54,38 @@ public class DuplicateDetectionService {
 
     // One transaction so the thresholds set by setTrigramThresholds apply to the search
     @Transactional(readOnly = true)
-    public List<DuplicateCandidate> findPotentialDuplicates(String email, String title, String floor, String wing) {
+    public List<DuplicateCandidate> findPotentialDuplicates(
+            String email, String title, boolean communityArea, String floor, String wing) {
         String query = title == null ? "" : title.trim();
         if (query.length() < MIN_TITLE_LENGTH) {
             return List.of();
         }
-        String canonicalFloor = roomLocationValidator.canonicalFloor(floor);
-        if (canonicalFloor == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid floor is required");
+        String canonicalFloor = null;
+        if (communityArea) {
+            canonicalFloor = roomLocationValidator.canonicalFloor(floor);
+            if (canonicalFloor == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid floor is required");
+            }
         }
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        complaintRepository.setTrigramThresholds(SIMILARITY_THRESHOLD);
-        // An empty wing never matches, so it only affects the tie-break ordering
-        List<Long> ids = complaintRepository.findSimilarOpenCommunityComplaintIds(
-                query, canonicalFloor, wing == null ? "" : wing.trim());
+        List<Long> ids;
+        if (communityArea) {
+            complaintRepository.setTrigramThresholds(SIMILARITY_THRESHOLD);
+            // An empty wing never matches, so it only affects the tie-break ordering
+            ids = complaintRepository.findSimilarOpenCommunityComplaintIds(
+                    query, canonicalFloor, wing == null ? "" : wing.trim());
+        } else {
+            // Personal complaints are filed under the profile room, so search that room
+            String room = user.getRoomNumber();
+            String roomFloor = roomLocationValidator.floorForRoom(room);
+            if (roomFloor == null) {
+                return List.of();
+            }
+            complaintRepository.setTrigramThresholds(SIMILARITY_THRESHOLD);
+            ids = complaintRepository.findSimilarOpenRoomComplaintIds(query, roomFloor, room);
+        }
         if (ids.isEmpty()) {
             return List.of();
         }
@@ -88,6 +106,7 @@ public class DuplicateDetectionService {
                         complaint.getStatus(),
                         complaint.getFloor(),
                         complaint.getWing(),
+                        complaint.getRoom(),
                         upvoteCounts.getOrDefault(complaint.getId(), 0L),
                         complaint.getCreatedAt(),
                         complaint.getStudent() != null && user.getId().equals(complaint.getStudent().getId()),

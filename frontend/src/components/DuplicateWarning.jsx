@@ -5,10 +5,11 @@ function formatStatus(status) {
 }
 
 /**
- * Inline banner listing open community complaints similar to the one being
- * filed. "Yes, this is my issue" upvotes the existing ticket instead.
+ * Inline banner listing open complaints similar to the one being filed, either
+ * on the same floor (scope "community") or in the student's room (scope "room").
+ * "Yes, this is my issue" upvotes the existing ticket instead.
  */
-export default function DuplicateWarning({ candidates, upvotingId, onUpvote, onDismiss }) {
+export default function DuplicateWarning({ scope = 'community', candidates, upvotingId, onUpvote, onDismiss }) {
   return (
     <section
       aria-labelledby="duplicate-warning-title"
@@ -19,7 +20,8 @@ export default function DuplicateWarning({ candidates, upvotingId, onUpvote, onD
         <div className="min-w-0 flex-1">
           <h4 id="duplicate-warning-title" className="font-semibold">Wait! Has this already been reported?</h4>
           <p className="mt-0.5 text-amber-900">
-            These open complaints on the same floor look similar. If one is your issue, upvote it instead of filing a new one.
+            {scope === 'room' ? 'These open complaints for your room' : 'These open complaints on the same floor'} look
+            similar. If one is your issue, upvote it instead of filing a new one.
           </p>
 
           <ul className="mt-3 space-y-2">
@@ -33,6 +35,7 @@ export default function DuplicateWarning({ candidates, upvotingId, onUpvote, onD
                   <p className="mt-0.5 text-xs text-slate-500">
                     #{candidate.id} · {formatStatus(candidate.status)}
                     {candidate.wing && ` · ${candidate.wing}`}
+                    {!candidate.wing && candidate.room && ` · Room ${candidate.room}`}
                     {' · '}
                     {candidate.upvoteCount} {candidate.upvoteCount === 1 ? 'upvote' : 'upvotes'}
                   </p>
