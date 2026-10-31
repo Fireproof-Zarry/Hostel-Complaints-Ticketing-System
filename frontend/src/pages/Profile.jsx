@@ -2,16 +2,17 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import ProfileForm from '../components/ProfileForm';
 import StudentSidebar from '../components/StudentSidebar';
+import { getToken, logout } from '../auth/session';
 
 /** Student profile page, with the same sidebar as the student dashboard. */
 export default function Profile() {
   const navigate = useNavigate();
-  const token = localStorage.getItem('idToken');
+  const token = getToken();
 
   if (!token) return <Navigate to="/login" replace />;
 
   const handleLogout = () => {
-    localStorage.removeItem('idToken');
+    logout();
     navigate('/login', { replace: true });
   };
 

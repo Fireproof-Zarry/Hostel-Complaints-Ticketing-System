@@ -15,6 +15,7 @@ import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
+import { apiFetch, getToken, logout } from '../auth/session';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
@@ -130,23 +131,17 @@ export default function StudentHome() {
   const [upvotingId, setUpvotingId] = useState(null);
 
   const navigate = useNavigate();
-  const token = localStorage.getItem('idToken');
+  const token = getToken();
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('idToken');
+    logout();
     navigate('/login', { replace: true });
   }, [navigate]);
 
   const requestMyComplaints = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/complaints/mine`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // apiFetch handles expired/rejected tokens by ending the session
+    const response = await apiFetch(`${apiBaseUrl}/complaints/mine`);
 
-    if (response.status === 401) {
-      throw new Error(
-        'The backend rejected your Google sign-in token while loading complaints (401). You can stay on this page; try signing out and back in, or check the backend logs.'
-      );
-    }
     if (response.status === 403) {
       throw new Error('Your account is signed in but is not allowed to view these complaints (403).');
     }
@@ -159,16 +154,13 @@ export default function StudentHome() {
       throw new Error('The server returned an unexpected complaints response.');
     }
     return data;
-  }, [token]);
+  }, []);
 
   // Personal complaints use the room from the profile, so load it up front
   useEffect(() => {
     if (!token) return undefined;
     const controller = new AbortController();
-    fetch(`${apiBaseUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
+    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data) setProfile(data);
@@ -198,10 +190,7 @@ export default function StudentHome() {
 
     // Aborting drops responses for inputs the student has already changed
     const controller = new AbortController();
-    fetch(`${apiBaseUrl}/complaints/potential-duplicates?${params}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
+    apiFetch(`${apiBaseUrl}/complaints/potential-duplicates?${params}`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : []))
       .then((candidates) => {
         setDuplicateResult({ key: debouncedDuplicateKey, candidates: Array.isArray(candidates) ? candidates : [] });
@@ -293,12 +282,9 @@ export default function StudentHome() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/complaints`, {
+      const response = await apiFetch(`${apiBaseUrl}/complaints`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
@@ -311,10 +297,6 @@ export default function StudentHome() {
         }),
       });
 
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
       if (response.status === 429) {
         setError('You have reached the limit of 5 open complaints. Please wait for some to be resolved.');
         return;
@@ -364,16 +346,9 @@ export default function StudentHome() {
     setSuccess('');
     setUpvotingId(candidate.id);
     try {
-      const upvote = () => fetch(`${apiBaseUrl}/complaints/${candidate.id}/upvote`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const upvote = () => apiFetch(`${apiBaseUrl}/complaints/${candidate.id}/upvote`, { method: 'POST' });
 
       let response = await upvote();
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
       if (!response.ok) {
         throw new Error('That complaint can no longer be upvoted. You can still submit your own complaint.');
       }

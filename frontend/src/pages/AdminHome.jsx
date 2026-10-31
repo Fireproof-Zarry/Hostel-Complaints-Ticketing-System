@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
 import ProfileForm from '../components/ProfileForm'
+import { apiFetch, logout } from '../auth/session'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import './AdminHome.css'
 
@@ -137,8 +138,6 @@ export default function AdminHome() {
   }
 
   const fetchComplaints = async (filters = {}, query = searchTerm) => {
-    const idToken = localStorage.getItem('idToken')
-
     try {
       setLoading(true)
       setError('')
@@ -171,14 +170,9 @@ export default function AdminHome() {
 
       const queryString = params.toString()
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_URL}/admin/complaints${queryString ? `?${queryString}` : ''
-        }`,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
+        }`
       )
 
       if (!response.ok) {
@@ -202,16 +196,9 @@ export default function AdminHome() {
   }
 
   const fetchAdmins = async () => {
-    const idToken = localStorage.getItem('idToken')
-
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints/admins`,
-        {
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
-        }
+      const response = await apiFetch(
+        `${import.meta.env.VITE_API_URL}/admin/complaints/admins`
       )
 
       if (!response.ok) {
@@ -272,19 +259,14 @@ export default function AdminHome() {
       return
     }
 
-    const idToken = localStorage.getItem('idToken')
-
     try {
       setStatusUpdating(true)
       setStatusError('')
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_URL}/admin/complaints/${statusComplaint.id}/status?status=${encodeURIComponent(newStatus)}`,
         {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
         }
       )
 
@@ -335,19 +317,14 @@ export default function AdminHome() {
       return
     }
 
-    const idToken = localStorage.getItem('idToken')
-
     try {
       setAssignUpdating(true)
       setAssignError('')
 
-      const response = await fetch(
+      const response = await apiFetch(
         `${import.meta.env.VITE_API_URL}/admin/complaints/${assignComplaint.id}/assign?email=${encodeURIComponent(selectedAdmin)}`,
         {
           method: 'PATCH',
-          headers: {
-            Authorization: `Bearer ${idToken}`,
-          },
         }
       )
 
@@ -438,7 +415,7 @@ export default function AdminHome() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('idToken')
+    logout()
     navigate('/login', { replace: true })
   }
 

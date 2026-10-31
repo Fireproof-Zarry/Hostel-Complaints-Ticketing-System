@@ -57,6 +57,9 @@ public class SecurityConfig {
             List.of("Authorization", "Content-Type")
         );
 
+        // Lets the frontend read why a token was rejected (e.g. "Jwt expired at ...")
+        configuration.setExposedHeaders(List.of("WWW-Authenticate"));
+
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
 

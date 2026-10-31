@@ -19,6 +19,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({StudentController.class, HealthController.class})
@@ -56,6 +58,19 @@ public class StudentControllerSecurityTest {
                 .andExpect(status().isUnauthorized());
     }
     
+    @Test
+    public void rejectedTokenReasonIsReadableByTheFrontend() throws Exception {
+        when(jwtDecoder.decode(anyString())).thenThrow(new BadJwtException("Jwt expired at 2026-11-01T10:00:00Z"));
+
+        // Cross-origin, as the Vite frontend (localhost:5173) calls the API
+        mockMvc.perform(get("/api/student/complaints")
+                .header("Origin", "http://localhost:5173")
+                .header("Authorization", "Bearer expired-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("WWW-Authenticate", containsString("Jwt expired")))
+                .andExpect(header().string("Access-Control-Expose-Headers", containsString("WWW-Authenticate")));
+    }
+
     @Test
     public void whenHealthCheck_thenReturns200() throws Exception {
         mockMvc.perform(get("/health"))
