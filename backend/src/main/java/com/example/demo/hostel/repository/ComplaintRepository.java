@@ -1,9 +1,12 @@
 package com.example.demo.hostel.repository;
 
+import com.example.demo.hostel.dto.CommunityComplaintView;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
@@ -35,6 +38,83 @@ public interface ComplaintRepository
 
         // Admin audit view of the archive
         List<Complaint> findByIsArchivedTrue();
+
+        /**
+         * Community dashboard, most upvoted first (newest first on ties). One
+         * query: upvotes are counted with a LEFT JOIN + GROUP BY (COUNT of a single
+         * column: COUNT(u) on the composite key would count the LEFT JOIN's
+         * (NULL, NULL) row as one upvote), and whether
+         * {@code userId} reported or upvoted each complaint is computed inline.
+         * {@code floor} null means all floors.
+         */
+        @Query(value = """
+                SELECT new com.example.demo.hostel.dto.CommunityComplaintView(
+                    c.id, c.title, c.description, c.status, cat.name, l.floor, l.wing,
+                    c.imageUrl, c.createdAt,
+                    COUNT(u.id.userId),
+                    CASE WHEN s.id = :userId THEN true ELSE false END,
+                    CASE WHEN SUM(CASE WHEN u.id.userId = :userId THEN 1 ELSE 0 END) > 0 THEN true ELSE false END)
+                FROM Complaint c
+                JOIN c.category cat
+                JOIN c.location l
+                JOIN c.student s
+                LEFT JOIN Upvote u ON u.complaint = c
+                WHERE l.communityArea = true
+                  AND c.isArchived = false
+                  AND c.status IN :statuses
+                  AND (:floor IS NULL OR l.floor = :floor)
+                GROUP BY c.id, c.title, c.description, c.status, cat.name, l.floor, l.wing,
+                         c.imageUrl, c.createdAt, s.id
+                ORDER BY COUNT(u.id.userId) DESC, c.createdAt DESC
+                """, countQuery = """
+                SELECT COUNT(c)
+                FROM Complaint c
+                JOIN c.location l
+                WHERE l.communityArea = true
+                  AND c.isArchived = false
+                  AND c.status IN :statuses
+                  AND (:floor IS NULL OR l.floor = :floor)
+                """)
+        Page<CommunityComplaintView> findCommunityComplaintsByUpvotes(
+                        @Param("statuses") Collection<Status> statuses,
+                        @Param("floor") String floor,
+                        @Param("userId") String userId,
+                        Pageable pageable);
+
+        /** Same as findCommunityComplaintsByUpvotes, newest first. */
+        @Query(value = """
+                SELECT new com.example.demo.hostel.dto.CommunityComplaintView(
+                    c.id, c.title, c.description, c.status, cat.name, l.floor, l.wing,
+                    c.imageUrl, c.createdAt,
+                    COUNT(u.id.userId),
+                    CASE WHEN s.id = :userId THEN true ELSE false END,
+                    CASE WHEN SUM(CASE WHEN u.id.userId = :userId THEN 1 ELSE 0 END) > 0 THEN true ELSE false END)
+                FROM Complaint c
+                JOIN c.category cat
+                JOIN c.location l
+                JOIN c.student s
+                LEFT JOIN Upvote u ON u.complaint = c
+                WHERE l.communityArea = true
+                  AND c.isArchived = false
+                  AND c.status IN :statuses
+                  AND (:floor IS NULL OR l.floor = :floor)
+                GROUP BY c.id, c.title, c.description, c.status, cat.name, l.floor, l.wing,
+                         c.imageUrl, c.createdAt, s.id
+                ORDER BY c.createdAt DESC
+                """, countQuery = """
+                SELECT COUNT(c)
+                FROM Complaint c
+                JOIN c.location l
+                WHERE l.communityArea = true
+                  AND c.isArchived = false
+                  AND c.status IN :statuses
+                  AND (:floor IS NULL OR l.floor = :floor)
+                """)
+        Page<CommunityComplaintView> findCommunityComplaintsByRecent(
+                        @Param("statuses") Collection<Status> statuses,
+                        @Param("floor") String floor,
+                        @Param("userId") String userId,
+                        Pageable pageable);
 
         /**
          * Sets the pg_trgm thresholds used by the % and <% operators for the

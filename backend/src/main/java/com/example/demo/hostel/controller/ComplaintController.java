@@ -1,9 +1,11 @@
 package com.example.demo.hostel.controller;
 
+import com.example.demo.hostel.dto.CommunityComplaintPage;
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.dto.ComplaintHistoryEntry;
+import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
@@ -30,16 +32,19 @@ public class ComplaintController {
     private final RoomLocationValidator roomLocationValidator;
     private final UpvoteService upvoteService;
     private final DuplicateDetectionService duplicateDetectionService;
+    private final CommunityComplaintService communityComplaintService;
 
     public ComplaintController(
             ComplaintService complaintService,
             RoomLocationValidator roomLocationValidator,
             UpvoteService upvoteService,
-            DuplicateDetectionService duplicateDetectionService) {
+            DuplicateDetectionService duplicateDetectionService,
+            CommunityComplaintService communityComplaintService) {
         this.complaintService = complaintService;
         this.roomLocationValidator = roomLocationValidator;
         this.upvoteService = upvoteService;
         this.duplicateDetectionService = duplicateDetectionService;
+        this.communityComplaintService = communityComplaintService;
     }
 
     private static final int MAX_WING_LENGTH = 100;
@@ -112,6 +117,23 @@ public class ComplaintController {
      * optionally a wing; personal issues (communityArea=false) search the
      * student's own profile room, so no location is sent.
      */
+    /**
+     * Community dashboard: open community-area complaints with their upvote
+     * count and whether the caller reported / upvoted each one.
+     * sort = upvotes (default) | recent; optional floor filter; paged.
+     */
+    @GetMapping("/community")
+    public ResponseEntity<CommunityComplaintPage> getCommunityComplaints(
+            @RequestParam(required = false) String floor,
+            @RequestParam(defaultValue = "upvotes") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return ResponseEntity.ok(
+                communityComplaintService.getCommunityComplaints(email, floor, sort, page, size));
+    }
+
     @GetMapping("/potential-duplicates")
     public ResponseEntity<List<DuplicateCandidate>> getPotentialDuplicates(
             @RequestParam String title,
