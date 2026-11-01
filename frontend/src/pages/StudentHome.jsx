@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
+import SubmissionConfirmation from '../components/SubmissionConfirmation';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { clearComplaintDraft, isDraftEmpty, loadComplaintDraft, saveComplaintDraft } from '../utils/complaintDraft';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -115,7 +117,12 @@ export default function StudentHome() {
   const location = useLocation();
   // The Profile page's sidebar links back here with the tab to open
   const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
-  const [formData, setFormData] = useState(initialForm);
+  // Restore an unfinished complaint (e.g. after a trip to the Profile page)
+  const [formData, setFormData] = useState(() => loadComplaintDraft(initialForm));
+  const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(loadComplaintDraft(initialForm)));
+  const [submittedComplaint, setSubmittedComplaint] = useState(null);
+  // Stable so the dialog's Escape-key listener is not re-registered every render
+  const closeConfirmation = useCallback(() => setSubmittedComplaint(null), []);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -133,6 +140,7 @@ export default function StudentHome() {
   const token = localStorage.getItem('idToken');
 
   const handleLogout = useCallback(() => {
+    clearComplaintDraft();
     localStorage.removeItem('idToken');
     navigate('/login', { replace: true });
   }, [navigate]);
@@ -242,6 +250,11 @@ export default function StudentHome() {
     };
   }, [requestMyComplaints, token]);
 
+  // Autosave the form as a draft (an empty form removes the draft)
+  useEffect(() => {
+    saveComplaintDraft(formData);
+  }, [formData]);
+
   const activeCount = complaints.filter(activeComplaint).length;
   const filteredComplaints = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -330,21 +343,19 @@ export default function StudentHome() {
 
       // The image endpoint needs the new complaint's id, so upload afterwards.
       // A failed upload keeps the complaint; resubmitting would create a duplicate.
+      let photoError = '';
       if (imageUploadRef.current?.hasFile()) {
         const upload = await imageUploadRef.current.upload(
           `${apiBaseUrl}/complaints/${createdComplaint.id}/image`,
           token
         );
-        if (!upload.ok) {
-          setError(`Your complaint was submitted, but the photo was not attached: ${upload.error}`);
-        }
+        if (!upload.ok) photoError = upload.error;
       }
 
       resetComplaintForm();
-      setSuccess('Complaint submitted successfully.');
+      setSubmittedComplaint({ id: createdComplaint.id, photoError });
       const updatedComplaints = await requestMyComplaints();
       if (updatedComplaints) setComplaints(updatedComplaints);
-      setActiveTab('complaints');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Network error. Please try again later.');
     } finally {
@@ -353,6 +364,8 @@ export default function StudentHome() {
   };
 
   const resetComplaintForm = () => {
+    clearComplaintDraft();
+    setDraftRestored(false);
     setFormData(initialForm);
     imageUploadRef.current?.reset();
     setDuplicateResult({ key: '', candidates: [] });
@@ -397,6 +410,11 @@ export default function StudentHome() {
     }
   };
 
+  // The draft is already saved; the Profile page offers a way back to it
+  const openProfileFromComplaint = () => {
+    navigate('/profile', { state: { returnTo: 'submit' } });
+  };
+
   const updateForm = (field) => (event) => {
     setFormData((current) => ({ ...current, [field]: event.target.value }));
   };
@@ -407,7 +425,11 @@ export default function StudentHome() {
         activeId={activeTab}
         onSelect={(id) => {
           if (id === 'profile') {
-            navigate('/profile');
+            if (activeTab === 'submit' && !isDraftEmpty(formData)) {
+              openProfileFromComplaint();
+            } else {
+              navigate('/profile');
+            }
             return;
           }
           setActiveTab(id);
@@ -561,6 +583,18 @@ export default function StudentHome() {
                 <h3 className="text-2xl font-bold text-slate-900">File a new complaint</h3>
                 <p className="mt-1 text-sm text-slate-500">Include the location and details so the issue can be routed correctly.</p>
               </div>
+              {draftRestored && !isDraftEmpty(formData) && (
+                <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                  <p>We restored your unfinished complaint. If you had attached a photo, please attach it again.</p>
+                  <button
+                    type="button"
+                    onClick={() => setDraftRestored(false)}
+                    className="font-medium text-blue-700 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label htmlFor="complaint-title" className="mb-1.5 block text-sm font-medium text-slate-700">Issue title</label>
@@ -654,7 +688,7 @@ export default function StudentHome() {
                     <p>Add your room number to your profile to file a complaint about your room.</p>
                     <button
                       type="button"
-                      onClick={() => navigate('/profile')}
+                      onClick={openProfileFromComplaint}
                       className="rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700"
                     >
                       Add room number
@@ -665,7 +699,7 @@ export default function StudentHome() {
                     {profileRoomFloor
                       ? <>Room <strong className="text-slate-900">{profileRoom}</strong> ({profileRoomFloor} floor), from your profile.</>
                       : 'Loading your room from your profile…'}{' '}
-                    <button type="button" onClick={() => navigate('/profile')} className="font-medium text-blue-700 hover:underline">
+                    <button type="button" onClick={openProfileFromComplaint} className="font-medium text-blue-700 hover:underline">
                       Change
                     </button>
                   </p>
@@ -814,6 +848,17 @@ export default function StudentHome() {
           </section>
         </div>
       </main>
+      {submittedComplaint && (
+        <SubmissionConfirmation
+          complaintId={submittedComplaint.id}
+          photoError={submittedComplaint.photoError}
+          onViewComplaints={() => {
+            setSubmittedComplaint(null);
+            setActiveTab('complaints');
+          }}
+          onFileAnother={closeConfirmation}
+        />
+      )}
     </div>
   );
 }
