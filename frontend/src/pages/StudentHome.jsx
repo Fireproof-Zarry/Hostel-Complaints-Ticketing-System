@@ -11,12 +11,14 @@ import {
   RefreshCw,
   KeyRound,
 } from 'lucide-react';
+import CommunityDashboard from '../components/CommunityDashboard';
 import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
 import { apiFetch, getToken, logout } from '../auth/session';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -33,27 +35,6 @@ const initialForm = {
   availableTimeSlot: '',
   keyWithSecurity: false,
 };
-
-function statusClasses(status) {
-  switch (status?.toUpperCase()) {
-    case 'PENDING':
-      return 'bg-amber-100 text-amber-800';
-    case 'ASSIGNED':
-      return 'bg-violet-100 text-violet-800';
-    case 'IN_PROGRESS':
-      return 'bg-blue-100 text-blue-800';
-    case 'RESOLVED':
-      return 'bg-emerald-100 text-emerald-800';
-    case 'REJECTED':
-      return 'bg-rose-100 text-rose-800';
-    default:
-      return 'bg-slate-100 text-slate-700';
-  }
-}
-
-function formatStatus(status) {
-  return status?.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Unknown';
-}
 
 function formatDate(value) {
   if (!value) return 'Date unavailable';
@@ -706,6 +687,8 @@ export default function StudentHome() {
             </section>
           )}
 
+          {activeTab === 'community' && <CommunityDashboard />}
+
           {activeTab === 'complaints' && (
             <section className="space-y-5">
               <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -783,7 +766,7 @@ export default function StudentHome() {
             <div className="flex items-start gap-3">
               <Bell className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
               <p>
-                Community upvotes, manager nudges, and notifications are work in progress and will be available soon.
+                Manager nudges and notifications are work in progress and will be available soon.
               </p>
             </div>
           </section>
