@@ -32,6 +32,8 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2
+                // Same 401 response, plus a log line with the exact rejection reason
+                .authenticationEntryPoint(new LoggingBearerTokenEntryPoint())
                 .jwt(jwt -> jwt
                     .jwtAuthenticationConverter(jwtAuthenticationConverter)
                 )

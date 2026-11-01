@@ -149,7 +149,11 @@ async function sendWithToken(url, options, isRetry) {
     if (!isRetry && isStaleToken(token, getToken())) {
       return sendWithToken(url, options, true);
     }
-    const reason = sessionEndReason(response.headers.get('WWW-Authenticate'));
+    const wwwAuthenticate = response.headers.get('WWW-Authenticate');
+    // Full detail for diagnosing unexpected sign-outs (never the token itself)
+    console.warn(`[HostelFix] 401 from ${options.method ?? 'GET'} ${url}: `
+      + (wwwAuthenticate ?? 'WWW-Authenticate unreadable (backend not exposing it via CORS?)'));
+    const reason = sessionEndReason(wwwAuthenticate);
     endSession(reason, token);
     throw new SessionEndedError(reason);
   }
