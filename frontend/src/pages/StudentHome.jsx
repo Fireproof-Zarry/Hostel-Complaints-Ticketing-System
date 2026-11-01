@@ -18,7 +18,7 @@ import ImageUpload from '../components/ImageUpload';
 import SubmissionConfirmation from '../components/SubmissionConfirmation';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
-import { apiFetch, getToken, logout } from '../auth/session';
+import { apiFetch, decodeTokenPayload, getToken, logout } from '../auth/session';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { clearComplaintDraft, isDraftEmpty, loadComplaintDraft, saveComplaintDraft } from '../utils/complaintDraft';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
@@ -133,9 +133,12 @@ export default function StudentHome() {
   const location = useLocation();
   // The Profile page's sidebar links back here with the tab to open
   const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
-  // Restore an unfinished complaint (e.g. after a trip to the Profile page)
-  const [formData, setFormData] = useState(() => loadComplaintDraft(initialForm));
-  const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(loadComplaintDraft(initialForm)));
+  // Drafts are kept per account (the email in the sign-in token), so they survive
+  // reloads, closing the browser and logging out and back in (for 7 days)
+  const [draftOwner] = useState(() => decodeTokenPayload(getToken())?.email ?? null);
+  const [initialDraft] = useState(() => loadComplaintDraft(initialForm, draftOwner));
+  const [formData, setFormData] = useState(initialDraft);
+  const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(initialDraft));
   const [submittedComplaint, setSubmittedComplaint] = useState(null);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -163,7 +166,6 @@ export default function StudentHome() {
   const token = getToken();
 
   const handleLogout = useCallback(() => {
-    clearComplaintDraft();
     logout();
     navigate('/login', { replace: true });
   }, [navigate]);
@@ -263,8 +265,8 @@ export default function StudentHome() {
 
   // Autosave the form as a draft (an empty form removes the draft)
   useEffect(() => {
-    saveComplaintDraft(formData);
-  }, [formData]);
+    saveComplaintDraft(formData, draftOwner);
+  }, [draftOwner, formData]);
 
   const activeCount = complaints.filter(activeComplaint).length;
   const filteredComplaints = useMemo(() => {
@@ -368,7 +370,7 @@ export default function StudentHome() {
   };
 
   const resetComplaintForm = () => {
-    clearComplaintDraft();
+    clearComplaintDraft(draftOwner);
     setDraftRestored(false);
     setFormData(initialForm);
     imageUploadRef.current?.reset();
