@@ -138,4 +138,43 @@ class SupabaseStorageServiceTest {
     private static MockMultipartFile file(String name, String contentType, byte[] content) {
         return new MockMultipartFile("file", name, contentType, content);
     }
+
+    @Test
+    void deletesOwnUploadedImage() {
+        String name = "3f1c2a9e-1b2c-4d5e-8f90-123456789abc.jpg";
+        server.expect(requestTo(URL + "/storage/v1/object/complaint-images/" + name))
+                .andExpect(method(HttpMethod.DELETE))
+                .andExpect(header("apikey", KEY))
+                .andRespond(withSuccess());
+
+        assertThat(storageService.deleteImage(URL + "/storage/v1/object/public/complaint-images/" + name)).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void missingImageCountsAsDeleted() {
+        String name = "3f1c2a9e-1b2c-4d5e-8f90-123456789abc.png";
+        server.expect(requestTo(URL + "/storage/v1/object/complaint-images/" + name))
+                .andRespond(withStatus(HttpStatus.NOT_FOUND));
+
+        assertThat(storageService.deleteImage(URL + "/storage/v1/object/public/complaint-images/" + name)).isTrue();
+    }
+
+    @Test
+    void storageFailureIsReportedSoTheCallerCanRetry() {
+        String name = "3f1c2a9e-1b2c-4d5e-8f90-123456789abc.webp";
+        server.expect(requestTo(URL + "/storage/v1/object/complaint-images/" + name))
+                .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR));
+
+        assertThat(storageService.deleteImage(URL + "/storage/v1/object/public/complaint-images/" + name)).isFalse();
+    }
+
+    @Test
+    void ignoresMissingForeignOrUnexpectedUrls() {
+        assertThat(storageService.deleteImage(null)).isTrue();
+        assertThat(storageService.deleteImage("https://elsewhere.example/a.jpg")).isTrue();
+        // Not one of our "<uuid>.<ext>" names, e.g. a path into another object
+        assertThat(storageService.deleteImage(URL + "/storage/v1/object/public/complaint-images/../other/file.jpg")).isTrue();
+        server.verify();
+    }
 }
