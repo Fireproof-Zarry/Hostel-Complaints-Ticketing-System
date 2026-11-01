@@ -3,7 +3,7 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
@@ -134,7 +134,7 @@ public class ComplaintController {
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<List<ComplaintHistory>> getComplaintHistory(
+    public ResponseEntity<List<ComplaintHistoryEntry>> getComplaintHistory(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
 
