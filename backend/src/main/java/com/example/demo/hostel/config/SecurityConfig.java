@@ -1,5 +1,6 @@
 package com.example.demo.hostel.config;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -27,6 +28,11 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
+                // Spring renders errors by re-dispatching to /error. If the login check
+                // itself fails (e.g. a database error), that dispatch has no login and
+                // the real 500 would turn into a 401, which the frontend treats as a
+                // rejected sign-in. Error dispatches only render the original error.
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/health").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()

@@ -50,6 +50,15 @@ export function isStaleToken(failedToken, currentToken) {
 }
 
 /**
+ * True when a 401's WWW-Authenticate header says the token itself was rejected
+ * (error="invalid_token"). A bare "Bearer ..." header means the server failed
+ * to authenticate the request for another reason, not that the token is bad.
+ */
+export function isTokenRejection(wwwAuthenticate) {
+  return /error="invalid_token"/i.test(wwwAuthenticate ?? '');
+}
+
+/**
  * Why the backend rejected the token, from its WWW-Authenticate header,
  * e.g. 'Bearer error="invalid_token", error_description="Jwt expired at ..."'.
  */
@@ -153,6 +162,11 @@ async function sendWithToken(url, options, isRetry) {
     // Full detail for diagnosing unexpected sign-outs (never the token itself)
     console.warn(`[HostelFix] 401 from ${options.method ?? 'GET'} ${url}: `
       + (wwwAuthenticate ?? 'WWW-Authenticate unreadable (backend not exposing it via CORS?)'));
+    // Only a genuine token rejection ends the session; anything else is a
+    // server-side problem and is reported like any other failed request
+    if (wwwAuthenticate !== null && !isTokenRejection(wwwAuthenticate)) {
+      return response;
+    }
     const reason = sessionEndReason(wwwAuthenticate);
     endSession(reason, token);
     throw new SessionEndedError(reason);

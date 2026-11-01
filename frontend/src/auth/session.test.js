@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeTokenPayload, getTokenExpiry, isStaleToken, isTokenExpired, sessionEndReason } from './session.js';
+import { decodeTokenPayload, getTokenExpiry, isStaleToken, isTokenExpired, isTokenRejection, sessionEndReason } from './session.js';
 
 function token(payload) {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -42,4 +42,11 @@ test('a failure is stale only when a different token is stored now', () => {
   // Nothing stored anymore: the failure is real, not stale
   assert.equal(isStaleToken('old-token', null), false);
   assert.equal(isStaleToken('old-token', ''), false);
+});
+
+test('only an invalid_token 401 counts as a rejected sign-in', () => {
+  assert.equal(isTokenRejection('Bearer error="invalid_token", error_description="Jwt expired at 2026-11-01T10:00:00Z"'), true);
+  // A bare challenge: the server could not authenticate the request (e.g. a crash during the login check)
+  assert.equal(isTokenRejection('Bearer resource_metadata="http://localhost:8080/.well-known/oauth-protected-resource"'), false);
+  assert.equal(isTokenRejection(null), false);
 });
