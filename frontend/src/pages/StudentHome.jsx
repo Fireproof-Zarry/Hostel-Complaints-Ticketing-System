@@ -418,14 +418,11 @@ export default function StudentHome() {
     setIsDeleting(true);
     setDeleteError('');
     try {
-      const response = await fetch(
+      // apiFetch ends the session (and redirects to sign in) on 401
+      const response = await apiFetch(
         `${apiBaseUrl}/complaints/${complaint.id}?reason=${encodeURIComponent(reason)}`,
-        { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+        { method: 'DELETE' }
       );
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
       if (response.status === 409) {
         // An admin picked it up meanwhile; show the current status
         const updated = await requestMyComplaints();
