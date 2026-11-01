@@ -8,120 +8,87 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 class ComplaintTransitionServiceTest {
 
-    private ComplaintTransitionService transitionService;
+        private ComplaintTransitionService transitionService;
 
-    @BeforeEach
-    void setUp() {
-        transitionService = new ComplaintTransitionService(null, null, null, null, null);
-    }
+        @BeforeEach
+        void setUp() {
+                transitionService = new ComplaintTransitionService(null, null, null, null);
+        }
 
-    @Test
-    void pendingToAssigned_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.PENDING,
-                        Status.ASSIGNED
-                )
-        );
-    }
+        @Test
+        void pendingToAssigned_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.PENDING,
+                                Status.ASSIGNED));
+        }
 
-    @Test
-    void pendingToRejected_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.PENDING,
-                        Status.REJECTED
-                )
-        );
-    }
+        @Test
+        void pendingToRejected_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.PENDING,
+                                Status.REJECTED));
+        }
 
-    @Test
-    void pendingToResolved_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.PENDING,
-                        Status.RESOLVED
-                )
-        );
-    }
+        @Test
+        void pendingToResolved_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.PENDING,
+                                Status.RESOLVED));
+        }
 
-    @Test
-    void assignedToInProgress_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.ASSIGNED,
-                        Status.IN_PROGRESS
-                )
-        );
-    }
+        @Test
+        void assignedToInProgress_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.ASSIGNED,
+                                Status.IN_PROGRESS));
+        }
 
-    @Test
-    void assignedToPending_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.ASSIGNED,
-                        Status.PENDING
-                )
-        );
-    }
+        @Test
+        void assignedToPending_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.ASSIGNED,
+                                Status.PENDING));
+        }
 
-    @Test
-    void inProgressToResolved_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.IN_PROGRESS,
-                        Status.RESOLVED
-                )
-        );
-    }
+        @Test
+        void inProgressToResolved_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.IN_PROGRESS,
+                                Status.RESOLVED));
+        }
 
-    @Test
-    void inProgressToRejected_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.IN_PROGRESS,
-                        Status.REJECTED
-                )
-        );
-    }
+        @Test
+        void inProgressToRejected_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.IN_PROGRESS,
+                                Status.REJECTED));
+        }
 
-    @Test
-    void resolvedToPending_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.RESOLVED,
-                        Status.PENDING
-                )
-        );
-    }
+        @Test
+        void resolvedToPending_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.RESOLVED,
+                                Status.PENDING));
+        }
 
-    @Test
-    void resolvedToInProgress_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.RESOLVED,
-                        Status.IN_PROGRESS
-                )
-        );
-    }
+        @Test
+        void resolvedToInProgress_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.RESOLVED,
+                                Status.IN_PROGRESS));
+        }
 
-    @Test
-    void rejectedToAssigned_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.REJECTED,
-                        Status.ASSIGNED
-                )
-        );
-    }
+        @Test
+        void rejectedToAssigned_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.REJECTED,
+                                Status.ASSIGNED));
+        }
 
-    @Test
-    void rejectedToResolved_isAllowed() {
-        assertDoesNotThrow(() ->
-                transitionService.validateTransition(
-                        Status.REJECTED,
-                        Status.RESOLVED
-                )
-        );
-    }
+        @Test
+        void rejectedToResolved_isAllowed() {
+                assertDoesNotThrow(() -> transitionService.validateTransition(
+                                Status.REJECTED,
+                                Status.RESOLVED));
+        }
 }

@@ -11,7 +11,7 @@ import org.hibernate.annotations.OnDeleteAction;
 @Table(name = "work_orders")
 public class WorkOrder {
 
-    public static final String STATUS_OPEN = "OPEN";
+    public static final String STATUS_ASSIGNED = "ASSIGNED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -19,7 +19,7 @@ public class WorkOrder {
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "complaint_id", nullable = false)
+    @JoinColumn(name = "complaint_id", nullable = false, unique = true)
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Complaint complaint;
 
@@ -31,7 +31,7 @@ public class WorkOrder {
     private String priority;
 
     @Column(nullable = false)
-    private String status = STATUS_OPEN;
+    private String status = STATUS_ASSIGNED;
 
     private LocalDateTime deadline;
 
@@ -43,20 +43,67 @@ public class WorkOrder {
     private LocalDateTime createdAt;
 
     // Getters and Setters
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
-    public Complaint getComplaint() { return complaint; }
-    public void setComplaint(Complaint complaint) { this.complaint = complaint; }
-    public User getAssignee() { return assignee; }
-    public void setAssignee(User assignee) { this.assignee = assignee; }
-    public String getPriority() { return priority; }
-    public void setPriority(String priority) { this.priority = priority; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public LocalDateTime getDeadline() { return deadline; }
-    public void setDeadline(LocalDateTime deadline) { this.deadline = deadline; }
-    public String getCompletionNotes() { return completionNotes; }
-    public void setCompletionNotes(String completionNotes) { this.completionNotes = completionNotes; }
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Complaint getComplaint() {
+        return complaint;
+    }
+
+    public void setComplaint(Complaint complaint) {
+        this.complaint = complaint;
+    }
+
+    public User getAssignee() {
+        return assignee;
+    }
+
+    public void setAssignee(User assignee) {
+        this.assignee = assignee;
+    }
+
+    public String getPriority() {
+        return priority;
+    }
+
+    public void setPriority(String priority) {
+        this.priority = priority;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public LocalDateTime getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(LocalDateTime deadline) {
+        this.deadline = deadline;
+    }
+
+    public String getCompletionNotes() {
+        return completionNotes;
+    }
+
+    public void setCompletionNotes(String completionNotes) {
+        this.completionNotes = completionNotes;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

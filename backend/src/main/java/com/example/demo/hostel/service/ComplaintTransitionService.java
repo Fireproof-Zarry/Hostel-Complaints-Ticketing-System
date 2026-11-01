@@ -25,19 +25,16 @@ public class ComplaintTransitionService {
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
-    private final WorkOrderRepository workOrderRepository;
     private final ComplaintHistoryRepository complaintHistoryRepository;
     private final FcmNotificationService fcmNotificationService;
 
     public ComplaintTransitionService(
             ComplaintRepository complaintRepository,
             UserRepository userRepository,
-            WorkOrderRepository workOrderRepository,
             ComplaintHistoryRepository complaintHistoryRepository,
             FcmNotificationService fcmNotificationService) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
-        this.workOrderRepository = workOrderRepository;
         this.complaintHistoryRepository = complaintHistoryRepository;
         this.fcmNotificationService = fcmNotificationService;
     }
@@ -108,49 +105,5 @@ public class ComplaintTransitionService {
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown status: " + status);
         }
-    }
-
-    /**
-     * Moves the complaint to IN_PROGRESS and creates its work order in one
-     * transaction: if either write fails, neither is committed.
-     */
-    @Transactional
-    public WorkOrder assignWorkOrder(Long complaintId, String assigneeId, String priority, LocalDateTime deadline) {
-        if (priority == null || priority.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority is required");
-        }
-
-        Complaint complaint = complaintRepository.findById(complaintId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
-
-        User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignee not found"));
-
-        if (assignee.getRole() != Role.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Complaint can only be assigned to an admin");
-        }
-
-        Status oldStatus = complaint.getStatus();
-        validateTransition(oldStatus, Status.IN_PROGRESS);
-
-        complaint.setStatus(Status.IN_PROGRESS);
-        complaint.setAssignedTo(assignee.getEmail());
-        complaintRepository.save(complaint);
-
-        ComplaintHistory history = new ComplaintHistory();
-        history.setComplaint(complaint);
-        history.setActor(assignee);
-        history.setOldStatus(oldStatus);
-        history.setNewStatus(Status.IN_PROGRESS);
-        history.setReason("Work order assigned");
-
-        complaintHistoryRepository.save(history);
-
-        WorkOrder workOrder = new WorkOrder();
-        workOrder.setComplaint(complaint);
-        workOrder.setAssignee(assignee);
-        workOrder.setPriority(priority.trim().toUpperCase(Locale.ROOT));
-        workOrder.setDeadline(deadline);
-        return workOrderRepository.save(workOrder);
     }
 }

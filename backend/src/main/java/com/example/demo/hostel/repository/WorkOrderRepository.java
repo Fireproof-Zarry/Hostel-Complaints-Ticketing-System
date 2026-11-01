@@ -13,4 +13,8 @@ import java.util.UUID;
 public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
 
         List<WorkOrder> findByComplaintOrderByCreatedAtDesc(Complaint complaint);
+
+        boolean existsByComplaint(Complaint complaint);
+
+        List<WorkOrder> findByAssignee_Id(String assigneeId);
 }

@@ -1,3 +1,4 @@
+
 package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.Category;
@@ -13,6 +14,7 @@ import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.repository.WorkOrderRepository;
 import com.example.demo.hostel.repository.ComplaintHistoryRepository;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +40,7 @@ import static org.mockito.Mockito.doThrow;
 class AssignWorkOrderTransactionTest {
 
     @Autowired
-    private ComplaintTransitionService transitionService;
+    private WorkOrderService workOrderService;
 
     @Autowired
     private ComplaintRepository complaintRepository;
@@ -63,8 +65,10 @@ class AssignWorkOrderTransactionTest {
 
     @BeforeEach
     void setUp() {
-        User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
-        adminId = userRepository.save(user("admin@smail.iitm.ac.in", Role.ADMIN)).getId();
+        User student = userRepository.save(
+                user("student@smail.iitm.ac.in", Role.STUDENT));
+        adminId = userRepository.save(
+                user("admin@smail.iitm.ac.in", Role.ADMIN)).getId();
 
         Category category = new Category();
         category.setName("Electrical");
@@ -80,6 +84,7 @@ class AssignWorkOrderTransactionTest {
         complaint.setCategory(categoryRepository.save(category));
         complaint.setLocation(locationRepository.save(location));
         complaint.setStudent(student);
+
         complaintId = complaintRepository.save(complaint).getId();
     }
 
@@ -97,22 +102,26 @@ class AssignWorkOrderTransactionTest {
     void assignWorkOrder_updatesComplaintAndCreatesWorkOrder() {
         LocalDateTime deadline = LocalDateTime.now().plusDays(2);
 
-        WorkOrder workOrder = transitionService.assignWorkOrder(complaintId, adminId, " high ", deadline);
+        WorkOrder workOrder = workOrderService.assignWorkOrder(
+                complaintId, adminId, " high ", deadline);
 
         assertThat(workOrder.getId()).isNotNull();
         assertThat(workOrder.getPriority()).isEqualTo("HIGH");
-        assertThat(workOrder.getStatus()).isEqualTo(WorkOrder.STATUS_OPEN);
+        assertThat(workOrder.getStatus()).isEqualTo(WorkOrder.STATUS_ASSIGNED);
         assertThat(workOrderRepository.count()).isEqualTo(1);
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
-        assertThat(complaint.getStatus()).isEqualTo(Status.IN_PROGRESS);
-        assertThat(complaint.getAssignedTo()).isEqualTo("admin@smail.iitm.ac.in");
+
+        assertThat(complaint.getStatus()).isEqualTo(Status.ASSIGNED);
+        assertThat(complaint.getAssignedTo())
+                .isEqualTo("admin@smail.iitm.ac.in");
+
         assertThat(complaintHistoryRepository.findAll())
                 .hasSize(1)
                 .first()
                 .satisfies(history -> {
                     assertThat(history.getOldStatus()).isEqualTo(Status.PENDING);
-                    assertThat(history.getNewStatus()).isEqualTo(Status.IN_PROGRESS);
+                    assertThat(history.getNewStatus()).isEqualTo(Status.ASSIGNED);
                     assertThat(history.getReason()).isEqualTo("Work order assigned");
                 });
     }
@@ -122,13 +131,17 @@ class AssignWorkOrderTransactionTest {
         doThrow(new IllegalStateException("simulated failure"))
                 .when(workOrderRepository).save(any(WorkOrder.class));
 
-        assertThatThrownBy(() -> transitionService.assignWorkOrder(complaintId, adminId, "HIGH", null))
+        assertThatThrownBy(() ->
+                workOrderService.assignWorkOrder(
+                        complaintId, adminId, "HIGH", null))
                 .hasMessageContaining("simulated failure");
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
+
         assertThat(complaint.getStatus()).isEqualTo(Status.PENDING);
         assertThat(complaint.getAssignedTo()).isNull();
         assertThat(workOrderRepository.count()).isZero();
+        assertThat(complaintHistoryRepository.count()).isZero();
     }
 
     private User user(String email, Role role) {
