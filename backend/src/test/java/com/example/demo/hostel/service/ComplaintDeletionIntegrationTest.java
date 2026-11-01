@@ -3,7 +3,6 @@ package com.example.demo.hostel.service;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.DeletionReason;
 import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
@@ -107,7 +106,7 @@ class ComplaintDeletionIntegrationTest {
     void ownerDeletesPendingComplaintAndItDisappearsEverywhere() {
         Long id = complaint(owner, room, Status.PENDING);
 
-        complaintService.deleteComplaint(id, OWNER_EMAIL, DeletionReason.TEST_TICKET);
+        complaintService.deleteComplaint(id, OWNER_EMAIL);
 
         assertThat(complaintRepository.findById(id)).isEmpty();
         assertThat(complaintService.getMyComplaints(OWNER_EMAIL)).isEmpty();
@@ -119,15 +118,13 @@ class ComplaintDeletionIntegrationTest {
     }
 
     @Test
-    void deletionKeepsTheRowWithReasonAndTime() {
+    void deletionKeepsTheRowUntilThePurge() {
         Long id = complaint(owner, room, Status.PENDING);
 
-        complaintService.deleteComplaint(id, OWNER_EMAIL, DeletionReason.PROBLEM_RECTIFIED);
+        complaintService.deleteComplaint(id, OWNER_EMAIL);
 
-        Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT deleted_at, deletion_reason FROM complaints WHERE id = ?", id);
+        Map<String, Object> row = jdbcTemplate.queryForMap("SELECT deleted_at FROM complaints WHERE id = ?", id);
         assertThat(row.get("DELETED_AT")).isNotNull();
-        assertThat(row.get("DELETION_REASON")).isEqualTo("PROBLEM_RECTIFIED");
     }
 
     @Test
@@ -135,9 +132,9 @@ class ComplaintDeletionIntegrationTest {
         Long assigned = complaint(owner, room, Status.ASSIGNED);
         Long inProgress = complaint(owner, room, Status.IN_PROGRESS);
 
-        assertStatus(() -> complaintService.deleteComplaint(assigned, OWNER_EMAIL, DeletionReason.TEST_TICKET),
+        assertStatus(() -> complaintService.deleteComplaint(assigned, OWNER_EMAIL),
                 HttpStatus.CONFLICT);
-        assertStatus(() -> complaintService.deleteComplaint(inProgress, OWNER_EMAIL, DeletionReason.TEST_TICKET),
+        assertStatus(() -> complaintService.deleteComplaint(inProgress, OWNER_EMAIL),
                 HttpStatus.CONFLICT);
         assertThat(complaintRepository.findById(assigned)).isPresent();
     }
@@ -146,16 +143,9 @@ class ComplaintDeletionIntegrationTest {
     void onlyTheOwnerCanDelete() {
         Long id = complaint(owner, room, Status.PENDING);
 
-        assertStatus(() -> complaintService.deleteComplaint(id, OTHER_EMAIL, DeletionReason.TEST_TICKET),
+        assertStatus(() -> complaintService.deleteComplaint(id, OTHER_EMAIL),
                 HttpStatus.NOT_FOUND);
         assertThat(complaintRepository.findById(id)).isPresent();
-    }
-
-    @Test
-    void reasonIsRequired() {
-        Long id = complaint(owner, room, Status.PENDING);
-
-        assertStatus(() -> complaintService.deleteComplaint(id, OWNER_EMAIL, null), HttpStatus.BAD_REQUEST);
     }
 
     @Test
@@ -169,7 +159,7 @@ class ComplaintDeletionIntegrationTest {
                 "Sixth", "Another issue", "Electrical", false, null, null, null, null, false);
         assertStatus(() -> complaintService.createComplaint(OWNER_EMAIL, request), HttpStatus.TOO_MANY_REQUESTS);
 
-        complaintService.deleteComplaint(first, OWNER_EMAIL, DeletionReason.WRONGFUL_SUBMISSION);
+        complaintService.deleteComplaint(first, OWNER_EMAIL);
 
         assertThat(complaintService.createComplaint(OWNER_EMAIL, request).getId()).isNotNull();
     }
@@ -177,26 +167,25 @@ class ComplaintDeletionIntegrationTest {
     @Test
     void deletedCommunityComplaintCannotBeUpvoted() {
         Long id = complaint(owner, washroom, Status.PENDING);
-        complaintService.deleteComplaint(id, OWNER_EMAIL, DeletionReason.INCORRECT_DETAILS);
+        complaintService.deleteComplaint(id, OWNER_EMAIL);
 
         assertStatus(() -> upvoteService.toggleUpvote(id, other.getId()), HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void deleteEndpointNeedsAValidReason() throws Exception {
+    void deleteEndpointNeedsNoReason() throws Exception {
         Long id = complaint(owner, room, Status.PENDING);
 
         mockMvc.perform(delete("/api/complaints/{id}", id)
-                        .with(jwt().jwt(t -> t.claim("email", OWNER_EMAIL))))
-                .andExpect(status().isBadRequest());
+                        .with(jwt().jwt(t -> t.claim("email", OTHER_EMAIL))))
+                .andExpect(status().isNotFound());
         mockMvc.perform(delete("/api/complaints/{id}", id)
-                        .param("reason", "BORED")
-                        .with(jwt().jwt(t -> t.claim("email", OWNER_EMAIL))))
-                .andExpect(status().isBadRequest());
-        mockMvc.perform(delete("/api/complaints/{id}", id)
-                        .param("reason", "TEST_TICKET")
                         .with(jwt().jwt(t -> t.claim("email", OWNER_EMAIL))))
                 .andExpect(status().isNoContent());
+        // Already deleted: no longer visible
+        mockMvc.perform(delete("/api/complaints/{id}", id)
+                        .with(jwt().jwt(t -> t.claim("email", OWNER_EMAIL))))
+                .andExpect(status().isNotFound());
 
         assertThat(complaintRepository.findById(id)).isEmpty();
     }

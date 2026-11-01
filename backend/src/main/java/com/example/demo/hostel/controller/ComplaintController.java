@@ -3,7 +3,6 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.DeletionReason;
 import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
@@ -144,16 +143,12 @@ public class ComplaintController {
                 complaintService.getComplaintHistory(id, email));
     }
 
-    /**
-     * Owner deletes their own PENDING complaint. reason is one of
-     * WRONGFUL_SUBMISSION, PROBLEM_RECTIFIED, TEST_TICKET, INCORRECT_DETAILS.
-     */
+    /** Owner deletes their own PENDING complaint (409 once it is assigned or in progress). */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComplaint(
             @PathVariable Long id,
-            @RequestParam DeletionReason reason,
             @AuthenticationPrincipal Jwt jwt) {
-        complaintService.deleteComplaint(id, jwt.getClaimAsString("email"), reason);
+        complaintService.deleteComplaint(id, jwt.getClaimAsString("email"));
         return ResponseEntity.noContent().build();
     }
 

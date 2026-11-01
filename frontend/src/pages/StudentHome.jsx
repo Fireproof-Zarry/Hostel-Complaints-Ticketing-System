@@ -412,16 +412,14 @@ export default function StudentHome() {
     navigate('/profile', { state: { returnTo: 'submit' } });
   };
 
-  // Owner deletes a PENDING complaint with a reason (soft delete on the backend)
-  const handleConfirmDelete = async (reason) => {
+  // Owner deletes a PENDING complaint (soft delete; purged after 15 days)
+  const handleConfirmDelete = async () => {
     const complaint = complaintToDelete;
     setIsDeleting(true);
     setDeleteError('');
     try {
       // apiFetch ends the session (and redirects to sign in) on 401
-      const response = await apiFetch(
-        `${apiBaseUrl}/complaints/${complaint.id}?reason=${encodeURIComponent(reason)}`,
-        { method: 'DELETE' }
+      const response = await apiFetch(`${apiBaseUrl}/complaints/${complaint.id}`, { method: 'DELETE' }
       );
       if (response.status === 409) {
         // An admin picked it up meanwhile; show the current status
