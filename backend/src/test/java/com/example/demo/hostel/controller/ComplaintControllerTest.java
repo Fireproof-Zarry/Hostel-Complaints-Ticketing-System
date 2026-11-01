@@ -3,6 +3,7 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
@@ -39,7 +40,7 @@ class ComplaintControllerTest {
                 .thenReturn(new Complaint());
         controller = new ComplaintController(
                 complaintService, new RoomLocationValidator(), mock(UpvoteService.class),
-                mock(DuplicateDetectionService.class));
+                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class));
     }
 
     @Test
@@ -134,7 +135,7 @@ class ComplaintControllerTest {
         ComplaintService untouched = mock(ComplaintService.class);
         ComplaintController guarded = new ComplaintController(
                 untouched, new RoomLocationValidator(), mock(UpvoteService.class),
-                mock(DuplicateDetectionService.class));
+                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class));
 
         assertEquals(HttpStatus.BAD_REQUEST,
                 guarded.createComplaint(JWT, payload).getStatusCode());
