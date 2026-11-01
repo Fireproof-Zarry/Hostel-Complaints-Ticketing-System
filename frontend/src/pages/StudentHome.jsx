@@ -316,7 +316,11 @@ export default function StudentHome() {
       });
 
       if (response.status === 429) {
-        setError('You have reached the limit of 5 open complaints. Please wait for some to be resolved.');
+        // Retry-After marks the filing rate limit; without it, it is the open-complaint limit
+        const retryAfter = Number(response.headers.get('Retry-After'));
+        setError(retryAfter > 0
+          ? `You're filing complaints too quickly. Please try again in ${retryAfter} seconds. Your draft is saved.`
+          : 'You have reached the limit of 5 open complaints. Please wait for some to be resolved.');
         return;
       }
       if (response.status === 422) {
