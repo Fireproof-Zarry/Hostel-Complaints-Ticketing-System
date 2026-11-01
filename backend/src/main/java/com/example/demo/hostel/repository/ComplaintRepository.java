@@ -181,11 +181,12 @@ public interface ComplaintRepository
         /**
          * Archives complaints in the given statuses last updated before the
          * cutoff, in a single UPDATE. Bypasses @UpdateTimestamp on purpose so
-         * updated_at keeps showing when the complaint was resolved.
+         * updated_at keeps showing when the complaint was resolved, but bumps
+         * the @Version so an admin edit based on a pre-archive copy conflicts.
          */
         @Modifying(flushAutomatically = true, clearAutomatically = true)
         @Query("""
-                UPDATE Complaint c SET c.isArchived = true
+                UPDATE Complaint c SET c.isArchived = true, c.version = c.version + 1
                 WHERE c.isArchived = false
                   AND c.status IN :statuses
                   AND COALESCE(c.updatedAt, c.createdAt) < :cutoff

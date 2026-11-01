@@ -21,6 +21,13 @@ public class Complaint {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Optimistic locking: incremented on every update. Saving a copy loaded
+    // before someone else's update fails (ObjectOptimisticLockingFailureException,
+    // returned as 409) instead of silently overwriting their change.
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @Column(nullable = false)
     private String title;
 
@@ -99,6 +106,8 @@ public class Complaint {
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public Long getId() { return id; }
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     public void setId(Long id) { this.id = id; }
     public Status getStatus() { return status; }
     public void setStatus(Status status) {
