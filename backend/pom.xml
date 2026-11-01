@@ -57,6 +57,14 @@
             <version>9.11.0</version>
         </dependency>
 
+        <!-- Rate limiting (token buckets). The old com.bucket4j:bucket4j-core
+             artifact stopped at 8.10.1; current releases are per JDK. -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-core</artifactId>
+            <version>8.21.0</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

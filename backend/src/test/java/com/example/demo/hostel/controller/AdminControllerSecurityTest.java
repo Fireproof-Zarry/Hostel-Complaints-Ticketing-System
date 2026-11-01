@@ -13,6 +13,7 @@ import org.springframework.boot.security.autoconfigure.SecurityAutoConfiguration
 import org.springframework.boot.security.autoconfigure.web.servlet.ServletWebSecurityAutoConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -26,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -124,5 +126,25 @@ class AdminControllerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(42))
                 .andExpect(jsonPath("$[0].archived").value(true));
+    }
+
+    @Test
+    void concurrentUpdateIsReportedAs409() throws Exception {
+
+        when(adminService.updateStatus(
+                org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(Status.RESOLVED),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new ObjectOptimisticLockingFailureException(Complaint.class, 7L));
+
+        mockMvc.perform(
+                patch("/api/admin/complaints/7/status")
+                        .param("status", "RESOLVED")
+                        .with(jwt().jwt(t -> t.claim("email", "warden@smail.iitm.ac.in"))
+                                .authorities(new SimpleGrantedAuthority("ROLE_ADMIN")))
+        )
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("concurrent_update"))
+                .andExpect(jsonPath("$.message").value(
+                        "This complaint was changed by someone else at the same time. Refresh and try again."));
     }
 }

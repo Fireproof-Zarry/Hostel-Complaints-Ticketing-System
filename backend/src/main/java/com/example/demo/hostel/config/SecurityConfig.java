@@ -4,6 +4,7 @@ import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
 import org.springframework.web.cors.CorsConfiguration;
@@ -23,7 +24,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, ComplaintRateLimiter complaintRateLimiter)
+            throws Exception {
         http
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -45,7 +47,16 @@ public class SecurityConfig {
                 )
             );
 
+        // After authentication, so the limit is per signed-in user
+        http.addFilterAfter(new ComplaintRateLimitFilter(complaintRateLimiter), BearerTokenAuthenticationFilter.class);
+
         return http.build();
+    }
+
+    // Declared here so every test that imports SecurityConfig gets it too
+    @Bean
+    public ComplaintRateLimiter complaintRateLimiter() {
+        return new ComplaintRateLimiter();
     }
 
     @Bean
@@ -65,8 +76,9 @@ public class SecurityConfig {
             List.of("Authorization", "Content-Type")
         );
 
-        // Lets the frontend read why a token was rejected (e.g. "Jwt expired at ...")
-        configuration.setExposedHeaders(List.of("WWW-Authenticate"));
+        // Readable by the frontend: why a token was rejected ("Jwt expired at ..."),
+        // and Retry-After, which marks a 429 as the complaint-filing rate limit
+        configuration.setExposedHeaders(List.of("WWW-Authenticate", "Retry-After"));
 
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
