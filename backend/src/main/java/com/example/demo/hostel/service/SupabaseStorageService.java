@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
@@ -80,13 +81,7 @@ public class SupabaseStorageService {
         // Extension comes from the verified type, never from the user-supplied file name
         String fileName = UUID.randomUUID() + "." + EXTENSIONS_BY_CONTENT_TYPE.get(contentType);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("apikey", supabaseKey);
-        // Legacy service_role keys are JWTs and also go in Authorization;
-        // new sb_secret_ keys are not JWTs and must only be sent as apikey
-        if (!supabaseKey.startsWith("sb_")) {
-            headers.setBearerAuth(supabaseKey);
-        }
+        HttpHeaders headers = authHeaders();
         headers.setContentType(MediaType.parseMediaType(contentType));
         headers.set("x-upsert", "false");
 
@@ -102,6 +97,52 @@ public class SupabaseStorageService {
         }
 
         return supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/" + fileName;
+    }
+
+    /**
+     * Permanently deletes an uploaded complaint image given its public URL.
+     * Returns true when the image is gone (including when it never existed or
+     * the URL is not one of ours), false when storage could not delete it,
+     * so the caller can retry later.
+     */
+    public boolean deleteImage(String publicUrl) {
+        String prefix = supabaseUrl + "/storage/v1/object/public/" + BUCKET + "/";
+        if (publicUrl == null || publicUrl.isBlank() || !publicUrl.startsWith(prefix)) {
+            return true;
+        }
+        String fileName = publicUrl.substring(prefix.length());
+        // Our uploads are named "<uuid>.<ext>"; refuse anything that could address another object
+        if (!fileName.matches("[0-9a-fA-F-]{36}\\.(jpg|png|webp)")) {
+            return true;
+        }
+        if (supabaseKey == null || supabaseKey.isBlank()) {
+            return false;
+        }
+
+        try {
+            restTemplate.exchange(
+                    supabaseUrl + "/storage/v1/object/" + BUCKET + "/" + fileName,
+                    HttpMethod.DELETE,
+                    new HttpEntity<>(authHeaders()),
+                    String.class
+            );
+            return true;
+        } catch (HttpClientErrorException.NotFound e) {
+            return true;
+        } catch (RestClientException e) {
+            return false;
+        }
+    }
+
+    private HttpHeaders authHeaders() {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("apikey", supabaseKey);
+        // Legacy service_role keys are JWTs and also go in Authorization;
+        // new sb_secret_ keys are not JWTs and must only be sent as apikey
+        if (!supabaseKey.startsWith("sb_")) {
+            headers.setBearerAuth(supabaseKey);
+        }
+        return headers;
     }
 
     private static boolean matchesSignature(String contentType, byte[] bytes) {

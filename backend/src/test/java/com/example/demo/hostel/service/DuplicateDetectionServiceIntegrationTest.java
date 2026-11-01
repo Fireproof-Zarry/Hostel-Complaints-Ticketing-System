@@ -184,8 +184,7 @@ class DuplicateDetectionServiceIntegrationTest {
     @Test
     void deletedComplaintsAreIgnored() {
         // The similarity queries are native SQL, so they filter deleted rows themselves
-        jdbcTemplate.update("UPDATE complaints SET deleted_at = now(), deletion_reason = 'TEST_TICKET' WHERE id = ?",
-                eastTapLeak);
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = now() WHERE id = ?", eastTapLeak);
 
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
                 NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null))).doesNotContain(eastTapLeak);

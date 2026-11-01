@@ -10,8 +10,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "complaints")
-// Soft delete: deleted complaints keep their row (deleted_at + reason) but
-// Hibernate hides them from every entity query; native SQL must filter them.
+// Soft delete: deleted complaints keep their row (deleted_at) for 15 days until
+// ComplaintPurgeService hard-deletes them; meanwhile Hibernate hides them from
+// every entity query. Native SQL must filter them itself.
 // (@SoftDelete is not used: it forbids the LAZY to-one links other entities have.)
 @SQLRestriction("deleted_at IS NULL")
 public class Complaint {
@@ -63,11 +64,6 @@ public class Complaint {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    @JsonIgnore
-    @Enumerated(EnumType.STRING)
-    @Column(name = "deletion_reason")
-    private DeletionReason deletionReason;
-
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -115,9 +111,6 @@ public class Complaint {
     @JsonIgnore
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
-    @JsonIgnore
-    public DeletionReason getDeletionReason() { return deletionReason; }
-    public void setDeletionReason(DeletionReason deletionReason) { this.deletionReason = deletionReason; }
     public boolean isArchived() { return isArchived; }
     public void setArchived(boolean archived) { this.isArchived = archived; }
     public User getStudent() { return student; }

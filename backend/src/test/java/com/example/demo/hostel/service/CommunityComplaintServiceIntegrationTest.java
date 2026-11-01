@@ -196,7 +196,7 @@ class CommunityComplaintServiceIntegrationTest {
 
     @Test
     void deletedComplaintsAreHidden() {
-        jdbcTemplate.update("UPDATE complaints SET deleted_at = ?, deletion_reason = 'TEST_TICKET' WHERE id = ?",
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = ? WHERE id = ?",
                 Timestamp.valueOf(LocalDateTime.now()), dispenser);
 
         CommunityComplaintPage page = communityComplaintService.getCommunityComplaints(VIEWER_EMAIL, null, "upvotes", 0, 20);
