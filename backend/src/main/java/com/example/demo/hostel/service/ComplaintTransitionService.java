@@ -130,11 +130,21 @@ public class ComplaintTransitionService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Complaint can only be assigned to an admin");
         }
 
-        validateTransition(complaint.getStatus(), Status.IN_PROGRESS);
+        Status oldStatus = complaint.getStatus();
+        validateTransition(oldStatus, Status.IN_PROGRESS);
 
         complaint.setStatus(Status.IN_PROGRESS);
         complaint.setAssignedTo(assignee.getEmail());
         complaintRepository.save(complaint);
+
+        ComplaintHistory history = new ComplaintHistory();
+        history.setComplaint(complaint);
+        history.setActor(assignee);
+        history.setOldStatus(oldStatus);
+        history.setNewStatus(Status.IN_PROGRESS);
+        history.setReason("Work order assigned");
+
+        complaintHistoryRepository.save(history);
 
         WorkOrder workOrder = new WorkOrder();
         workOrder.setComplaint(complaint);
