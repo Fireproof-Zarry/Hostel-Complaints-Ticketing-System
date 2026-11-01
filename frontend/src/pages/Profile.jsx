@@ -3,7 +3,6 @@ import { ArrowLeft, FilePlus2, LogOut } from 'lucide-react';
 import ProfileForm from '../components/ProfileForm';
 import StudentSidebar from '../components/StudentSidebar';
 import { getToken, logout } from '../auth/session';
-import { clearComplaintDraft } from '../utils/complaintDraft';
 
 /** Student profile page, with the same sidebar as the student dashboard. */
 export default function Profile() {
@@ -16,7 +15,6 @@ export default function Profile() {
   if (!token) return <Navigate to="/login" replace />;
 
   const handleLogout = () => {
-    clearComplaintDraft();
     logout();
     navigate('/login', { replace: true });
   };
