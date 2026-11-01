@@ -4,6 +4,7 @@ import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.DeletionReason;
 import com.example.demo.hostel.model.ComplaintHistory;
 import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Role;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -134,6 +136,26 @@ public class ComplaintService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Complaint not found or you do not have permission to view it."));
+    }
+
+    /**
+     * Deletes the caller's own complaint while it is still PENDING (not yet
+     * assigned). Soft delete: the reason and time are kept, and the complaint
+     * disappears from every list. Other students' complaints return 404.
+     */
+    @Transactional
+    public void deleteComplaint(Long id, String email, DeletionReason reason) {
+        if (reason == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A reason is required to delete a complaint");
+        }
+        Complaint complaint = getComplaintById(id, email);
+        if (complaint.getStatus() != Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only pending complaints can be deleted; this one is already being handled.");
+        }
+        complaint.setDeletionReason(reason);
+        complaint.setDeletedAt(LocalDateTime.now());
+        complaintRepository.save(complaint);
     }
 
     public Complaint attachImage(Long id, String email, MultipartFile file) {

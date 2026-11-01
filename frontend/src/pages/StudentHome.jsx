@@ -10,8 +10,10 @@ import {
   LogOut,
   RefreshCw,
   KeyRound,
+  Trash2,
 } from 'lucide-react';
 import CommunityDashboard from '../components/CommunityDashboard';
+import DeleteComplaintDialog from '../components/DeleteComplaintDialog';
 import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import SubmissionConfirmation from '../components/SubmissionConfirmation';
@@ -48,7 +50,7 @@ function activeComplaint(complaint) {
   return !['RESOLVED', 'REJECTED'].includes(complaint.status?.toUpperCase());
 }
 
-function ComplaintCard({ complaint }) {
+function ComplaintCard({ complaint, onDelete }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -90,6 +92,19 @@ function ComplaintCard({ complaint }) {
           </span>
         )}
       </div>
+      {/* Only before an admin picks it up */}
+      {complaint.status?.toUpperCase() === 'PENDING' && (
+        <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            onClick={() => onDelete(complaint)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -103,6 +118,13 @@ export default function StudentHome() {
   const [formData, setFormData] = useState(() => loadComplaintDraft(initialForm));
   const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(loadComplaintDraft(initialForm)));
   const [submittedComplaint, setSubmittedComplaint] = useState(null);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const closeDeleteDialog = useCallback(() => {
+    setComplaintToDelete(null);
+    setDeleteError('');
+  }, []);
   // Stable so the dialog's Escape-key listener is not re-registered every render
   const closeConfirmation = useCallback(() => setSubmittedComplaint(null), []);
   const [error, setError] = useState('');
@@ -369,6 +391,37 @@ export default function StudentHome() {
   // The draft is already saved; the Profile page offers a way back to it
   const openProfileFromComplaint = () => {
     navigate('/profile', { state: { returnTo: 'submit' } });
+  };
+
+  // Owner deletes a PENDING complaint with a reason (soft delete on the backend)
+  const handleConfirmDelete = async (reason) => {
+    const complaint = complaintToDelete;
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      // apiFetch ends the session (and redirects to sign in) on 401
+      const response = await apiFetch(
+        `${apiBaseUrl}/complaints/${complaint.id}?reason=${encodeURIComponent(reason)}`,
+        { method: 'DELETE' }
+      );
+      if (response.status === 409) {
+        // An admin picked it up meanwhile; show the current status
+        const updated = await requestMyComplaints();
+        if (updated) setComplaints(updated);
+        throw new Error('This complaint is already being handled, so it can no longer be deleted.');
+      }
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`The complaint could not be deleted (HTTP ${response.status}). Please try again.`);
+      }
+      // 404: already gone; either way, remove it from the list
+      setComplaints((current) => current.filter((item) => item.id !== complaint.id));
+      setComplaintToDelete(null);
+      setSuccess(`Complaint #${complaint.id} was deleted.`);
+    } catch (deleteFailure) {
+      setDeleteError(deleteFailure instanceof Error ? deleteFailure.message : 'Network error. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const updateForm = (field) => (event) => {
@@ -789,7 +842,16 @@ export default function StudentHome() {
               ) : (
                 <div className="space-y-4">
                   {filteredComplaints.map((complaint) => (
-                    <ComplaintCard key={complaint.id} complaint={complaint} />
+                    <ComplaintCard
+                      key={complaint.id}
+                      complaint={complaint}
+                      onDelete={(selected) => {
+                        setError('');
+                        setSuccess('');
+                        setDeleteError('');
+                        setComplaintToDelete(selected);
+                      }}
+                    />
                   ))}
                 </div>
               )}
@@ -806,6 +868,15 @@ export default function StudentHome() {
           </section>
         </div>
       </main>
+      {complaintToDelete && (
+        <DeleteComplaintDialog
+          complaint={complaintToDelete}
+          isDeleting={isDeleting}
+          error={deleteError}
+          onCancel={closeDeleteDialog}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
       {submittedComplaint && (
         <SubmissionConfirmation
           complaintId={submittedComplaint.id}

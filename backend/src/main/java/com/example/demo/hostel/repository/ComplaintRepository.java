@@ -140,6 +140,7 @@ public interface ComplaintRepository
                 JOIN locations l ON l.location_id = c.location_id
                 WHERE l.is_community_area = true
                   AND c.is_archived = false
+                  AND c.deleted_at IS NULL
                   AND c.status IN ('PENDING', 'ASSIGNED', 'IN_PROGRESS')
                   AND l.floor = :floor
                   AND (c.title % :title OR :title <% c.description)
@@ -163,6 +164,7 @@ public interface ComplaintRepository
                 JOIN locations l ON l.location_id = c.location_id
                 WHERE l.is_community_area = false
                   AND c.is_archived = false
+                  AND c.deleted_at IS NULL
                   AND c.status IN ('PENDING', 'ASSIGNED', 'IN_PROGRESS')
                   AND l.floor = :floor
                   AND l.room_number = :room

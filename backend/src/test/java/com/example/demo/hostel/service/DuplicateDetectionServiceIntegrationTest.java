@@ -122,7 +122,8 @@ class DuplicateDetectionServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         upvoteRepository.deleteAll();
-        complaintRepository.deleteAll();
+        // deleteAll cannot see soft-deleted rows
+        jdbcTemplate.update("DELETE FROM complaints");
         categoryRepository.deleteAll();
         locationRepository.deleteAll();
         userRepository.deleteAll();
@@ -175,6 +176,16 @@ class DuplicateDetectionServiceIntegrationTest {
         Complaint complaint = complaintRepository.findById(eastTapLeak).orElseThrow();
         complaint.setArchived(true);
         complaintRepository.save(complaint);
+
+        assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null))).doesNotContain(eastTapLeak);
+    }
+
+    @Test
+    void deletedComplaintsAreIgnored() {
+        // The similarity queries are native SQL, so they filter deleted rows themselves
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = now(), deletion_reason = 'TEST_TICKET' WHERE id = ?",
+                eastTapLeak);
 
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
                 NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null))).doesNotContain(eastTapLeak);

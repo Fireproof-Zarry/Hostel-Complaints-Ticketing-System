@@ -118,7 +118,8 @@ class CommunityComplaintServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         upvoteRepository.deleteAll();
-        complaintRepository.deleteAll();
+        // deleteAll cannot see soft-deleted rows
+        jdbcTemplate.update("DELETE FROM complaints");
         categoryRepository.deleteAll();
         locationRepository.deleteAll();
         userRepository.deleteAll();
@@ -191,6 +192,17 @@ class CommunityComplaintServiceIntegrationTest {
 
         assertThat(ids(communityComplaintService.getCommunityComplaints(VIEWER_EMAIL, null, "upvotes", 0, 20)))
                 .containsExactly(washroom, corridorLight, dispenser);
+    }
+
+    @Test
+    void deletedComplaintsAreHidden() {
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = ?, deletion_reason = 'TEST_TICKET' WHERE id = ?",
+                Timestamp.valueOf(LocalDateTime.now()), dispenser);
+
+        CommunityComplaintPage page = communityComplaintService.getCommunityComplaints(VIEWER_EMAIL, null, "upvotes", 0, 20);
+
+        assertThat(ids(page)).containsExactly(washroom, corridorLight);
+        assertThat(page.totalItems()).isEqualTo(2);
     }
 
     @Test
