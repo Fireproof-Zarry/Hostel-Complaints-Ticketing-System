@@ -14,8 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Upvotes ("this affects me too") on community-area complaints. Personal
- * room complaints are private to their student and cannot be upvoted.
+ * Upvotes ("this affects me too") on community-area complaints, and on
+ * personal complaints in the student's own room (roommates in a
+ * multiple-occupancy room). Other rooms' complaints stay private.
  */
 @Service
 public class UpvoteService {
@@ -51,8 +52,11 @@ public class UpvoteService {
         if (complaint.getStudent() != null && userId.equals(complaint.getStudent().getId())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot upvote your own complaint");
         }
-        // Same 404 as a missing complaint, so private complaints are not revealed
-        if (!complaint.isCommunityArea() || complaint.isArchived()) {
+        // Same 404 as a missing complaint, so other rooms' complaints are not revealed
+        boolean sameRoom = !complaint.isCommunityArea()
+                && user.getRoomNumber() != null
+                && user.getRoomNumber().equals(complaint.getRoom());
+        if (complaint.isArchived() || !(complaint.isCommunityArea() || sameRoom)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found");
         }
 

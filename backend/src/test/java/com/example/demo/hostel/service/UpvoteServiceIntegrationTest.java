@@ -138,6 +138,23 @@ class UpvoteServiceIntegrationTest {
     }
 
     @Test
+    void roommateCanUpvotePersonalComplaintInTheirOwnRoom() {
+        neighbour.setRoomNumber("204");
+        userRepository.save(neighbour);
+
+        assertThat(upvoteService.toggleUpvote(personalComplaint, neighbour.getId())).isTrue();
+        assertThat(upvoteService.countUpvotes(personalComplaint)).isEqualTo(1);
+    }
+
+    @Test
+    void studentInAnotherRoomStillGetsNotFoundForPersonalComplaint() {
+        neighbour.setRoomNumber("205");
+        userRepository.save(neighbour);
+
+        assertStatus(() -> upvoteService.toggleUpvote(personalComplaint, neighbour.getId()), HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void archivedComplaintsAreNotFound() {
         Complaint complaint = complaintRepository.findById(communityComplaint).orElseThrow();
         complaint.setStatus(Status.RESOLVED);

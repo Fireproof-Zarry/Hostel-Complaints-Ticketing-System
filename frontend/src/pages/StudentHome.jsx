@@ -10,10 +10,17 @@ import {
   LogOut,
   RefreshCw,
   KeyRound,
+  Trash2,
 } from 'lucide-react';
+import DeleteComplaintDialog from '../components/DeleteComplaintDialog';
+import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
+import SubmissionConfirmation from '../components/SubmissionConfirmation';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
+import { apiFetch, decodeTokenPayload, getToken, logout } from '../auth/session';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { clearComplaintDraft, isDraftEmpty, loadComplaintDraft, saveComplaintDraft } from '../utils/complaintDraft';
 import { getFloorForRoom, HOSTEL_FLOORS } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -62,7 +69,7 @@ function activeComplaint(complaint) {
   return !['RESOLVED', 'REJECTED'].includes(complaint.status?.toUpperCase());
 }
 
-function ComplaintCard({ complaint }) {
+function ComplaintCard({ complaint, onDelete }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -104,6 +111,19 @@ function ComplaintCard({ complaint }) {
           </span>
         )}
       </div>
+      {/* Only before an admin picks it up */}
+      {complaint.status?.toUpperCase() === 'PENDING' && (
+        <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+          <button
+            type="button"
+            onClick={() => onDelete(complaint)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+            Delete
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -113,7 +133,22 @@ export default function StudentHome() {
   const location = useLocation();
   // The Profile page's sidebar links back here with the tab to open
   const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
-  const [formData, setFormData] = useState(initialForm);
+  // Drafts are kept per account (the email in the sign-in token), so they survive
+  // reloads, closing the browser and logging out and back in (for 7 days)
+  const [draftOwner] = useState(() => decodeTokenPayload(getToken())?.email ?? null);
+  const [initialDraft] = useState(() => loadComplaintDraft(initialForm, draftOwner));
+  const [formData, setFormData] = useState(initialDraft);
+  const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(initialDraft));
+  const [submittedComplaint, setSubmittedComplaint] = useState(null);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const closeDeleteDialog = useCallback(() => {
+    setComplaintToDelete(null);
+    setDeleteError('');
+  }, []);
+  // Stable so the dialog's Escape-key listener is not re-registered every render
+  const closeConfirmation = useCallback(() => setSubmittedComplaint(null), []);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -123,25 +158,22 @@ export default function StudentHome() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const imageUploadRef = useRef(null);
   const [profile, setProfile] = useState(null);
+  const [duplicateResult, setDuplicateResult] = useState({ key: '', candidates: [] });
+  const [dismissedDuplicateKey, setDismissedDuplicateKey] = useState('');
+  const [upvotingId, setUpvotingId] = useState(null);
 
   const navigate = useNavigate();
-  const token = localStorage.getItem('idToken');
+  const token = getToken();
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('idToken');
+    logout();
     navigate('/login', { replace: true });
   }, [navigate]);
 
   const requestMyComplaints = useCallback(async () => {
-    const response = await fetch(`${apiBaseUrl}/complaints/mine`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    // apiFetch handles expired/rejected tokens by ending the session
+    const response = await apiFetch(`${apiBaseUrl}/complaints/mine`);
 
-    if (response.status === 401) {
-      throw new Error(
-        'The backend rejected your Google sign-in token while loading complaints (401). You can stay on this page; try signing out and back in, or check the backend logs.'
-      );
-    }
     if (response.status === 403) {
       throw new Error('Your account is signed in but is not allowed to view these complaints (403).');
     }
@@ -154,16 +186,13 @@ export default function StudentHome() {
       throw new Error('The server returned an unexpected complaints response.');
     }
     return data;
-  }, [token]);
+  }, []);
 
   // Personal complaints use the room from the profile, so load it up front
   useEffect(() => {
     if (!token) return undefined;
     const controller = new AbortController();
-    fetch(`${apiBaseUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
+    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data) setProfile(data);
@@ -171,6 +200,45 @@ export default function StudentHome() {
       .catch(() => {});
     return () => controller.abort();
   }, [token]);
+
+  // Duplicate detection: community issues are matched on the same floor (and
+  // wing); personal issues in the student's profile room (the backend reads the
+  // room). One key for everything the search depends on, debounced while typing.
+  const duplicateMode = formData.isCommunityArea ? 'community' : 'room';
+  const hasProfileRoom = Boolean(getFloorForRoom(profile?.roomNumber));
+  const duplicateQueryKey = formData.title.trim().length >= 4 && (formData.isCommunityArea || hasProfileRoom)
+    ? JSON.stringify([duplicateMode, formData.title.trim(), formData.floor, formData.wing.trim()])
+    : '';
+  const debouncedDuplicateKey = useDebouncedValue(duplicateQueryKey, 500);
+
+  useEffect(() => {
+    if (!token || !debouncedDuplicateKey) return undefined;
+    const [mode, title, floor, wing] = JSON.parse(debouncedDuplicateKey);
+    const params = new URLSearchParams({ title, communityArea: String(mode === 'community') });
+    if (mode === 'community') {
+      params.set('floor', floor);
+      if (wing) params.set('wing', wing);
+    }
+
+    // Aborting drops responses for inputs the student has already changed
+    const controller = new AbortController();
+    apiFetch(`${apiBaseUrl}/complaints/potential-duplicates?${params}`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((candidates) => {
+        setDuplicateResult({ key: debouncedDuplicateKey, candidates: Array.isArray(candidates) ? candidates : [] });
+      })
+      // A failed check must never block filing the complaint
+      .catch(() => {});
+    return () => controller.abort();
+  }, [debouncedDuplicateKey, token]);
+
+  // Shown only for the current inputs and location type, and not after "No, mine is different"
+  const visibleDuplicates = debouncedDuplicateKey
+    && JSON.parse(debouncedDuplicateKey)[0] === duplicateMode
+    && duplicateResult.key === debouncedDuplicateKey
+    && dismissedDuplicateKey !== debouncedDuplicateKey
+    ? duplicateResult.candidates
+    : [];
 
   useEffect(() => {
     if (!token) return;
@@ -194,6 +262,11 @@ export default function StudentHome() {
       isActive = false;
     };
   }, [requestMyComplaints, token]);
+
+  // Autosave the form as a draft (an empty form removes the draft)
+  useEffect(() => {
+    saveComplaintDraft(formData, draftOwner);
+  }, [draftOwner, formData]);
 
   const activeCount = complaints.filter(activeComplaint).length;
   const filteredComplaints = useMemo(() => {
@@ -246,12 +319,9 @@ export default function StudentHome() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${apiBaseUrl}/complaints`, {
+      const response = await apiFetch(`${apiBaseUrl}/complaints`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: formData.title,
           description: formData.description,
@@ -264,10 +334,6 @@ export default function StudentHome() {
         }),
       });
 
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
       if (response.status === 429) {
         setError('You have reached the limit of 5 open complaints. Please wait for some to be resolved.');
         return;
@@ -283,26 +349,97 @@ export default function StudentHome() {
 
       // The image endpoint needs the new complaint's id, so upload afterwards.
       // A failed upload keeps the complaint; resubmitting would create a duplicate.
+      let photoError = '';
       if (imageUploadRef.current?.hasFile()) {
         const upload = await imageUploadRef.current.upload(
           `${apiBaseUrl}/complaints/${createdComplaint.id}/image`,
           token
         );
-        if (!upload.ok) {
-          setError(`Your complaint was submitted, but the photo was not attached: ${upload.error}`);
-        }
+        if (!upload.ok) photoError = upload.error;
       }
 
-      setFormData(initialForm);
-      imageUploadRef.current?.reset();
-      setSuccess('Complaint submitted successfully.');
+      resetComplaintForm();
+      setSubmittedComplaint({ id: createdComplaint.id, photoError });
       const updatedComplaints = await requestMyComplaints();
       if (updatedComplaints) setComplaints(updatedComplaints);
-      setActiveTab('complaints');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Network error. Please try again later.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const resetComplaintForm = () => {
+    clearComplaintDraft(draftOwner);
+    setDraftRestored(false);
+    setFormData(initialForm);
+    imageUploadRef.current?.reset();
+    setDuplicateResult({ key: '', candidates: [] });
+  };
+
+  // "Yes, this is my issue": upvote the existing ticket instead of filing a duplicate
+  const handleUpvoteDuplicate = async (candidate) => {
+    setError('');
+    setSuccess('');
+    setUpvotingId(candidate.id);
+    try {
+      const upvote = () => apiFetch(`${apiBaseUrl}/complaints/${candidate.id}/upvote`, { method: 'POST' });
+
+      let response = await upvote();
+      if (!response.ok) {
+        throw new Error('That complaint can no longer be upvoted. You can still submit your own complaint.');
+      }
+      let result = await response.json();
+      // The endpoint toggles: if an upvote already existed it was just removed, so add it back
+      if (!result.upvoted) {
+        response = await upvote();
+        if (!response.ok) throw new Error('Your upvote could not be saved. Please try again.');
+        result = await response.json();
+      }
+
+      resetComplaintForm();
+      setSuccess(
+        `Thanks! Your upvote was added to "${candidate.title}" (#${candidate.id}), which now has ${result.upvoteCount} `
+        + `${result.upvoteCount === 1 ? 'upvote' : 'upvotes'}. You don't need to file a new complaint.`
+      );
+    } catch (upvoteError) {
+      setError(upvoteError instanceof Error ? upvoteError.message : 'Network error. Please try again later.');
+    } finally {
+      setUpvotingId(null);
+    }
+  };
+
+  // The draft is already saved; the Profile page offers a way back to it
+  const openProfileFromComplaint = () => {
+    navigate('/profile', { state: { returnTo: 'submit' } });
+  };
+
+  // Owner deletes a PENDING complaint (soft delete; purged after 15 days)
+  const handleConfirmDelete = async () => {
+    const complaint = complaintToDelete;
+    setIsDeleting(true);
+    setDeleteError('');
+    try {
+      // apiFetch ends the session (and redirects to sign in) on 401
+      const response = await apiFetch(`${apiBaseUrl}/complaints/${complaint.id}`, { method: 'DELETE' }
+      );
+      if (response.status === 409) {
+        // An admin picked it up meanwhile; show the current status
+        const updated = await requestMyComplaints();
+        if (updated) setComplaints(updated);
+        throw new Error('This complaint is already being handled, so it can no longer be deleted.');
+      }
+      if (!response.ok && response.status !== 404) {
+        throw new Error(`The complaint could not be deleted (HTTP ${response.status}). Please try again.`);
+      }
+      // 404: already gone; either way, remove it from the list
+      setComplaints((current) => current.filter((item) => item.id !== complaint.id));
+      setComplaintToDelete(null);
+      setSuccess(`Complaint #${complaint.id} was deleted.`);
+    } catch (deleteFailure) {
+      setDeleteError(deleteFailure instanceof Error ? deleteFailure.message : 'Network error. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -316,7 +453,11 @@ export default function StudentHome() {
         activeId={activeTab}
         onSelect={(id) => {
           if (id === 'profile') {
-            navigate('/profile');
+            if (activeTab === 'submit' && !isDraftEmpty(formData)) {
+              openProfileFromComplaint();
+            } else {
+              navigate('/profile');
+            }
             return;
           }
           setActiveTab(id);
@@ -470,6 +611,18 @@ export default function StudentHome() {
                 <h3 className="text-2xl font-bold text-slate-900">File a new complaint</h3>
                 <p className="mt-1 text-sm text-slate-500">Include the location and details so the issue can be routed correctly.</p>
               </div>
+              {draftRestored && !isDraftEmpty(formData) && (
+                <div role="status" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                  <p>We restored your unfinished complaint. If you had attached a photo, please attach it again.</p>
+                  <button
+                    type="button"
+                    onClick={() => setDraftRestored(false)}
+                    className="font-medium text-blue-700 hover:underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label htmlFor="complaint-title" className="mb-1.5 block text-sm font-medium text-slate-700">Issue title</label>
@@ -563,7 +716,7 @@ export default function StudentHome() {
                     <p>Add your room number to your profile to file a complaint about your room.</p>
                     <button
                       type="button"
-                      onClick={() => navigate('/profile')}
+                      onClick={openProfileFromComplaint}
                       className="rounded-lg bg-amber-600 px-3 py-1.5 font-semibold text-white hover:bg-amber-700"
                     >
                       Add room number
@@ -574,10 +727,20 @@ export default function StudentHome() {
                     {profileRoomFloor
                       ? <>Room <strong className="text-slate-900">{profileRoom}</strong> ({profileRoomFloor} floor), from your profile.</>
                       : 'Loading your room from your profile…'}{' '}
-                    <button type="button" onClick={() => navigate('/profile')} className="font-medium text-blue-700 hover:underline">
+                    <button type="button" onClick={openProfileFromComplaint} className="font-medium text-blue-700 hover:underline">
                       Change
                     </button>
                   </p>
+                )}
+
+                {visibleDuplicates.length > 0 && (
+                  <DuplicateWarning
+                    scope={duplicateMode}
+                    candidates={visibleDuplicates}
+                    upvotingId={upvotingId}
+                    onUpvote={handleUpvoteDuplicate}
+                    onDismiss={() => setDismissedDuplicateKey(debouncedDuplicateKey)}
+                  />
                 )}
 
                 <div>
@@ -696,7 +859,16 @@ export default function StudentHome() {
               ) : (
                 <div className="space-y-4">
                   {filteredComplaints.map((complaint) => (
-                    <ComplaintCard key={complaint.id} complaint={complaint} />
+                    <ComplaintCard
+                      key={complaint.id}
+                      complaint={complaint}
+                      onDelete={(selected) => {
+                        setError('');
+                        setSuccess('');
+                        setDeleteError('');
+                        setComplaintToDelete(selected);
+                      }}
+                    />
                   ))}
                 </div>
               )}
@@ -713,6 +885,26 @@ export default function StudentHome() {
           </section>
         </div>
       </main>
+      {complaintToDelete && (
+        <DeleteComplaintDialog
+          complaint={complaintToDelete}
+          isDeleting={isDeleting}
+          error={deleteError}
+          onCancel={closeDeleteDialog}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+      {submittedComplaint && (
+        <SubmissionConfirmation
+          complaintId={submittedComplaint.id}
+          photoError={submittedComplaint.photoError}
+          onViewComplaints={() => {
+            setSubmittedComplaint(null);
+            setActiveTab('complaints');
+          }}
+          onFileAnother={closeConfirmation}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { GoogleLogin } from '@react-oauth/google';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowRight, ShieldCheck, Wrench } from 'lucide-react';
+import { AlertCircle, ArrowRight, Clock3, ShieldCheck, Wrench } from 'lucide-react';
+import { clearToken, getSessionNotice, saveToken, SESSION_MESSAGES, sessionEndReason } from '../auth/session';
 import './Login.css';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -10,6 +11,8 @@ export default function Login() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [isSigningIn, setIsSigningIn] = useState(false);
+  // Set when the previous session ended on its own (expired / rejected token)
+  const [sessionNotice] = useState(getSessionNotice);
 
   const handleSuccess = async (credentialResponse) => {
     if (!credentialResponse.credential) {
@@ -33,9 +36,10 @@ export default function Login() {
           throw new Error(message || 'Please use your student email address to sign in.');
         }
         if (response.status === 401) {
-          throw new Error(
-            'The backend rejected Google’s sign-in token. Check the backend logs for a token validation error, then restart the backend.'
-          );
+          const reason = sessionEndReason(response.headers.get('WWW-Authenticate'));
+          throw new Error(reason === 'expired'
+            ? 'Google’s sign-in had already expired by the time it reached the server. Please try again.'
+            : SESSION_MESSAGES[reason]);
         }
         throw new Error('Unable to sign in right now. Please try again later.');
       }
@@ -45,10 +49,10 @@ export default function Login() {
         throw new Error('Your account does not have access to this portal.');
       }
 
-      localStorage.setItem('idToken', credentialResponse.credential);
+      saveToken(credentialResponse.credential);
       navigate(user.role === 'ADMIN' ? '/admin' : '/student', { replace: true });
     } catch (signInError) {
-      localStorage.removeItem('idToken');
+      clearToken();
       setError(signInError instanceof Error ? signInError.message : 'Sign-in failed. Please try again.');
     } finally {
       setIsSigningIn(false);
@@ -94,6 +98,13 @@ export default function Login() {
               Students can use their institute email. Approved administrators can sign in with their registered account.
             </p>
 
+            {sessionNotice && !error && (
+              <div className="login-notice" role="status">
+                <Clock3 aria-hidden="true" />
+                <span>{SESSION_MESSAGES[sessionNotice] ?? SESSION_MESSAGES.rejected}</span>
+              </div>
+            )}
+
             {error && (
               <div className="login-error" role="alert">
                 <AlertCircle aria-hidden="true" />
@@ -114,7 +125,10 @@ export default function Login() {
                 text="continue_with"
                 width="320"
                 ux_mode="popup"
-                useOneTap={false}
+                // After an automatic session end, let Google sign returning users
+                // straight back in; never after an explicit "Log out"
+                useOneTap={Boolean(sessionNotice)}
+                auto_select={Boolean(sessionNotice)}
               />
             </div>
 

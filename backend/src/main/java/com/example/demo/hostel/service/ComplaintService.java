@@ -1,10 +1,12 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
 import com.example.demo.hostel.model.Location;
+import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.CategoryRepository;
@@ -16,9 +18,11 @@ import com.example.demo.hostel.validation.RoomLocationValidator;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -133,13 +137,36 @@ public class ComplaintService {
                         "Complaint not found or you do not have permission to view it."));
     }
 
+    /**
+     * Deletes the caller's own complaint while it is still PENDING (not yet
+     * assigned). Soft delete: it disappears from every list at once and is
+     * hard-deleted 15 days later by ComplaintPurgeService. Other students'
+     * complaints return 404.
+     */
+    @Transactional
+    public void deleteComplaint(Long id, String email) {
+        Complaint complaint = getComplaintById(id, email);
+        if (complaint.getStatus() != Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Only pending complaints can be deleted; this one is already being handled.");
+        }
+        complaint.setDeletedAt(LocalDateTime.now());
+        complaintRepository.save(complaint);
+    }
+
     public Complaint attachImage(Long id, String email, MultipartFile file) {
         Complaint complaint = getComplaintById(id, email);
         complaint.setImageUrl(storageService.uploadImage(file));
         return complaintRepository.save(complaint);
     }
 
-    public List<ComplaintHistory> getComplaintHistory(Long id, String email) {
+    /**
+     * Status history of the caller's own complaint, oldest first, as summaries
+     * that never include the actor's account details. Read-only transaction so
+     * the lazily loaded actor can be read while mapping.
+     */
+    @Transactional(readOnly = true)
+    public List<ComplaintHistoryEntry> getComplaintHistory(Long id, String email) {
         Complaint complaint = complaintRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Complaint not found"));
@@ -153,6 +180,24 @@ public class ComplaintService {
                     HttpStatus.NOT_FOUND, "Complaint not found");
         }
 
-        return complaintHistoryRepository.findByComplaintOrderByChangedAtAsc(complaint);
+        return complaintHistoryRepository.findByComplaintOrderByChangedAtAsc(complaint).stream()
+                .map(ComplaintService::toHistoryEntry)
+                .toList();
+    }
+
+    private static ComplaintHistoryEntry toHistoryEntry(ComplaintHistory history) {
+        User actor = history.getActor();
+        String changedBy;
+        if (actor == null || actor.getRole() == Role.ADMIN) {
+            changedBy = "Hostel office";
+        } else {
+            changedBy = actor.getFullName() != null ? actor.getFullName() : actor.getName();
+        }
+        return new ComplaintHistoryEntry(
+                history.getOldStatus(),
+                history.getNewStatus(),
+                history.getReason(),
+                history.getChangedAt(),
+                changedBy);
     }
 }

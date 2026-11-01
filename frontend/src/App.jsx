@@ -1,11 +1,20 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google'
 
 import Login from './pages/Login'
 import StudentHome from './pages/StudentHome'
 import AdminHome from './pages/AdminHome'
 import Profile from './pages/Profile'
+import {
+  apiFetch,
+  endSession,
+  getToken,
+  getTokenExpiry,
+  onSessionEnded,
+  SessionEndedError,
+  TOKEN_KEY,
+} from './auth/session'
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
@@ -31,7 +40,7 @@ function NotFound() {
 function RoleRoute({ requiredRole, children }) {
   // A string key keeps the effect stable when an inline array is passed
   const allowedRoles = [requiredRole].flat().join(',')
-  const token = localStorage.getItem('idToken')
+  const token = getToken()
   const [access, setAccess] = useState(() => (
     token ? { status: 'checking' } : { status: 'unauthenticated' }
   ))
@@ -41,16 +50,9 @@ function RoleRoute({ requiredRole, children }) {
     if (!token) return undefined
 
     const controller = new AbortController()
-    fetch(`${apiBaseUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
+    // apiFetch ends the session (and SessionWatcher redirects) for expired or rejected tokens
+    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
       .then(async (response) => {
-        if (response.status === 401) {
-          localStorage.removeItem('idToken')
-          setAccess({ status: 'unauthenticated' })
-          return
-        }
         if (!response.ok) {
           throw new Error(`Could not verify your account (${response.status}).`)
         }
@@ -61,7 +63,9 @@ function RoleRoute({ requiredRole, children }) {
         })
       })
       .catch((error) => {
-        if (error.name !== 'AbortError') {
+        if (error instanceof SessionEndedError) {
+          setAccess({ status: 'unauthenticated' })
+        } else if (error.name !== 'AbortError') {
           setAccess({ status: 'error', message: error.message })
         }
       })
@@ -106,10 +110,53 @@ function RoleRoute({ requiredRole, children }) {
   return children
 }
 
+/**
+ * Sends the user to sign in when the session ends: when any API call reports
+ * an expired/rejected token, when the token's hour runs out on an open page,
+ * or when they log out in another tab.
+ */
+function SessionWatcher() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  // Bumped when another tab stores a new token, so the expiry timer follows it
+  const [tokenVersion, setTokenVersion] = useState(0)
+
+  useEffect(() => onSessionEnded(() => navigate('/login', { replace: true })), [navigate])
+
+  useEffect(() => {
+    if (location.pathname === '/login') return undefined
+    const token = getToken()
+    const expiry = getTokenExpiry(token)
+    if (expiry === null) return undefined
+    // Same one-minute margin as isTokenExpired; setTimeout caps at ~24.8 days
+    const delay = Math.min(Math.max(expiry - 60 * 1000 - Date.now(), 0), 2 ** 31 - 1)
+    // Ends the session only if this token is still the stored one
+    const timer = setTimeout(() => endSession('expired', token), delay)
+    return () => clearTimeout(timer)
+  }, [location.pathname, tokenVersion])
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (event.key !== TOKEN_KEY) return
+      if (event.newValue) {
+        setTokenVersion((version) => version + 1)
+      } else if (window.location.pathname !== '/login') {
+        // Logged out in another tab: this tab's session is gone too
+        navigate('/login', { replace: true })
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [navigate])
+
+  return null
+}
+
 export default function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <BrowserRouter>
+        <SessionWatcher />
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />

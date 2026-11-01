@@ -2,8 +2,10 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
+import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,7 +40,8 @@ class ComplaintControllerTest {
         when(complaintService.createComplaint(eq(EMAIL), any()))
                 .thenReturn(new Complaint());
         controller = new ComplaintController(
-                complaintService, new RoomLocationValidator(), mock(UpvoteService.class));
+                complaintService, new RoomLocationValidator(), mock(UpvoteService.class),
+                mock(DuplicateDetectionService.class));
     }
 
     @Test
@@ -119,7 +123,8 @@ class ComplaintControllerTest {
     @Test
     void getsComplaintHistory() {
         when(complaintService.getComplaintHistory(1L, EMAIL))
-                .thenReturn(List.of(new ComplaintHistory()));
+                .thenReturn(List.of(new ComplaintHistoryEntry(
+                        Status.PENDING, Status.IN_PROGRESS, null, LocalDateTime.now(), "Hostel office")));
 
         var response = controller.getComplaintHistory(1L, JWT);
 
@@ -131,7 +136,8 @@ class ComplaintControllerTest {
     private void assertBadRequest(CreateComplaintRequest payload) {
         ComplaintService untouched = mock(ComplaintService.class);
         ComplaintController guarded = new ComplaintController(
-                untouched, new RoomLocationValidator(), mock(UpvoteService.class));
+                untouched, new RoomLocationValidator(), mock(UpvoteService.class),
+                mock(DuplicateDetectionService.class));
 
         assertEquals(HttpStatus.BAD_REQUEST,
                 guarded.createComplaint(JWT, payload).getStatusCode());

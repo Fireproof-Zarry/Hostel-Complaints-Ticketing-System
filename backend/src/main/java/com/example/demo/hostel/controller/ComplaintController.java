@@ -1,9 +1,11 @@
 package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.dto.CreateComplaintRequest;
+import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.DuplicateDetectionService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 
@@ -27,14 +29,17 @@ public class ComplaintController {
     private final ComplaintService complaintService;
     private final RoomLocationValidator roomLocationValidator;
     private final UpvoteService upvoteService;
+    private final DuplicateDetectionService duplicateDetectionService;
 
     public ComplaintController(
             ComplaintService complaintService,
             RoomLocationValidator roomLocationValidator,
-            UpvoteService upvoteService) {
+            UpvoteService upvoteService,
+            DuplicateDetectionService duplicateDetectionService) {
         this.complaintService = complaintService;
         this.roomLocationValidator = roomLocationValidator;
         this.upvoteService = upvoteService;
+        this.duplicateDetectionService = duplicateDetectionService;
     }
 
     private static final int MAX_WING_LENGTH = 100;
@@ -101,6 +106,24 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.getMyComplaints(email));
     }
 
+    /**
+     * Open complaints similar to the title a student is typing (up to 3, most
+     * similar first). Community-area issues (the default) need a floor and
+     * optionally a wing; personal issues (communityArea=false) search the
+     * student's own profile room, so no location is sent.
+     */
+    @GetMapping("/potential-duplicates")
+    public ResponseEntity<List<DuplicateCandidate>> getPotentialDuplicates(
+            @RequestParam String title,
+            @RequestParam(defaultValue = "true") boolean communityArea,
+            @RequestParam(required = false) String floor,
+            @RequestParam(required = false) String wing,
+            @AuthenticationPrincipal Jwt jwt) {
+        String email = jwt.getClaimAsString("email");
+        return ResponseEntity.ok(
+                duplicateDetectionService.findPotentialDuplicates(email, title, communityArea, floor, wing));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Complaint> getComplaintById(
             @PathVariable Long id,
@@ -111,13 +134,22 @@ public class ComplaintController {
     }
 
     @GetMapping("/{id}/history")
-    public ResponseEntity<List<ComplaintHistory>> getComplaintHistory(
+    public ResponseEntity<List<ComplaintHistoryEntry>> getComplaintHistory(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
 
         String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(
                 complaintService.getComplaintHistory(id, email));
+    }
+
+    /** Owner deletes their own PENDING complaint (409 once it is assigned or in progress). */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteComplaint(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        complaintService.deleteComplaint(id, jwt.getClaimAsString("email"));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

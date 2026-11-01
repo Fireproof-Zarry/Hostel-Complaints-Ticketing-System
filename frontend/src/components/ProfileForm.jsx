@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, RefreshCw, UserRound } from 'lucide-react';
+import { apiFetch, getToken } from '../auth/session';
 import { getFloorForRoom } from '../utils/hostelLocation';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -60,8 +60,7 @@ function Field({ id, label, hint, error, children }) {
  * student Profile page and inside the admin dashboard.
  */
 export default function ProfileForm() {
-  const navigate = useNavigate();
-  const token = localStorage.getItem('idToken');
+  const token = getToken();
 
   const [user, setUser] = useState(null);
   const [form, setForm] = useState(emptyProfile);
@@ -75,16 +74,9 @@ export default function ProfileForm() {
     if (!token) return undefined;
     const controller = new AbortController();
 
-    fetch(`${apiBaseUrl}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-    })
+    // apiFetch ends the session (and redirects to sign in) for expired/rejected tokens
+    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
       .then(async (response) => {
-        if (response.status === 401) {
-          localStorage.removeItem('idToken');
-          navigate('/login', { replace: true });
-          return;
-        }
         if (!response.ok) throw new Error(`Could not load your profile (HTTP ${response.status}).`);
         const data = await response.json();
         setUser(data);
@@ -101,7 +93,7 @@ export default function ProfileForm() {
       .finally(() => setIsLoading(false));
 
     return () => controller.abort();
-  }, [navigate, token]);
+  }, [token]);
 
   const isStudent = user?.role === 'STUDENT';
   const errors = validateProfile(form, isStudent);
@@ -113,11 +105,6 @@ export default function ProfileForm() {
     setSuccess('');
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('idToken');
-    navigate('/login', { replace: true });
-  };
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
@@ -127,12 +114,9 @@ export default function ProfileForm() {
 
     setIsSaving(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/users/${user.id}/profile`, {
+      const response = await apiFetch(`${apiBaseUrl}/users/${user.id}/profile`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: form.fullName,
           phoneNumber: form.phoneNumber,
@@ -142,10 +126,6 @@ export default function ProfileForm() {
         }),
       });
 
-      if (response.status === 401) {
-        handleLogout();
-        return;
-      }
       if (response.status === 400) {
         throw new Error('Some details were rejected. Check the phone, roll and room number formats.');
       }

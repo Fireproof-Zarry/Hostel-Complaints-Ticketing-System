@@ -5,10 +5,16 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "complaints")
+// Soft delete: deleted complaints keep their row (deleted_at) for 15 days until
+// ComplaintPurgeService hard-deletes them; meanwhile Hibernate hides them from
+// every entity query. Native SQL must filter them itself.
+// (@SoftDelete is not used: it forbids the LAZY to-one links other entities have.)
+@SQLRestriction("deleted_at IS NULL")
 public class Complaint {
 
     @Id
@@ -52,6 +58,11 @@ public class Complaint {
     // archived complaints are hidden from the admin dashboard
     @Column(name = "is_archived", nullable = false)
     private boolean isArchived = false;
+
+    // Set when the owner deletes a pending complaint
+    @JsonIgnore
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
@@ -97,6 +108,9 @@ public class Complaint {
             this.isArchived = false;
         }
     }
+    @JsonIgnore
+    public LocalDateTime getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
     public boolean isArchived() { return isArchived; }
     public void setArchived(boolean archived) { this.isArchived = archived; }
     public User getStudent() { return student; }
