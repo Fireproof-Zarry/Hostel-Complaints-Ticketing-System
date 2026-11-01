@@ -12,6 +12,7 @@ import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.repository.WorkOrderRepository;
+import com.example.demo.hostel.repository.ComplaintHistoryRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,9 @@ class AssignWorkOrderTransactionTest {
     @Autowired
     private LocationRepository locationRepository;
 
+    @Autowired
+    private ComplaintHistoryRepository complaintHistoryRepository;
+
     @MockitoSpyBean
     private WorkOrderRepository workOrderRepository;
 
@@ -82,6 +86,7 @@ class AssignWorkOrderTransactionTest {
     @AfterEach
     void tearDown() {
         workOrderRepository.deleteAll();
+        complaintHistoryRepository.deleteAll();
         complaintRepository.deleteAll();
         categoryRepository.deleteAll();
         locationRepository.deleteAll();
@@ -102,6 +107,14 @@ class AssignWorkOrderTransactionTest {
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.IN_PROGRESS);
         assertThat(complaint.getAssignedTo()).isEqualTo("admin@smail.iitm.ac.in");
+        assertThat(complaintHistoryRepository.findAll())
+                .hasSize(1)
+                .first()
+                .satisfies(history -> {
+                    assertThat(history.getOldStatus()).isEqualTo(Status.PENDING);
+                    assertThat(history.getNewStatus()).isEqualTo(Status.IN_PROGRESS);
+                    assertThat(history.getReason()).isEqualTo("Work order assigned");
+                });
     }
 
     @Test
@@ -109,9 +122,8 @@ class AssignWorkOrderTransactionTest {
         doThrow(new IllegalStateException("simulated failure"))
                 .when(workOrderRepository).save(any(WorkOrder.class));
 
-        assertThatThrownBy(() ->
-                transitionService.assignWorkOrder(complaintId, adminId, "HIGH", null)
-        ).hasMessageContaining("simulated failure");
+        assertThatThrownBy(() -> transitionService.assignWorkOrder(complaintId, adminId, "HIGH", null))
+                .hasMessageContaining("simulated failure");
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.PENDING);
