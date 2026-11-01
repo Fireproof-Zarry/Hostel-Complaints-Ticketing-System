@@ -2,7 +2,8 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.model.Complaint;
-import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
+import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -122,7 +124,8 @@ class ComplaintControllerTest {
     @Test
     void getsComplaintHistory() {
         when(complaintService.getComplaintHistory(1L, EMAIL))
-                .thenReturn(List.of(new ComplaintHistory()));
+                .thenReturn(List.of(new ComplaintHistoryEntry(
+                        Status.PENDING, Status.IN_PROGRESS, null, LocalDateTime.now(), "Hostel office")));
 
         var response = controller.getComplaintHistory(1L, JWT);
 

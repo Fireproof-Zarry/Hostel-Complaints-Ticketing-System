@@ -1,5 +1,6 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
@@ -109,12 +110,17 @@ class ComplaintHistoryIntegrationTest {
             historyRepository.flush();
         });
 
-        List<ComplaintHistory> result = complaintService.getComplaintHistory(
+        List<ComplaintHistoryEntry> result = complaintService.getComplaintHistory(
                 complaint.getId(), student.getEmail());
 
         assertThat(result).hasSize(2);
-        assertThat(result.get(0).getChangedAt())
-                .isBeforeOrEqualTo(result.get(1).getChangedAt());
+        assertThat(result.get(0).changedAt())
+                .isBeforeOrEqualTo(result.get(1).changedAt());
+        assertThat(result).extracting(ComplaintHistoryEntry::newStatus)
+                .containsExactly(Status.IN_PROGRESS, Status.RESOLVED);
+        // Admin changes never reveal who the admin is
+        assertThat(result).extracting(ComplaintHistoryEntry::changedBy)
+                .containsOnly("Hostel office");
     }
 
     private ComplaintHistory history(
