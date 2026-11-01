@@ -118,22 +118,30 @@ function RoleRoute({ requiredRole, children }) {
 function SessionWatcher() {
   const navigate = useNavigate()
   const location = useLocation()
+  // Bumped when another tab stores a new token, so the expiry timer follows it
+  const [tokenVersion, setTokenVersion] = useState(0)
 
   useEffect(() => onSessionEnded(() => navigate('/login', { replace: true })), [navigate])
 
   useEffect(() => {
     if (location.pathname === '/login') return undefined
-    const expiry = getTokenExpiry(getToken())
+    const token = getToken()
+    const expiry = getTokenExpiry(token)
     if (expiry === null) return undefined
     // Same one-minute margin as isTokenExpired; setTimeout caps at ~24.8 days
     const delay = Math.min(Math.max(expiry - 60 * 1000 - Date.now(), 0), 2 ** 31 - 1)
-    const timer = setTimeout(() => endSession('expired'), delay)
+    // Ends the session only if this token is still the stored one
+    const timer = setTimeout(() => endSession('expired', token), delay)
     return () => clearTimeout(timer)
-  }, [location.pathname])
+  }, [location.pathname, tokenVersion])
 
   useEffect(() => {
     const handleStorage = (event) => {
-      if (event.key === TOKEN_KEY && !event.newValue && window.location.pathname !== '/login') {
+      if (event.key !== TOKEN_KEY) return
+      if (event.newValue) {
+        setTokenVersion((version) => version + 1)
+      } else if (window.location.pathname !== '/login') {
+        // Logged out in another tab: this tab's session is gone too
         navigate('/login', { replace: true })
       }
     }

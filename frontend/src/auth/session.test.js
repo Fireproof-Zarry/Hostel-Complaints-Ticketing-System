@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { decodeTokenPayload, getTokenExpiry, isTokenExpired, sessionEndReason } from './session.js';
+import { decodeTokenPayload, getTokenExpiry, isStaleToken, isTokenExpired, sessionEndReason } from './session.js';
 
 function token(payload) {
   const encode = (value) => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -34,4 +34,12 @@ test('maps the backend WWW-Authenticate header to a reason', () => {
   assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="Jwt used before 2026-11-01T10:00:00Z"'), 'clock');
   assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="The aud claim is not valid"'), 'rejected');
   assert.equal(sessionEndReason(null), 'rejected');
+});
+
+test('a failure is stale only when a different token is stored now', () => {
+  assert.equal(isStaleToken('old-token', 'new-token'), true);
+  assert.equal(isStaleToken('same-token', 'same-token'), false);
+  // Nothing stored anymore: the failure is real, not stale
+  assert.equal(isStaleToken('old-token', null), false);
+  assert.equal(isStaleToken('old-token', ''), false);
 });

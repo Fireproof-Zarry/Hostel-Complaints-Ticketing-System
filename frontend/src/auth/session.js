@@ -41,6 +41,15 @@ export function isTokenExpired(token, now = Date.now()) {
 }
 
 /**
+ * True when a request failed with a token that is no longer the stored one,
+ * e.g. the user signed in again (here or in another tab) while it was in flight.
+ * Such a failure must not end the newer session.
+ */
+export function isStaleToken(failedToken, currentToken) {
+  return Boolean(currentToken) && currentToken !== failedToken;
+}
+
+/**
  * Why the backend rejected the token, from its WWW-Authenticate header,
  * e.g. 'Bearer error="invalid_token", error_description="Jwt expired at ..."'.
  */
@@ -75,11 +84,21 @@ export function onSessionEnded(listener) {
   return () => listeners.delete(listener);
 }
 
-/** Ends the session automatically (expired or rejected token); the login page explains why. */
-export function endSession(reason = 'expired') {
+/**
+ * Ends the session automatically (expired or rejected token); the login page
+ * explains why. When failedToken is given and a different token is stored by
+ * now, the failure is stale and the current session is kept (returns false).
+ */
+export function endSession(reason = 'expired', failedToken) {
+  if (failedToken !== undefined && isStaleToken(failedToken, getToken())) {
+    return false;
+  }
+  // Visible in the browser console (F12) to diagnose unexpected sign-outs
+  console.warn(`[HostelFix] Session ended: ${reason}`);
   localStorage.removeItem(TOKEN_KEY);
   sessionStorage.setItem(NOTICE_KEY, reason);
   listeners.forEach((listener) => listener(reason));
+  return true;
 }
 
 /** Explicit "Log out": also stops Google from signing the user straight back in. */
@@ -111,9 +130,13 @@ export class SessionEndedError extends Error {
  * the backend rejects it with 401.
  */
 export async function apiFetch(url, options = {}) {
+  return sendWithToken(url, options, false);
+}
+
+async function sendWithToken(url, options, isRetry) {
   const token = getToken();
   if (!token || isTokenExpired(token)) {
-    endSession('expired');
+    endSession('expired', token ?? undefined);
     throw new SessionEndedError('expired');
   }
 
@@ -122,8 +145,12 @@ export async function apiFetch(url, options = {}) {
   const response = await fetch(url, { ...options, headers });
 
   if (response.status === 401) {
+    // Signed in again while this request was in flight: retry once with the new token
+    if (!isRetry && isStaleToken(token, getToken())) {
+      return sendWithToken(url, options, true);
+    }
     const reason = sessionEndReason(response.headers.get('WWW-Authenticate'));
-    endSession(reason);
+    endSession(reason, token);
     throw new SessionEndedError(reason);
   }
   return response;
