@@ -9,9 +9,11 @@ export default function StudentSidebar({ activeId, onSelect }) {
         <div className="rounded-lg bg-indigo-500 p-2 text-white">
           <Wrench className="h-6 w-6" />
         </div>
-        <div>
-          <h1 className="font-bold leading-tight text-white">HostelFix</h1>
-          <p className="text-xs text-slate-400">Student Portal</p>
+        {/* Explicit size and m-0: Tailwind's base reset is not loaded, so the
+            browser's default h1 (2em) and p margins would apply */}
+        <div className="flex flex-col justify-center">
+          <h1 className="m-0 text-lg font-bold leading-tight text-white">HostelFix</h1>
+          <p className="m-0 mt-0.5 text-xs leading-tight text-slate-400">Student Portal</p>
         </div>
       </div>
 
