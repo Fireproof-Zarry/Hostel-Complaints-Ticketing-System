@@ -36,7 +36,11 @@ public class SecurityConfig {
                 // rejected sign-in. Error dispatches only render the original error.
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/health").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Staff management is admin-only; the rest of the admin area
+                // (complaints, archive, assignment) is shared with hostel staff
+                .requestMatchers("/api/admin/staff/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
+                .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "STAFF")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

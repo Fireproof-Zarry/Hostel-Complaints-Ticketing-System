@@ -67,12 +67,15 @@ class AuthServiceTest {
 
     @Test
     void otherPersonalEmailIsRejected() {
+        // Looked up to see whether an admin added it as staff; it was not
+        when(userRepository.findByEmail("someone@gmail.com")).thenReturn(Optional.empty());
+
         assertThrows(IllegalArgumentException.class, () ->
                 new AuthService(userRepository, "").processGoogleLogin(jwt(
                         "someone@gmail.com", "Someone", null, true
                 ))
         );
-        verifyNoInteractions(userRepository);
+        verify(userRepository, never()).save(any());
     }
 
     @Test
@@ -103,6 +106,56 @@ class AuthServiceTest {
                 ))
         );
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    void staffAddedByAnAdminCanSignInWithAPersonalEmailAndKeepTheirRole() {
+        User staff = new User();
+        staff.setEmail("warden@gmail.com");
+        staff.setName("warden@gmail.com");
+        staff.setRole(Role.STAFF);
+        when(userRepository.findByEmail("warden@gmail.com")).thenReturn(Optional.of(staff));
+        when(userRepository.save(staff)).thenReturn(staff);
+
+        User user = new AuthService(userRepository, "").processGoogleLogin(jwt(
+                "warden@gmail.com", "Hostel Warden", null, true
+        ));
+
+        assertEquals(Role.STAFF, user.getRole());
+        // The placeholder name set when the admin added them is replaced on first login
+        assertEquals("Hostel Warden", user.getName());
+    }
+
+    @Test
+    void adminAllowlistWinsOverStaff() {
+        User staff = new User();
+        staff.setEmail("warden@gmail.com");
+        staff.setName("Warden");
+        staff.setRole(Role.STAFF);
+        when(userRepository.findByEmail("warden@gmail.com")).thenReturn(Optional.of(staff));
+        when(userRepository.save(staff)).thenReturn(staff);
+
+        User user = new AuthService(userRepository, "warden@gmail.com").processGoogleLogin(jwt(
+                "warden@gmail.com", "Warden", null, true
+        ));
+
+        assertEquals(Role.ADMIN, user.getRole());
+    }
+
+    @Test
+    void removedStaffWithAPersonalEmailCanNoLongerSignIn() {
+        User removed = new User();
+        removed.setEmail("former-warden@gmail.com");
+        removed.setName("Former Warden");
+        removed.setRole(Role.STUDENT);
+        when(userRepository.findByEmail("former-warden@gmail.com")).thenReturn(Optional.of(removed));
+
+        assertThrows(IllegalArgumentException.class, () ->
+                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                        "former-warden@gmail.com", "Former Warden", null, true
+                ))
+        );
+        verify(userRepository, never()).save(any());
     }
 
     private Jwt jwt(String email, String name, String hostedDomain, Boolean emailVerified) {

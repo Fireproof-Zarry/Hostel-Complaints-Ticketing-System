@@ -4,6 +4,7 @@ import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.model.WorkOrderPriority;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.UserRepository;
 
@@ -35,6 +36,9 @@ class AdminServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private WorkOrderService workOrderService;
+
     private AdminService adminService;
 
     @BeforeEach
@@ -42,7 +46,8 @@ class AdminServiceTest {
         adminService = new AdminService(
                 complaintRepository,
                 transitionService,
-                userRepository
+                userRepository,
+                workOrderService
         );
     }
 
@@ -229,47 +234,50 @@ class AdminServiceTest {
     }
 
     @Test
-    void assignComplaint_whenUserIsAdmin_thenAssignsComplaint() {
+    void assignComplaint_createsAWorkOrderWithDefaultPriority() {
 
         Complaint complaint = new Complaint();
+        complaint.setAssignedTo("warden@gmail.com");
 
-        User admin = new User();
-        admin.setEmail("admin@smail.iitm.ac.in");
-        admin.setRole(Role.ADMIN);
+        User staff = new User();
+        staff.setId("staff-1");
+        staff.setEmail("warden@gmail.com");
+        staff.setRole(Role.STAFF);
 
+        when(userRepository.findByEmail("warden@gmail.com"))
+                .thenReturn(Optional.of(staff));
         when(complaintRepository.findById(1L))
                 .thenReturn(Optional.of(complaint));
 
-        when(userRepository.findByEmail("admin@smail.iitm.ac.in"))
-                .thenReturn(Optional.of(admin));
-
-        when(complaintRepository.save(complaint))
-                .thenReturn(complaint);
-
         Complaint result = adminService.assignComplaint(
-                1L,
-                "admin@smail.iitm.ac.in"
-        );
+                1L, "warden@gmail.com", null, null, "admin@smail.iitm.ac.in");
 
-        assertEquals(
-                "admin@smail.iitm.ac.in",
-                result.getAssignedTo()
-        );
+        verify(workOrderService).assignInCharge(
+                1L, "staff-1", WorkOrderPriority.MEDIUM, null, "admin@smail.iitm.ac.in");
+        assertEquals("warden@gmail.com", result.getAssignedTo());
+    }
 
-        verify(userRepository)
-                .findByEmail("admin@smail.iitm.ac.in");
+    @Test
+    void assignComplaint_passesPriorityAndDeadlineThrough() {
 
-        verify(complaintRepository)
-                .save(complaint);
+        User staff = new User();
+        staff.setId("staff-1");
+        staff.setRole(Role.STAFF);
+        LocalDateTime deadline = LocalDateTime.now().plusDays(2);
+
+        when(userRepository.findByEmail("warden@gmail.com"))
+                .thenReturn(Optional.of(staff));
+        when(complaintRepository.findById(1L))
+                .thenReturn(Optional.of(new Complaint()));
+
+        adminService.assignComplaint(1L, "warden@gmail.com", WorkOrderPriority.URGENT, deadline, "admin@smail.iitm.ac.in");
+
+        verify(workOrderService).assignInCharge(
+                1L, "staff-1", WorkOrderPriority.URGENT, deadline, "admin@smail.iitm.ac.in");
     }
 
     @Test
     void assignComplaint_whenUserDoesNotExist_thenThrowsException() {
-
-        Complaint complaint = new Complaint();
-
-        when(complaintRepository.findById(1L))
-                .thenReturn(Optional.of(complaint));
 
         when(userRepository.findByEmail("unknown@smail.iitm.ac.in"))
                 .thenReturn(Optional.empty());
@@ -277,39 +285,9 @@ class AdminServiceTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> adminService.assignComplaint(
-                        1L,
-                        "unknown@smail.iitm.ac.in"
-                )
+                        1L, "unknown@smail.iitm.ac.in", null, null, "admin@smail.iitm.ac.in")
         );
 
-        verify(complaintRepository, never())
-                .save(complaint);
-    }
-
-    @Test
-    void assignComplaint_whenUserIsStudent_thenThrowsException() {
-
-        Complaint complaint = new Complaint();
-
-        User student = new User();
-        student.setEmail("student@smail.iitm.ac.in");
-        student.setRole(Role.STUDENT);
-
-        when(complaintRepository.findById(1L))
-                .thenReturn(Optional.of(complaint));
-
-        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
-                .thenReturn(Optional.of(student));
-
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> adminService.assignComplaint(
-                        1L,
-                        "student@smail.iitm.ac.in"
-                )
-        );
-
-        verify(complaintRepository, never())
-                .save(complaint);
+        verifyNoInteractions(workOrderService);
     }
 }

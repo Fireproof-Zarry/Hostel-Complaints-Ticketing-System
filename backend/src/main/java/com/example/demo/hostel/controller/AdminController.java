@@ -3,6 +3,7 @@ package com.example.demo.hostel.controller;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.model.WorkOrderPriority;
 import com.example.demo.hostel.service.AdminService;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -74,10 +75,16 @@ public class AdminController {
     @PatchMapping("/{id}/assign")
     public ResponseEntity<?> assignComplaint(
             @PathVariable Long id,
-            @RequestParam String email) {
+            @RequestParam String email,
+            @RequestParam(required = false) WorkOrderPriority priority,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            LocalDateTime deadline,
+            @AuthenticationPrincipal Jwt jwt) {
 
         try {
-            Complaint complaint = adminService.assignComplaint(id, email);
+            Complaint complaint = adminService.assignComplaint(
+                    id, email, priority, deadline, jwt.getClaimAsString("email"));
             return ResponseEntity.ok(complaint);
 
         } catch (IllegalArgumentException e) {

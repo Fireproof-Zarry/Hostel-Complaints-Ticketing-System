@@ -47,16 +47,19 @@ public class AuthService {
         boolean isSmailAccount = email.endsWith("@" + STUDENT_DOMAIN)
                 && STUDENT_DOMAIN.equals(hostedDomain);
         boolean isAdmin = adminEmails.contains(email);
+        User user = userRepository.findByEmail(email).orElse(null);
+        // Hostel staff are added by an admin (StaffService) and may use any verified
+        // email; their role is kept across logins rather than recomputed
+        boolean isStaff = user != null && user.getRole() == Role.STAFF;
 
-        if (!isSmailAccount && !isAdmin) {
+        if (!isSmailAccount && !isAdmin && !isStaff) {
             throw new IllegalArgumentException(
-                    "Use your verified @smail.iitm.ac.in student account or an approved administrator account."
+                    "Use your verified @smail.iitm.ac.in student account or an approved administrator or staff account."
             );
         }
 
         String name = jwt.getClaimAsString("name");
-        Role role = isAdmin ? Role.ADMIN : Role.STUDENT;
-        User user = userRepository.findByEmail(email).orElse(null);
+        Role role = isAdmin ? Role.ADMIN : isStaff ? Role.STAFF : Role.STUDENT;
         boolean isNewUser = user == null;
         if (isNewUser) {
             user = new User();

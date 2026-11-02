@@ -188,7 +188,7 @@ public class ComplaintService {
     private static ComplaintHistoryEntry toHistoryEntry(ComplaintHistory history) {
         User actor = history.getActor();
         String changedBy;
-        if (actor == null || actor.getRole() == Role.ADMIN) {
+        if (actor == null || actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF) {
             changedBy = "Hostel office";
         } else {
             changedBy = actor.getFullName() != null ? actor.getFullName() : actor.getName();
