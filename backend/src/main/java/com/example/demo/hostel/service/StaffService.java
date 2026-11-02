@@ -1,6 +1,8 @@
 package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.dto.StaffMemberView;
+import com.example.demo.hostel.dto.WorkOrderView;
+import com.example.demo.hostel.model.WorkOrder;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
@@ -46,11 +48,18 @@ public class StaffService {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /** Staff and admins (admins can be assignees too), with their current workload. */
     @Transactional(readOnly = true)
     public List<StaffMemberView> listStaff() {
-        return userRepository.findByRoleInOrderByEmailAsc(List.of(Role.STAFF)).stream()
+        return userRepository.findByRoleInOrderByEmailAsc(List.of(Role.STAFF, Role.ADMIN)).stream()
                 .map(this::toView)
                 .toList();
+    }
+
+    /** One staff member's or admin's active work orders, in queue order. */
+    @Transactional(readOnly = true)
+    public List<WorkOrderView> getActiveWorkOrders(String userId) {
+        return workOrderService.getActiveFor(requireAssignable(userId, "Staff member not found"));
     }
 
     /**
@@ -78,26 +87,46 @@ public class StaffService {
     }
 
     /**
-     * Removes a staff member: their active work orders are cancelled (those
-     * complaints go back to PENDING, logged in history) and they lose access.
+     * Removes a staff member. Their active work orders move to reassignToId
+     * when given; otherwise they are cancelled (those complaints go back to
+     * PENDING, logged in history). Either way they lose access.
      */
     @Transactional
-    public void removeStaff(String userId, String actorEmail) {
+    public void removeStaff(String userId, String reassignToId, String actorEmail) {
         User staff = userRepository.findById(userId)
                 .filter(user -> user.getRole() == Role.STAFF)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Staff member not found"));
         User actor = userRepository.findByEmail(actorEmail)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        workOrderService.cancelActiveWorkOrders(staff, actor);
+        if (reassignToId != null && !reassignToId.isBlank()) {
+            if (reassignToId.equals(staff.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Choose someone other than the person being removed");
+            }
+            User target = requireAssignable(reassignToId, "The person to reassign to was not found");
+            workOrderService.reassignActiveWorkOrders(staff, target);
+        } else {
+            workOrderService.cancelActiveWorkOrders(staff, actor);
+        }
         // STUDENT has no special rights; a non-@smail account can no longer sign in at all
         staff.setRole(Role.STUDENT);
         userRepository.save(staff);
     }
 
+    private User requireAssignable(String userId, String notFoundMessage) {
+        return userRepository.findById(userId)
+                .filter(user -> user.getRole() == Role.STAFF || user.getRole() == Role.ADMIN)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, notFoundMessage));
+    }
+
     private StaffMemberView toView(User user) {
-        long active = workOrderRepository.findByAssigneeAndStatusIn(user, WorkOrderService.ACTIVE).size();
+        List<WorkOrder> active = workOrderRepository.findByAssigneeAndStatusIn(user, WorkOrderService.ACTIVE);
+        long overdue = active.stream().filter(WorkOrderService::isOverdue).count();
         String name = user.getFullName() != null && !user.getFullName().isBlank() ? user.getFullName() : user.getName();
-        return new StaffMemberView(user.getId(), user.getEmail(), name, user.getPhoneNumber(), active);
+        // addStaff stores the email as the name; the first sign-in replaces it with the Google name
+        boolean invitePending = user.getEmail().equalsIgnoreCase(user.getName());
+        return new StaffMemberView(user.getId(), user.getEmail(), name, user.getPhoneNumber(), user.getRole(),
+                active.size(), overdue, invitePending);
     }
 }

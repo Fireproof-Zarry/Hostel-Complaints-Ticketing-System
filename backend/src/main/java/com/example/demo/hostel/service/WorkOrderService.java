@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +33,10 @@ import java.util.UUID;
 public class WorkOrderService {
 
     static final List<WorkOrderStatus> ACTIVE = List.of(WorkOrderStatus.OPEN, WorkOrderStatus.IN_PROGRESS);
+
+    // Deadlines are picked in the browser as hostel (IST) wall-clock time with no
+    // zone, so compare them with the time in IST, not the server's zone (UTC on Render)
+    private static final ZoneId HOSTEL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final WorkOrderRepository workOrderRepository;
     private final ComplaintRepository complaintRepository;
@@ -143,6 +148,12 @@ public class WorkOrderService {
         return toView(workOrderRepository.save(workOrder));
     }
 
+    /** Someone's active work orders in queue order (staff management). */
+    @Transactional(readOnly = true)
+    public List<WorkOrderView> getActiveFor(User assignee) {
+        return workOrderRepository.findQueue(assignee, ACTIVE).stream().map(WorkOrderService::toView).toList();
+    }
+
     /** The caller's active queue: earliest deadline first, then most urgent. */
     @Transactional(readOnly = true)
     public List<WorkOrderView> getMyQueue(String actorEmail) {
@@ -173,6 +184,34 @@ public class WorkOrderService {
             workOrderRepository.save(workOrder);
         }
         return active.size();
+    }
+
+    /**
+     * Moves every active work order of a staff member being removed to someone
+     * else. Status, priority and deadline are kept, so the complaint status
+     * does not change. Runs in the caller's transaction.
+     */
+    @Transactional
+    public int reassignActiveWorkOrders(User from, User to) {
+        List<WorkOrder> active = workOrderRepository.findByAssigneeAndStatusIn(from, ACTIVE);
+        for (WorkOrder workOrder : active) {
+            workOrder.setAssignee(to);
+            workOrderRepository.save(workOrder);
+            Complaint complaint = workOrder.getComplaint();
+            complaint.setAssignedTo(to.getEmail());
+            complaintRepository.save(complaint);
+        }
+        return active.size();
+    }
+
+    static boolean isOverdue(WorkOrder workOrder) {
+        return workOrder.getStatus().isActive()
+                && workOrder.getDeadline() != null
+                && workOrder.getDeadline().isBefore(hostelNow());
+    }
+
+    private static LocalDateTime hostelNow() {
+        return LocalDateTime.now(HOSTEL_ZONE);
     }
 
     private void applyStatusChange(WorkOrder workOrder, WorkOrderStatus next, User actor) {
@@ -222,7 +261,7 @@ public class WorkOrderService {
     }
 
     private static void requireFutureDeadline(LocalDateTime deadline) {
-        if (deadline != null && deadline.isBefore(LocalDateTime.now())) {
+        if (deadline != null && deadline.isBefore(hostelNow())) {
             throw badRequest("The deadline cannot be in the past");
         }
     }
@@ -252,6 +291,7 @@ public class WorkOrderService {
                 workOrder.getDeadline(),
                 workOrder.getCompletionNotes(),
                 workOrder.getCreatedAt(),
-                workOrder.getUpdatedAt());
+                workOrder.getUpdatedAt(),
+                isOverdue(workOrder));
     }
 }

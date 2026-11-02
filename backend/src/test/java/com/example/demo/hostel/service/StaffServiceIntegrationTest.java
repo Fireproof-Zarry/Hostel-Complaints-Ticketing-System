@@ -22,6 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -87,29 +89,94 @@ class StaffServiceIntegrationTest {
         StaffMemberView warden = staffService.addStaff("warden@gmail.com");
         Long complaintId = complaint(userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT)));
         workOrderService.assignInCharge(complaintId, null, WorkOrderPriority.HIGH, null, "warden@gmail.com");
-        assertThat(staffService.listStaff().getFirst().activeWorkOrders()).isEqualTo(1);
+        assertThat(member("warden@gmail.com").activeWorkOrders()).isEqualTo(1);
 
-        staffService.removeStaff(warden.id(), admin.getEmail());
+        staffService.removeStaff(warden.id(), null, admin.getEmail());
 
         Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
         assertThat(complaint.getStatus()).isEqualTo(Status.PENDING);
         assertThat(complaint.getAssignedTo()).isNull();
         assertThat(workOrderRepository.findAll()).extracting(w -> w.getStatus()).containsExactly(WorkOrderStatus.CANCELLED);
         assertThat(userRepository.findById(warden.id()).orElseThrow().getRole()).isEqualTo(Role.STUDENT);
-        assertThat(staffService.listStaff()).isEmpty();
+        assertThat(staffService.listStaff()).extracting(StaffMemberView::email).containsExactly(ADMIN);
+    }
+
+    @Test
+    void removingStaffCanHandTheirWorkToSomeoneElse() {
+        User admin = userRepository.save(user(ADMIN, Role.ADMIN));
+        StaffMemberView warden = staffService.addStaff("warden@gmail.com");
+        StaffMemberView caretaker = staffService.addStaff("caretaker@gmail.com");
+        Long complaintId = complaint(userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT)));
+        workOrderService.assignInCharge(complaintId, null, WorkOrderPriority.HIGH, null, "warden@gmail.com");
+
+        staffService.removeStaff(warden.id(), caretaker.id(), admin.getEmail());
+
+        Complaint complaint = complaintRepository.findById(complaintId).orElseThrow();
+        assertThat(complaint.getStatus()).isEqualTo(Status.ASSIGNED);
+        assertThat(complaint.getAssignedTo()).isEqualTo("caretaker@gmail.com");
+        assertThat(staffService.getActiveWorkOrders(caretaker.id()))
+                .extracting(w -> w.complaintId(), w -> w.status())
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(complaintId, WorkOrderStatus.OPEN));
+        assertThat(userRepository.findById(warden.id()).orElseThrow().getRole()).isEqualTo(Role.STUDENT);
+    }
+
+    @Test
+    void cannotReassignToThePersonBeingRemovedOrToAStudent() {
+        userRepository.save(user(ADMIN, Role.ADMIN));
+        StaffMemberView warden = staffService.addStaff("warden@gmail.com");
+        User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
+
+        assertStatus(() -> staffService.removeStaff(warden.id(), warden.id(), ADMIN), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> staffService.removeStaff(warden.id(), student.getId(), ADMIN), HttpStatus.BAD_REQUEST);
+        assertThat(userRepository.findById(warden.id()).orElseThrow().getRole()).isEqualTo(Role.STAFF);
+    }
+
+    @Test
+    void listsAdminsTooWithOverdueWorkAndPendingInvites() {
+        User admin = user(ADMIN, Role.ADMIN);
+        admin.setName("Hostel Admin");
+        userRepository.save(admin);
+        staffService.addStaff("warden@gmail.com");
+        User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
+        workOrderService.assignInCharge(complaint(student), null, WorkOrderPriority.HIGH, null, "warden@gmail.com");
+        workOrderService.assignInCharge(complaint(student), null, WorkOrderPriority.LOW,
+                LocalDateTime.now().plusDays(3), "warden@gmail.com");
+        // Past deadlines are rejected when assigning, so let one lapse directly
+        var lapsed = workOrderRepository.findAll().stream().filter(w -> w.getDeadline() == null).findFirst().orElseThrow();
+        lapsed.setDeadline(LocalDateTime.now().minusDays(2));
+        workOrderRepository.save(lapsed);
+
+        StaffMemberView warden = member("warden@gmail.com");
+        assertThat(warden.role()).isEqualTo(Role.STAFF);
+        assertThat(warden.activeWorkOrders()).isEqualTo(2);
+        assertThat(warden.overdueWorkOrders()).isEqualTo(1);
+        assertThat(warden.invitePending()).isTrue();
+        StaffMemberView listedAdmin = member(ADMIN);
+        assertThat(listedAdmin.role()).isEqualTo(Role.ADMIN);
+        assertThat(listedAdmin.invitePending()).isFalse();
+        assertThat(staffService.getActiveWorkOrders(warden.id()))
+                .extracting(w -> w.overdue())
+                .containsExactly(true, false);
     }
 
     @Test
     void removingSomeoneWhoIsNotStaffIsNotFound() {
         User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
 
-        assertStatus(() -> staffService.removeStaff(student.getId(), ADMIN), HttpStatus.NOT_FOUND);
+        assertStatus(() -> staffService.removeStaff(student.getId(), null, ADMIN), HttpStatus.NOT_FOUND);
+    }
+
+    private StaffMemberView member(String email) {
+        return staffService.listStaff().stream().filter(m -> m.email().equals(email)).findFirst().orElseThrow();
     }
 
     private Long complaint(User student) {
-        Category category = new Category();
-        category.setName("Electrical");
-        category.setDefaultSlaHours(48);
+        Category category = categoryRepository.findAll().stream().findFirst().orElseGet(() -> {
+            Category created = new Category();
+            created.setName("Electrical");
+            created.setDefaultSlaHours(48);
+            return created;
+        });
         Location location = new Location();
         location.setFloor("First");
         location.setRoomNumber("204");
