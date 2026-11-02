@@ -90,7 +90,9 @@ export default function WorkOrderPanel({ complaintId, currentUser, onComplaintCh
         <span><strong>Assignee:</strong> {shown.assigneeName} ({shown.assigneeEmail})</span>
         <span><strong>Work order:</strong> {label(shown.status)}</span>
         <span><strong>Priority:</strong> {label(shown.priority)}</span>
-        <span><strong>Deadline:</strong> {formatDateTime(shown.deadline)}</span>
+        <span className={shown.overdue ? 'font-semibold text-rose-700' : undefined}>
+          <strong>Deadline:</strong> {formatDateTime(shown.deadline)}{shown.overdue && ' (overdue)'}
+        </span>
       </div>
       {shown.completionNotes && <p className="m-0 whitespace-pre-wrap"><strong>Notes:</strong> {shown.completionNotes}</p>}
 

@@ -132,6 +132,8 @@ export default function AdminHome() {
   const [selectedAdmin, setSelectedAdmin] = useState('')
   const [assignPriority, setAssignPriority] = useState('MEDIUM')
   const [assignDeadline, setAssignDeadline] = useState('')
+  // Admins only: email -> { activeWorkOrders, overdueWorkOrders } for the assign list
+  const [workload, setWorkload] = useState({})
   const [assignUpdating, setAssignUpdating] = useState(false)
   const [assignError, setAssignError] = useState('')
 
@@ -218,6 +220,17 @@ export default function AdminHome() {
       setAdmins(data)
     } catch (error) {
       console.error('Failed to fetch admins:', error)
+    }
+  }
+
+  const fetchWorkload = async () => {
+    try {
+      const response = await apiFetch(`${import.meta.env.VITE_API_URL}/admin/staff`)
+      if (!response.ok) return
+      const members = await response.json()
+      setWorkload(Object.fromEntries(members.map((member) => [member.email, member])))
+    } catch (error) {
+      console.error('Failed to load staff workload:', error)
     }
   }
 
@@ -879,6 +892,7 @@ export default function AdminHome() {
                                       setAssignPriority('MEDIUM')
                                       setAssignDeadline('')
                                       setAssignError('')
+                                      if (isAdmin) fetchWorkload()
                                     }}
                                   >
                                     Assign
@@ -1394,6 +1408,16 @@ export default function AdminHome() {
 
                         <span className="admin-email">
                           {admin.email}
+                          {workload[admin.email] && (
+                            <>
+                              {` · ${workload[admin.email].activeWorkOrders} active`}
+                              {workload[admin.email].overdueWorkOrders > 0 && (
+                                <span className="font-semibold text-rose-700">
+                                  {` · ${workload[admin.email].overdueWorkOrders} overdue`}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </span>
                       </div>
 
