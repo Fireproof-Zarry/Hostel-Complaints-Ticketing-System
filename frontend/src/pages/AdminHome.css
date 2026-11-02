@@ -722,6 +722,27 @@
   background: #f8f9fc;
 }
 
+/* Close / Cancel in the modal footers. index.css styles these for the old dark
+   modals (white text, transparent background), which made them invisible on
+   the white admin modals. Matches .admin-secondary-button. */
+.admin-shell .complaint-modal-footer .reset-button {
+  border: 1px solid var(--admin-border);
+  background: #fff;
+  color: #4d5a70;
+  font-weight: 600;
+}
+
+.admin-shell .complaint-modal-footer .reset-button:hover:not(:disabled) {
+  border-color: #d1cbf4;
+  background: #faf9ff;
+  color: var(--admin-purple);
+}
+
+.admin-shell .complaint-modal-footer .reset-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .admin-shell .complaint-modal-close {
   border-radius: 8px;
   color: #8490a2;
