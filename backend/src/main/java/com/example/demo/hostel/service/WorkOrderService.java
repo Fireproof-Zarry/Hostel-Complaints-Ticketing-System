@@ -187,6 +187,35 @@ public class WorkOrderService {
     }
 
     /**
+     * An admin set the complaint's status directly: bring its active work order
+     * in line, so a stale one cannot reopen the complaint or stay overdue
+     * forever. Moving it back to PENDING also unassigns it. Runs in the caller's
+     * transaction.
+     */
+    @Transactional
+    public void syncWithComplaintStatus(Long complaintId, Status status) {
+        Complaint complaint = complaintRepository.findById(complaintId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
+        WorkOrder active = workOrderRepository.findFirstByComplaintAndStatusIn(complaint, ACTIVE).orElse(null);
+        if (active == null) {
+            return;
+        }
+
+        active.setStatus(switch (status) {
+            case PENDING, REJECTED -> WorkOrderStatus.CANCELLED;
+            case ASSIGNED -> WorkOrderStatus.OPEN;
+            case IN_PROGRESS -> WorkOrderStatus.IN_PROGRESS;
+            case RESOLVED -> WorkOrderStatus.DONE;
+        });
+        workOrderRepository.save(active);
+
+        if (status == Status.PENDING) {
+            complaint.setAssignedTo(null);
+            complaintRepository.save(complaint);
+        }
+    }
+
+    /**
      * Moves every active work order of a staff member being removed to someone
      * else. Status, priority and deadline are kept, so the complaint status
      * does not change. Runs in the caller's transaction.

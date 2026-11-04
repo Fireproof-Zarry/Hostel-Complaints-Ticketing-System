@@ -52,6 +52,7 @@ class WorkOrderServiceIntegrationTest {
     private static final String STUDENT = "student@smail.iitm.ac.in";
 
     @Autowired private WorkOrderService workOrderService;
+    @Autowired private AdminService adminService;
     @Autowired private WorkOrderRepository workOrderRepository;
     @Autowired private ComplaintRepository complaintRepository;
     @Autowired private UserRepository userRepository;
@@ -292,6 +293,111 @@ class WorkOrderServiceIntegrationTest {
 
         assertThat(workOrderService.getForComplaint(complaintId, ADMIN)).extracting(WorkOrderView::id)
                 .containsExactly(current.id(), cancelled.id());
+    }
+
+    // ---- complaint status changed directly by an admin ----
+
+    @Test
+    void resolvingTheComplaintDirectlyFinishesItsWorkOrder() {
+        WorkOrderView workOrder = assignToWarden();
+
+        adminService.updateStatus(complaintId, Status.RESOLVED, ADMIN, "Fixed by the contractor");
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.DONE);
+        assertThat(complaint(complaintId).getAssignedTo()).isEqualTo(WARDEN);
+    }
+
+    @Test
+    void rejectingTheComplaintDirectlyCancelsItsWorkOrderAndItCannotReviveIt() {
+        WorkOrderView workOrder = assignToWarden();
+
+        adminService.updateStatus(complaintId, Status.REJECTED, ADMIN, "Not a hostel issue");
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.CANCELLED);
+        assertStatus(() -> workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.IN_PROGRESS), WARDEN), HttpStatus.CONFLICT);
+        assertThat(complaint(complaintId).getStatus()).isEqualTo(Status.REJECTED);
+    }
+
+    @Test
+    void movingTheComplaintBackToPendingCancelsAndUnassigns() {
+        WorkOrderView workOrder = assignToWarden();
+
+        adminService.updateStatus(complaintId, Status.PENDING, ADMIN, null);
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.CANCELLED);
+        assertThat(complaint(complaintId).getAssignedTo()).isNull();
+        assertThat(workOrderService.getMyQueue(WARDEN)).isEmpty();
+    }
+
+    @Test
+    void movingTheComplaintBetweenAssignedAndInProgressMovesTheWorkOrderToo() {
+        WorkOrderView workOrder = assignToWarden();
+
+        adminService.updateStatus(complaintId, Status.IN_PROGRESS, ADMIN, null);
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+
+        adminService.updateStatus(complaintId, Status.ASSIGNED, ADMIN, null);
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.OPEN);
+    }
+
+    @Test
+    void directStatusChangesWorkWithoutAWorkOrder() {
+        adminService.updateStatus(complaintId, Status.RESOLVED, ADMIN, null);
+
+        assertThat(complaint(complaintId).getStatus()).isEqualTo(Status.RESOLVED);
+        assertThat(workOrderRepository.count()).isZero();
+    }
+
+    // ---- soft-deleted complaints ----
+
+    @Test
+    void softDeletedComplaintsDropOutOfQueuesAndBulkChanges() {
+        assignToWarden();
+        Long kept = complaint("Tap leaking");
+        workOrderService.assignInCharge(kept, null, WorkOrderPriority.LOW, null, WARDEN);
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?", complaintId);
+
+        assertThat(workOrderService.getMyQueue(WARDEN)).extracting(WorkOrderView::complaintId).containsExactly(kept);
+        assertThat(workOrderService.cancelActiveWorkOrders(warden, admin)).isEqualTo(1);
+        assertThat(complaint(kept).getStatus()).isEqualTo(Status.PENDING);
+    }
+
+    // ---- not found ----
+
+    @Test
+    void missingRecordsAreReported() {
+        assertStatus(() -> workOrderService.assignInCharge(999_999L, null, WorkOrderPriority.LOW, null, WARDEN),
+                HttpStatus.NOT_FOUND);
+        assertStatus(() -> workOrderService.assignInCharge(complaintId, "no-such-user", WorkOrderPriority.LOW, null, ADMIN),
+                HttpStatus.BAD_REQUEST);
+        assertStatus(() -> workOrderService.updateWorkOrder(java.util.UUID.randomUUID(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.DONE), ADMIN), HttpStatus.NOT_FOUND);
+        assertStatus(() -> workOrderService.getForComplaint(999_999L, ADMIN), HttpStatus.NOT_FOUND);
+        assertStatus(() -> workOrderService.getMyQueue("nobody@gmail.com"), HttpStatus.NOT_FOUND);
+    }
+
+    // ---- completion notes ----
+
+    @Test
+    void completionNotesAreTrimmedAndBlankNotesAreCleared() {
+        WorkOrderView workOrder = assignToWarden();
+
+        WorkOrderView trimmed = workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, "  Replaced the capacitor  ", null), WARDEN);
+        assertThat(trimmed.completionNotes()).isEqualTo("Replaced the capacitor");
+
+        WorkOrderView cleared = workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, "   ", null), WARDEN);
+        assertThat(cleared.completionNotes()).isNull();
+    }
+
+    private WorkOrderView assignToWarden() {
+        return workOrderService.assignInCharge(complaintId, null, WorkOrderPriority.HIGH, null, WARDEN);
+    }
+
+    private WorkOrderStatus workOrderStatus(WorkOrderView workOrder) {
+        return workOrderRepository.findById(workOrder.id()).orElseThrow().getStatus();
     }
 
     private Long complaint(String title) {

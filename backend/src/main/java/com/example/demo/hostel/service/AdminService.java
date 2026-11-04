@@ -11,6 +11,7 @@ import com.example.demo.hostel.specification.ComplaintSpecification;
 
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -71,18 +72,20 @@ public class AdminService {
         return complaintRepository.findAll(specification);
     }
 
+    @Transactional
     public Complaint updateStatus(Long id, Status newStatus, String actorEmail, String reason) {
         User actor = userRepository.findByEmail(actorEmail)
                 .orElseThrow(() ->
                         new IllegalArgumentException("Admin user not found"));
 
-        // Status change and its complaint_history row commit atomically
+        // Status change, its complaint_history row and the work order commit atomically
         transitionService.changeComplaintStatus(
                 id,
                 actor.getId(),
                 newStatus.name(),
                 reason
         );
+        workOrderService.syncWithComplaintStatus(id, newStatus);
 
         return complaintRepository.findById(id)
                 .orElseThrow(() ->
