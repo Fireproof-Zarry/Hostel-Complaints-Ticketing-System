@@ -3,6 +3,8 @@ import { STUDENT_NAVIGATION } from './studentNavigation';
 
 /** Sidebar shared by the student dashboard and the Profile page. */
 export default function StudentSidebar({ activeId, onSelect }) {
+  const activeItem = STUDENT_NAVIGATION.find((item) => item.id === activeId);
+
   return (
     <aside className="flex w-full flex-col bg-slate-900 text-slate-300 md:min-h-screen md:w-64 md:shrink-0">
       <div className="flex items-center gap-3 p-5 md:p-6">
@@ -35,7 +37,7 @@ export default function StudentSidebar({ activeId, onSelect }) {
       </nav>
 
       <div className="hidden border-t border-slate-800 p-4 text-xs leading-5 text-slate-400 md:block">
-        Your submitted complaints and their current status.
+        {activeItem?.description}
       </div>
     </aside>
   );
