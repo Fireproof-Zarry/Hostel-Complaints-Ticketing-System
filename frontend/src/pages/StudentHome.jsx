@@ -18,6 +18,7 @@ import DeleteComplaintDialog from '../components/DeleteComplaintDialog';
 import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import SubmissionConfirmation from '../components/SubmissionConfirmation';
+import ComplaintTimeline from '../components/ComplaintTimeline';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
 import { apiFetch, decodeTokenPayload, getToken, logout } from '../auth/session';
@@ -52,6 +53,9 @@ function activeComplaint(complaint) {
 }
 
 function ComplaintCard({ complaint, onDelete }) {
+  // Loaded when opened, so the list does not make a request for every complaint
+  const [showTimeline, setShowTimeline] = useState(false);
+
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -111,6 +115,25 @@ function ComplaintCard({ complaint, onDelete }) {
           )}
         </div>
       )}
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          aria-expanded={showTimeline}
+          onClick={() => setShowTimeline((open) => !open)}
+          className="rounded-lg px-2 py-1 text-sm font-medium text-indigo-700 transition hover:bg-indigo-50"
+        >
+          {showTimeline ? 'Hide timeline' : 'View timeline'}
+        </button>
+        {showTimeline && (
+          <div className="mt-3 px-2">
+            <ComplaintTimeline
+              complaintId={complaint.id}
+              createdAt={complaint.createdAt}
+              refreshKey={complaint.updatedAt}
+            />
+          </div>
+        )}
+      </div>
       {/* Only before an admin picks it up */}
       {complaint.status?.toUpperCase() === 'PENDING' && (
         <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">

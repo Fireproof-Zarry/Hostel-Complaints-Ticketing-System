@@ -86,7 +86,7 @@ export default function WorkOrderPanel({ complaintId, currentUser, onComplaintCh
 
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-      <div className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+      <div className="grid gap-y-1">
         <span><strong>Assignee:</strong> {shown.assigneeName} ({shown.assigneeEmail})</span>
         <span><strong>Work order:</strong> {label(shown.status)}</span>
         <span><strong>Priority:</strong> {label(shown.priority)}</span>
