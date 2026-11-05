@@ -8,11 +8,9 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
-  Home,
   LogOut,
   Menu,
   Search,
-  Settings,
   ShieldCheck,
   UserRound,
   Users,
@@ -502,17 +500,6 @@ export default function AdminHome() {
         <nav className="admin-nav" aria-label="Admin navigation">
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Dashboard' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Dashboard')}
-            title="Dashboard"
-          >
-            <Home size={19} />
-            {sidebarOpen && <span>Dashboard</span>}
-            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
-          </button>
-
-          <button
-            type="button"
             className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
             onClick={() => {
               setComingSoonPage(null)
@@ -547,17 +534,6 @@ export default function AdminHome() {
               {sidebarOpen && <span>Staff management</span>}
             </button>
           )}
-
-          <button
-            type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Settings' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Settings')}
-            title="Settings"
-          >
-            <Settings size={19} />
-            {sidebarOpen && <span>Settings</span>}
-            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
-          </button>
         </nav>
 
         <div className="admin-sidebar-bottom">
