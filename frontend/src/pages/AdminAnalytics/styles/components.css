@@ -1,0 +1,232 @@
+/* Buttons and loading animation are in layout.css */
+
+/* Summary cards */
+.analytics-summary-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.analytics-summary-card {
+    min-width: 0;
+    padding: 17px;
+    border: 1px solid #e8eaf0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(25 34 53 / 3%);
+}
+
+.summary-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.summary-card-label {
+    color: #78849a;
+    font-size: 12px;
+    font-weight: 650;
+    line-height: 1.4;
+}
+
+.summary-card-icon,
+.metric-card-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 10px;
+}
+
+.summary-card-value {
+    color: #192235;
+    font-size: 26px;
+    font-weight: 750;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.analytics-summary-card.purple .summary-card-icon {
+    background: #f0ebff;
+    color: #6c3df4;
+}
+
+.analytics-summary-card.orange .summary-card-icon {
+    background: #fff4df;
+    color: #d97706;
+}
+
+.analytics-summary-card.blue .summary-card-icon {
+    background: #eaf2ff;
+    color: #2563eb;
+}
+
+.analytics-summary-card.green .summary-card-icon {
+    background: #e8f8ef;
+    color: #15945b;
+}
+
+.analytics-summary-card.red .summary-card-icon {
+    background: #fff0f0;
+    color: #dc2626;
+}
+
+/* Metric cards */
+.analytics-metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.analytics-metric-card {
+    min-width: 0;
+    padding: 21px;
+    border: 1px solid #e8eaf0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 2px 8px rgb(25 34 53 / 3%);
+}
+
+.metric-card-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.metric-card-icon {
+    width: 44px;
+    height: 44px;
+}
+
+.metric-card-icon.resolution {
+    background: #e8f8ef;
+    color: #15945b;
+}
+
+.metric-card-icon.time {
+    background: #eaf2ff;
+    color: #2563eb;
+}
+
+.metric-card-label {
+    margin: 0 0 5px;
+    color: #78849a;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.metric-card-value {
+    margin: 0;
+    color: #192235;
+    font-size: 27px;
+    font-weight: 750;
+    line-height: 1.25;
+}
+
+/* Recurring issue cards */
+.recurring-issue-group {
+    min-width: 0;
+}
+
+.recurring-issue-group-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 17px;
+}
+
+.recurring-issue-group-heading h3 {
+    margin: 0;
+    color: #192235;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.recurring-issue-group-heading span {
+    color: #8791a3;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.recurring-issue-list {
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+}
+
+.recurring-issue-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    padding: 13px;
+    border: 1px solid #edf0f5;
+    border-radius: 10px;
+    background: #fbfcfe;
+}
+
+.recurring-issue-icon {
+    display: grid;
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border-radius: 10px;
+    background: #f0ebff;
+    color: #6c3df4;
+}
+
+.recurring-issue-details {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.recurring-issue-details strong {
+    color: #293449;
+    font-size: 13px;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.recurring-issue-details span {
+    color: #8791a3;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.recurring-issue-count {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 3px;
+}
+
+.recurring-issue-count strong {
+    color: #192235;
+    font-size: 17px;
+    font-weight: 750;
+}
+
+.recurring-issue-count span {
+    color: #8791a3;
+    font-size: 11px;
+}
+
+/* Loading icon */
+.spin {
+    animation: analytics-spin 1s linear infinite;
+}
+
+@keyframes analytics-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

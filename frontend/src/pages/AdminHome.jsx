@@ -19,6 +19,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
@@ -465,6 +466,7 @@ export default function AdminHome() {
             {sidebarOpen && <span>Dashboard</span>}
             {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
           </button>
+
           <button
             type="button"
             className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
@@ -478,6 +480,18 @@ export default function AdminHome() {
             {sidebarOpen && <span>Complaints</span>}
             {sidebarOpen && <span className="admin-nav-count">{statusCounts.total}</span>}
           </button>
+
+          {/* Analytics navigation */}
+          <button
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === 'Analytics' ? 'active' : ''}`}
+            onClick={() => setComingSoonPage('Analytics')}
+            title="Analytics"
+          >
+            <BarChart3 size={19} />
+            {sidebarOpen && <span>Analytics</span>}
+          </button>
+
           <button
             type="button"
             className={`admin-nav-item ${comingSoonPage === 'Staff Management' ? 'active' : ''}`}
@@ -488,6 +502,7 @@ export default function AdminHome() {
             {sidebarOpen && <span>Staff management</span>}
             {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
           </button>
+
           <button
             type="button"
             className={`admin-nav-item ${comingSoonPage === 'Settings' ? 'active' : ''}`}
@@ -510,6 +525,7 @@ export default function AdminHome() {
             <UserRound size={19} />
             {sidebarOpen && <span>My profile</span>}
           </button>
+
           <div className="admin-user-card">
             <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
             {sidebarOpen && (
@@ -519,7 +535,13 @@ export default function AdminHome() {
               </span>
             )}
           </div>
-          <button type="button" className="admin-nav-item admin-logout" onClick={handleLogout} title="Log out">
+
+          <button
+            type="button"
+            className="admin-nav-item admin-logout"
+            onClick={handleLogout}
+            title="Log out"
+          >
             <LogOut size={18} />
             {sidebarOpen && <span>Log out</span>}
           </button>
@@ -536,10 +558,12 @@ export default function AdminHome() {
           >
             <Menu size={21} />
           </button>
+
           <div className="admin-header-title">
             <span>HOSTELFIX / {comingSoonPage ? comingSoonPage.toUpperCase() : 'COMPLAINTS'}</span>
             <h1>{comingSoonPage || 'Complaints'}</h1>
           </div>
+
           <div className="admin-header-actions">
             <button
               type="button"
@@ -555,13 +579,22 @@ export default function AdminHome() {
         </header>
 
         <section className="admin-content">
-          {comingSoonPage === PROFILE_VIEW ? (
+          {comingSoonPage === 'Analytics' ? (
+            <AdminAnalytics />
+          ) : comingSoonPage === PROFILE_VIEW ? (
             <ProfileForm />
           ) : comingSoonPage ? (
             <div className="admin-work-in-progress">
               <ComingSoon title={comingSoonPage} />
-              <p>This section is under development. Complaint management remains available in the Complaints workspace.</p>
-              <button type="button" className="admin-primary-button" onClick={() => setComingSoonPage(null)}>
+              <p>
+                This section is under development. Complaint management remains
+                available in the Complaints workspace.
+              </p>
+              <button
+                type="button"
+                className="admin-primary-button"
+                onClick={() => setComingSoonPage(null)}
+              >
                 <ClipboardList size={17} /> Go to complaints
               </button>
             </div>
@@ -573,30 +606,74 @@ export default function AdminHome() {
                   <h2>Complaint management</h2>
                   <p>Review requests, apply filters, and keep hostel issues moving.</p>
                 </div>
-                <button type="button" className="admin-secondary-button" onClick={handleRefreshComplaints}>
+
+                <button
+                  type="button"
+                  className="admin-secondary-button"
+                  onClick={handleRefreshComplaints}
+                >
                   <ArrowDownToLine size={17} /> Refresh data
                 </button>
               </div>
 
               <div className="admin-summary-grid">
-                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('')}>
-                  <span className="admin-summary-icon summary-indigo"><ClipboardList size={19} /></span>
-                  <span className="admin-summary-copy"><small>Total complaints</small><strong>{loading ? '—' : statusCounts.total}</strong></span>
+                <button
+                  type="button"
+                  className="admin-summary-card"
+                  onClick={() => handleQuickStatusFilter('')}
+                >
+                  <span className="admin-summary-icon summary-indigo">
+                    <ClipboardList size={19} />
+                  </span>
+                  <span className="admin-summary-copy">
+                    <small>Total complaints</small>
+                    <strong>{loading ? '—' : statusCounts.total}</strong>
+                  </span>
                   <span className="admin-summary-caption">All requests</span>
                 </button>
-                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('PENDING')}>
-                  <span className="admin-summary-icon summary-amber"><AlertCircle size={19} /></span>
-                  <span className="admin-summary-copy"><small>Pending</small><strong>{loading ? '—' : statusCounts.pending}</strong></span>
+
+                <button
+                  type="button"
+                  className="admin-summary-card"
+                  onClick={() => handleQuickStatusFilter('PENDING')}
+                >
+                  <span className="admin-summary-icon summary-amber">
+                    <AlertCircle size={19} />
+                  </span>
+                  <span className="admin-summary-copy">
+                    <small>Pending</small>
+                    <strong>{loading ? '—' : statusCounts.pending}</strong>
+                  </span>
                   <span className="admin-summary-caption">Needs review</span>
                 </button>
-                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('IN_PROGRESS')}>
-                  <span className="admin-summary-icon summary-blue"><Clock3 size={19} /></span>
-                  <span className="admin-summary-copy"><small>In progress</small><strong>{loading ? '—' : statusCounts.inProgress}</strong></span>
+
+                <button
+                  type="button"
+                  className="admin-summary-card"
+                  onClick={() => handleQuickStatusFilter('IN_PROGRESS')}
+                >
+                  <span className="admin-summary-icon summary-blue">
+                    <Clock3 size={19} />
+                  </span>
+                  <span className="admin-summary-copy">
+                    <small>In progress</small>
+                    <strong>{loading ? '—' : statusCounts.inProgress}</strong>
+                  </span>
                   <span className="admin-summary-caption">Being handled</span>
                 </button>
-                <button type="button" className="admin-summary-card" onClick={() => handleQuickStatusFilter('RESOLVED')}>
-                  <span className="admin-summary-icon summary-green"><CheckCircle2 size={19} /></span>
-                  <span className="admin-summary-copy"><small>Resolved</small><strong>{loading ? '—' : statusCounts.resolved}</strong></span>
+
+                <button
+                  type="button"
+                  className="admin-summary-card"
+                  onClick={() => handleQuickStatusFilter('RESOLVED')}
+                >
+                  <span className="admin-summary-icon summary-green">
+                    <CheckCircle2 size={19} />
+                  </span>
+                  <span className="admin-summary-copy">
+                    <small>Resolved</small>
+                    <strong>{loading ? '—' : statusCounts.resolved}</strong>
+                  </span>
                   <span className="admin-summary-caption">Completed</span>
                 </button>
               </div>
@@ -607,7 +684,9 @@ export default function AdminHome() {
                     <h3>All complaints</h3>
                     <p>Search and filter submitted hostel requests.</p>
                   </div>
-                  <span className="admin-result-count">{loading ? 'Loading…' : `${filteredComplaints.length} results`}</span>
+                  <span className="admin-result-count">
+                    {loading ? 'Loading…' : `${filteredComplaints.length} results`}
+                  </span>
                 </div>
 
                 <div className="admin-search-row">
@@ -623,7 +702,12 @@ export default function AdminHome() {
                       }}
                     />
                   </label>
-                  <button type="button" className="admin-primary-button" onClick={handleSearch}>
+
+                  <button
+                    type="button"
+                    className="admin-primary-button"
+                    onClick={handleSearch}
+                  >
                     Search
                   </button>
                 </div>
@@ -631,7 +715,10 @@ export default function AdminHome() {
                 <div className="admin-filter-grid">
                   <label className="admin-filter-control">
                     <span>Status</span>
-                    <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                    <select
+                      value={statusFilter}
+                      onChange={(event) => setStatusFilter(event.target.value)}
+                    >
                       <option value="">All statuses</option>
                       <option value="PENDING">Pending</option>
                       <option value="ASSIGNED">Assigned</option>
@@ -643,7 +730,10 @@ export default function AdminHome() {
 
                   <label className="admin-filter-control">
                     <span>Category</span>
-                    <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+                    <select
+                      value={categoryFilter}
+                      onChange={(event) => setCategoryFilter(event.target.value)}
+                    >
                       <option value="">All categories</option>
                       <option value="Electrical">Electrical</option>
                       <option value="Plumbing">Plumbing</option>
@@ -655,7 +745,10 @@ export default function AdminHome() {
 
                   <label className="admin-filter-control">
                     <span>Floor</span>
-                    <select value={floorFilter} onChange={(event) => setFloorFilter(event.target.value)}>
+                    <select
+                      value={floorFilter}
+                      onChange={(event) => setFloorFilter(event.target.value)}
+                    >
                       <option value="">All floors</option>
                       <option value="Ground">Ground</option>
                       <option value="First">First</option>
@@ -669,15 +762,24 @@ export default function AdminHome() {
 
                   <label className="admin-filter-control">
                     <span>In-charge</span>
-                    <select value={assignedToFilter} onChange={(event) => setAssignedToFilter(event.target.value)}>
+                    <select
+                      value={assignedToFilter}
+                      onChange={(event) => setAssignedToFilter(event.target.value)}
+                    >
                       <option value="">All staff</option>
-                      {assignedToUsers.map((email) => <option key={email} value={email}>{email}</option>)}
+                      {assignedToUsers.map((email) => (
+                        <option key={email} value={email}>{email}</option>
+                      ))}
                     </select>
                   </label>
 
                   <label className="admin-filter-control">
                     <span>From date</span>
-                    <input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} />
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(event) => setFromDate(event.target.value)}
+                    />
                   </label>
 
                   <label className="admin-filter-control">
@@ -693,13 +795,24 @@ export default function AdminHome() {
                 </div>
 
                 {hasInvalidDateRange && (
-                  <p id="admin-date-range-notice" className="admin-date-range-notice" role="alert">
+                  <p
+                    id="admin-date-range-notice"
+                    className="admin-date-range-notice"
+                    role="alert"
+                  >
                     “To date” must be the same as or later than “From date”.
                   </p>
                 )}
 
                 <div className="admin-filter-actions">
-                  <button type="button" className="admin-secondary-button" onClick={handleResetFilters}>Reset filters</button>
+                  <button
+                    type="button"
+                    className="admin-secondary-button"
+                    onClick={handleResetFilters}
+                  >
+                    Reset filters
+                  </button>
+
                   <button
                     type="button"
                     className="admin-primary-button"
@@ -715,10 +828,16 @@ export default function AdminHome() {
                 <div className="admin-complaints-heading">
                   <div>
                     <h3>Complaint records</h3>
-                    <p>Open a complaint to review its details or manage its status and assignment.</p>
+                    <p>
+                      Open a complaint to review its details or manage its status
+                      and assignment.
+                    </p>
                   </div>
-                  <span><BarChart3 size={17} /> {filteredComplaints.length} shown</span>
+                  <span>
+                    <BarChart3 size={17} /> {filteredComplaints.length} shown
+                  </span>
                 </div>
+
                 {loading && (
                   <div className="table-placeholder admin-table-state">
                     <p>Loading complaints...</p>
@@ -731,147 +850,120 @@ export default function AdminHome() {
                   </div>
                 )}
 
-                {!loading &&
-                  !error &&
-                  filteredComplaints.length === 0 && (
-                    <div className="table-placeholder admin-table-state">
-                      <p>No complaints found.</p>
-                    </div>
-                  )}
+                {!loading && !error && filteredComplaints.length === 0 && (
+                  <div className="table-placeholder admin-table-state">
+                    <p>No complaints found.</p>
+                  </div>
+                )}
 
-                {!loading &&
-                  !error &&
-                  filteredComplaints.length > 0 && (
-                    <div className="complaints-table-wrapper admin-table-wrapper">
-                      <table className="complaints-table">
-                        <thead>
-                          <tr>
-                            <th>Complaint No.</th>
-                            <th>Title</th>
-                            <th>Category</th>
-                            <th>Email</th>
-                            <th>Floor</th>
-                            <th>Room No.</th>
-                            <th>Status</th>
-                            <th>Assigned To</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
+                {!loading && !error && filteredComplaints.length > 0 && (
+                  <div className="complaints-table-wrapper admin-table-wrapper">
+                    <table className="complaints-table">
+                      <thead>
+                        <tr>
+                          <th>Complaint No.</th>
+                          <th>Title</th>
+                          <th>Category</th>
+                          <th>Email</th>
+                          <th>Floor</th>
+                          <th>Room No.</th>
+                          <th>Status</th>
+                          <th>Assigned To</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
 
-                        <tbody>
-                          {filteredComplaints.map((complaint) => (
-                            <tr key={complaint.id}>
+                      <tbody>
+                        {filteredComplaints.map((complaint) => (
+                          <tr key={complaint.id}>
+                            <td>#{complaint.id}</td>
 
-                              <td>
-                                #{complaint.id}
-                              </td>
+                            <td>
+                              <strong
+                                className="complaint-title"
+                                onClick={() => setSelectedComplaint(complaint)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter' || event.key === ' ') {
+                                    setSelectedComplaint(complaint)
+                                  }
+                                }}
+                              >
+                                {complaint.title}
+                              </strong>
+                            </td>
 
-                              <td>
-                                <strong
-                                  className="complaint-title"
+                            <td>{complaint.category}</td>
+
+                            <td>{complaint.student?.email || 'No email'}</td>
+
+                            <td>
+                              <span>{complaint.floor || '—'}</span>
+                              {complaint.room && hasFloorRoomMismatch(complaint.floor, complaint.room) && (
+                                <span
+                                  className="admin-location-warning"
+                                  title="The room number does not match the selected floor."
+                                >
+                                  Check location
+                                </span>
+                              )}
+                            </td>
+
+                            <td>
+                              {complaint.communityArea
+                                ? complaint.wing || 'Community area'
+                                : complaint.room}
+                            </td>
+
+                            <td>
+                              <span className={`status-badge status-${complaint.status?.toLowerCase()}`}>
+                                {complaint.status}
+                              </span>
+                            </td>
+
+                            <td>{complaint.assignedTo || 'Unassigned'}</td>
+
+                            <td>
+                              <div className="action-buttons">
+                                <button
+                                  type="button"
+                                  className="table-action-button"
                                   onClick={() => setSelectedComplaint(complaint)}
-                                  role="button"
-                                  tabIndex={0}
-                                  onKeyDown={(event) => {
-                                    if (event.key === 'Enter' || event.key === ' ') {
-                                      setSelectedComplaint(complaint)
-                                    }
+                                >
+                                  View
+                                </button>
+
+                                <button
+                                  className="table-action-button"
+                                  onClick={() => {
+                                    setAssignComplaint(complaint)
+                                    setSelectedAdmin(complaint.assignedTo || '')
+                                    setAssignError('')
                                   }}
                                 >
-                                  {complaint.title}
-                                </strong>
-                              </td>
+                                  Assign
+                                </button>
 
-                              <td>
-                                {complaint.category}
-                              </td>
-
-                              <td>
-                                {complaint.student?.email ||
-                                  'No email'}
-                              </td>
-
-                              <td>
-                                <span>{complaint.floor || '—'}</span>
-                                {complaint.room && hasFloorRoomMismatch(complaint.floor, complaint.room) && (
-                                  <span
-                                    className="admin-location-warning"
-                                    title="The room number does not match the selected floor."
-                                  >
-                                    Check location
-                                  </span>
-                                )}
-                              </td>
-
-                              <td>
-                                {complaint.communityArea
-                                  ? complaint.wing || 'Community area'
-                                  : complaint.room}
-                              </td>
-
-                              <td>
-                                <span
-                                  className={`status-badge status-${complaint.status?.toLowerCase()}`}
+                                <button
+                                  type="button"
+                                  className="table-action-button"
+                                  onClick={() => {
+                                    setStatusComplaint(complaint)
+                                    setNewStatus(complaint.status || '')
+                                    setStatusError('')
+                                  }}
                                 >
-                                  {complaint.status}
-                                </span>
-                              </td>
-
-                              <td>
-                                {complaint.assignedTo ||
-                                  'Unassigned'}
-                              </td>
-
-                              <td>
-                                <div className="action-buttons">
-
-                                  <button
-                                    type="button"
-                                    className="table-action-button"
-                                    onClick={() =>
-                                      setSelectedComplaint(
-                                        complaint
-                                      )
-                                    }
-                                  >
-                                    View
-                                  </button>
-
-                                  <button
-                                    className="table-action-button"
-                                    onClick={() => {
-                                      setAssignComplaint(complaint)
-                                      setSelectedAdmin(complaint.assignedTo || '')
-                                      setAssignError('')
-                                    }}
-                                  >
-                                    Assign
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    className="table-action-button"
-                                    onClick={() => {
-                                      setStatusComplaint(
-                                        complaint
-                                      )
-                                      setNewStatus(
-                                        complaint.status || ''
-                                      )
-                                      setStatusError('')
-                                    }}
-                                  >
-                                    Status
-                                  </button>
-
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                                  Status
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -882,108 +974,72 @@ export default function AdminHome() {
       {selectedComplaint && (
         <div
           className="complaint-modal-overlay"
-          onClick={() =>
-            setSelectedComplaint(null)
-          }
+          onClick={() => setSelectedComplaint(null)}
         >
           <div
             className="complaint-modal"
             onClick={(e) => e.stopPropagation()}
           >
-
             <div className="complaint-modal-header">
               <div>
                 <h2>Complaint Details</h2>
 
                 <div className="complaint-meta">
-                  <span>
-                    #{selectedComplaint.id}
-                  </span>
-
+                  <span>#{selectedComplaint.id}</span>
                   <span>•</span>
-
-                  <span>
-                    {getTimeSinceRaised(
-                      selectedComplaint.createdAt
-                    )}
-                  </span>
+                  <span>{getTimeSinceRaised(selectedComplaint.createdAt)}</span>
                 </div>
               </div>
 
               <button
                 type="button"
                 className="complaint-modal-close"
-                onClick={() =>
-                  setSelectedComplaint(null)
-                }
+                onClick={() => setSelectedComplaint(null)}
               >
                 ×
               </button>
             </div>
 
             <div className="complaint-details">
-
               <div className="detail-item detail-item-full complaint-title-detail">
-                <span className="detail-label">
-                  Title
-                </span>
-
+                <span className="detail-label">Title</span>
                 <span className="detail-title-value">
                   {selectedComplaint.title || '—'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Category
-                </span>
-
+                <span className="detail-label">Category</span>
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.category || '—'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Status
-                </span>
-
+                <span className="detail-label">Status</span>
                 <span className="detail-value">
-                  <span
-                    className={`status-badge status-${selectedComplaint.status?.toLowerCase()}`}
-                  >
+                  <span className={`status-badge status-${selectedComplaint.status?.toLowerCase()}`}>
                     {selectedComplaint.status || '—'}
                   </span>
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Student Email
-                </span>
-
+                <span className="detail-label">Student Email</span>
                 <span className="detail-value detail-value-large">
-                  {selectedComplaint.student?.email ||
-                    'No email'}
+                  {selectedComplaint.student?.email || 'No email'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Assigned To
-                </span>
-
+                <span className="detail-label">Assigned To</span>
                 <span className="detail-value detail-value-large">
-                  {selectedComplaint.assignedTo ||
-                    'Unassigned'}
+                  {selectedComplaint.assignedTo || 'Unassigned'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Floor
-                </span>
-
+                <span className="detail-label">Floor</span>
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.floor || '—'}
                 </span>
@@ -993,7 +1049,6 @@ export default function AdminHome() {
                 <span className="detail-label">
                   {selectedComplaint.communityArea ? 'Community area' : 'Room No.'}
                 </span>
-
                 <span className="detail-value detail-value-large">
                   {(selectedComplaint.communityArea
                     ? selectedComplaint.wing
@@ -1002,10 +1057,7 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Student
-                </span>
-
+                <span className="detail-label">Student</span>
                 <span className="detail-value">
                   {selectedComplaint.student?.fullName ||
                     selectedComplaint.student?.name ||
@@ -1016,30 +1068,21 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Student Phone
-                </span>
-
+                <span className="detail-label">Student Phone</span>
                 <span className="detail-value">
                   {selectedComplaint.student?.phoneNumber || 'Not provided'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Available Time
-                </span>
-
+                <span className="detail-label">Available Time</span>
                 <span className="detail-value">
                   {selectedComplaint.availableTimeSlot || 'Not specified'}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Room Key
-                </span>
-
+                <span className="detail-label">Room Key</span>
                 <span className="detail-value">
                   {selectedComplaint.communityArea
                     ? 'Not applicable'
@@ -1050,20 +1093,14 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Description
-                </span>
-
+                <span className="detail-label">Description</span>
                 <p className="detail-description">
-                  {selectedComplaint.description ||
-                    'No description provided.'}
+                  {selectedComplaint.description || 'No description provided.'}
                 </p>
               </div>
 
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Photo
-                </span>
+                <span className="detail-label">Photo</span>
 
                 {selectedComplaint.imageUrl ? (
                   <a
@@ -1080,41 +1117,30 @@ export default function AdminHome() {
                     />
                   </a>
                 ) : (
-                  <span className="detail-value">
-                    No photo attached
-                  </span>
+                  <span className="detail-value">No photo attached</span>
                 )}
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Created At
-                </span>
-
+                <span className="detail-label">Created At</span>
                 <span className="detail-value">
                   {formatComplaintDateTime(selectedComplaint.createdAt)}
                 </span>
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">
-                  Updated At
-                </span>
-
+                <span className="detail-label">Updated At</span>
                 <span className="detail-value">
                   {formatComplaintDateTime(selectedComplaint.updatedAt)}
                 </span>
               </div>
-
             </div>
 
             <div className="complaint-modal-footer">
               <button
                 type="button"
                 className="reset-button"
-                onClick={() =>
-                  setSelectedComplaint(null)
-                }
+                onClick={() => setSelectedComplaint(null)}
               >
                 Close
               </button>
@@ -1138,21 +1164,14 @@ export default function AdminHome() {
             className="complaint-modal status-modal"
             onClick={(e) => e.stopPropagation()}
           >
-
             <div className="complaint-modal-header">
               <div>
                 <h2>Update Status</h2>
 
                 <div className="complaint-meta">
-                  <span>
-                    #{statusComplaint.id}
-                  </span>
-
+                  <span>#{statusComplaint.id}</span>
                   <span>•</span>
-
-                  <span>
-                    {statusComplaint.title}
-                  </span>
+                  <span>{statusComplaint.title}</span>
                 </div>
               </div>
 
@@ -1172,37 +1191,24 @@ export default function AdminHome() {
             </div>
 
             <div className="complaint-details">
-
-              {/* Current Status */}
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Current Status
-                </span>
-
+                <span className="detail-label">Current Status</span>
                 <span className="detail-value">
-                  <span
-                    className={`status-badge status-${statusComplaint.status?.toLowerCase()}`}
-                  >
+                  <span className={`status-badge status-${statusComplaint.status?.toLowerCase()}`}>
                     {statusComplaint.status}
                   </span>
                 </span>
               </div>
 
-              {/* New Status */}
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  New Status
-                </span>
+                <span className="detail-label">New Status</span>
 
                 <div className="status-options">
                   {statusOptions.map((status) => (
                     <button
                       key={status}
                       type="button"
-                      className={`status-option ${newStatus === status
-                        ? 'selected'
-                        : ''
-                        }`}
+                      className={`status-option ${newStatus === status ? 'selected' : ''}`}
                       onClick={() => {
                         setNewStatus(status)
                         setStatusError('')
@@ -1215,19 +1221,14 @@ export default function AdminHome() {
                 </div>
               </div>
 
-              {/* Error */}
               {statusError && (
                 <div className="detail-item detail-item-full">
-                  <p className="status-error">
-                    {statusError}
-                  </p>
+                  <p className="status-error">{statusError}</p>
                 </div>
               )}
-
             </div>
 
             <div className="complaint-modal-footer">
-
               <button
                 type="button"
                 className="reset-button"
@@ -1246,15 +1247,10 @@ export default function AdminHome() {
                 type="button"
                 className="apply-button"
                 onClick={handleStatusUpdate}
-                disabled={
-                  statusUpdating || !newStatus
-                }
+                disabled={statusUpdating || !newStatus}
               >
-                {statusUpdating
-                  ? 'Updating...'
-                  : 'Update Status'}
+                {statusUpdating ? 'Updating...' : 'Update Status'}
               </button>
-
             </div>
           </div>
         </div>
@@ -1279,7 +1275,6 @@ export default function AdminHome() {
             <div className="complaint-modal-header">
               <div>
                 <h2>Assign Complaint</h2>
-
                 <div className="complaint-meta">
                   Complaint #{assignComplaint.id}
                 </div>
@@ -1301,44 +1296,28 @@ export default function AdminHome() {
             </div>
 
             <div className="complaint-details">
-
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Current Assignee
-                </span>
-
+                <span className="detail-label">Current Assignee</span>
                 <span className="detail-value">
                   {assignComplaint.assignedTo || 'Unassigned'}
                 </span>
               </div>
 
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Assign To
-                </span>
+                <span className="detail-label">Assign To</span>
 
                 <div className="admin-options">
                   {admins.map((admin) => (
                     <button
                       key={admin.email}
                       type="button"
-                      className={`admin-option ${selectedAdmin === admin.email
-                        ? 'selected'
-                        : ''
-                        }`}
-                      onClick={() =>
-                        setSelectedAdmin(admin.email)
-                      }
+                      className={`admin-option ${selectedAdmin === admin.email ? 'selected' : ''}`}
+                      onClick={() => setSelectedAdmin(admin.email)}
                       disabled={assignUpdating}
                     >
                       <div className="admin-option-content">
-                        <span>
-                          {admin.name || admin.email}
-                        </span>
-
-                        <span className="admin-email">
-                          {admin.email}
-                        </span>
+                        <span>{admin.name || admin.email}</span>
+                        <span className="admin-email">{admin.email}</span>
                       </div>
 
                       {selectedAdmin === admin.email && (
@@ -1354,11 +1333,9 @@ export default function AdminHome() {
                   {assignError}
                 </p>
               )}
-
             </div>
 
             <div className="complaint-modal-footer">
-
               <button
                 className="reset-button"
                 onClick={() => {
@@ -1376,11 +1353,8 @@ export default function AdminHome() {
                 onClick={handleAssignComplaint}
                 disabled={assignUpdating || !selectedAdmin}
               >
-                {assignUpdating
-                  ? 'Assigning...'
-                  : 'Assign Complaint'}
+                {assignUpdating ? 'Assigning...' : 'Assign Complaint'}
               </button>
-
             </div>
           </div>
         </div>
@@ -1389,14 +1363,10 @@ export default function AdminHome() {
       {/* Success Toast */}
       {successMessage && (
         <div className="success-toast">
-          <span className="success-toast-icon">
-            ✓
-          </span>
-
+          <span className="success-toast-icon">✓</span>
           <span>{successMessage}</span>
         </div>
       )}
-
     </div>
   )
 }
