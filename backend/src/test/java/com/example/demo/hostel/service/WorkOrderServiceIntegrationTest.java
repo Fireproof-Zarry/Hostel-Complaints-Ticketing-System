@@ -343,10 +343,85 @@ class WorkOrderServiceIntegrationTest {
 
     @Test
     void directStatusChangesWorkWithoutAWorkOrder() {
-        adminService.updateStatus(complaintId, Status.RESOLVED, ADMIN, null);
+        adminService.updateStatus(complaintId, Status.REJECTED, ADMIN, null);
+
+        assertThat(complaint(complaintId).getStatus()).isEqualTo(Status.REJECTED);
+        assertThat(workOrderRepository.count()).isZero();
+    }
+
+    // ---- reopening a closed complaint ----
+
+    @Test
+    void reopeningAsInProgressResumesTheLastWorkOrderWithTheSameAssignee() {
+        WorkOrderView workOrder = assignToWarden();
+        workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, "Replaced the capacitor", WorkOrderStatus.DONE), WARDEN);
+
+        adminService.updateStatus(complaintId, Status.IN_PROGRESS, ADMIN, "Fan stopped again");
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+        assertThat(complaint(complaintId).getAssignedTo()).isEqualTo(WARDEN);
+        assertThat(workOrderService.getMyQueue(WARDEN)).hasSize(1);
+        assertThat(workOrderRepository.findById(workOrder.id()).orElseThrow().getCompletionNotes()).isNull();
+    }
+
+    @Test
+    void reopeningARejectedComplaintAsInProgressResumesItToo() {
+        WorkOrderView workOrder = assignToWarden();
+        adminService.updateStatus(complaintId, Status.REJECTED, ADMIN, null);
+
+        adminService.updateStatus(complaintId, Status.IN_PROGRESS, ADMIN, null);
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.IN_PROGRESS);
+    }
+
+    @Test
+    void reopeningAsPendingUnassignsTheComplaint() {
+        WorkOrderView workOrder = assignToWarden();
+        workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.DONE), WARDEN);
+
+        adminService.updateStatus(complaintId, Status.PENDING, ADMIN, null);
+
+        assertThat(complaint(complaintId).getAssignedTo()).isNull();
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.DONE);
+        assertThat(workOrderService.assignInCharge(complaintId, null, WorkOrderPriority.LOW, null, WARDEN).status())
+                .isEqualTo(WorkOrderStatus.OPEN);
+    }
+
+    @Test
+    void reopeningDoesNotHandWorkBackToSomeoneWhoLeftTheStaff() {
+        WorkOrderView workOrder = assignToWarden();
+        workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.DONE), WARDEN);
+        warden.setRole(Role.STUDENT);
+        userRepository.save(warden);
+
+        adminService.updateStatus(complaintId, Status.IN_PROGRESS, ADMIN, null);
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.DONE);
+        assertThat(complaint(complaintId).getAssignedTo()).isNull();
+    }
+
+    @Test
+    void startingAComplaintWhoseAssignmentWasCancelledDoesNotRestoreIt() {
+        WorkOrderView workOrder = assignToWarden();
+        workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.CANCELLED), WARDEN);
+
+        adminService.updateStatus(complaintId, Status.IN_PROGRESS, ADMIN, null);
+
+        assertThat(workOrderStatus(workOrder)).isEqualTo(WorkOrderStatus.CANCELLED);
+    }
+
+    @Test
+    void markingDoneWithoutStartingStillResolvesTheComplaint() {
+        WorkOrderView workOrder = assignToWarden();
+
+        workOrderService.updateWorkOrder(workOrder.id(),
+                new UpdateWorkOrderRequest(null, null, null, WorkOrderStatus.DONE), WARDEN);
 
         assertThat(complaint(complaintId).getStatus()).isEqualTo(Status.RESOLVED);
-        assertThat(workOrderRepository.count()).isZero();
     }
 
     // ---- soft-deleted complaints ----

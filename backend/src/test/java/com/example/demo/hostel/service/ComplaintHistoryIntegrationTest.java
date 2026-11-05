@@ -102,12 +102,13 @@ class ComplaintHistoryIntegrationTest {
     }
 
     @Test
-    void getComplaintHistory_returnsOldestRecordFirst() {
+    void getComplaintHistory_returnsNewestRecordFirst() {
 
         transactionTemplate.executeWithoutResult(tx -> {
-            historyRepository.save(history(Status.PENDING, Status.IN_PROGRESS, null));
-            historyRepository.save(history(Status.IN_PROGRESS, Status.RESOLVED, null));
-            historyRepository.flush();
+            historyRepository.saveAndFlush(history(Status.PENDING, Status.IN_PROGRESS, null));
+        });
+        transactionTemplate.executeWithoutResult(tx -> {
+            historyRepository.saveAndFlush(history(Status.IN_PROGRESS, Status.RESOLVED, null));
         });
 
         List<ComplaintHistoryEntry> result = complaintService.getComplaintHistory(
@@ -115,9 +116,9 @@ class ComplaintHistoryIntegrationTest {
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).changedAt())
-                .isBeforeOrEqualTo(result.get(1).changedAt());
+                .isAfterOrEqualTo(result.get(1).changedAt());
         assertThat(result).extracting(ComplaintHistoryEntry::newStatus)
-                .containsExactly(Status.IN_PROGRESS, Status.RESOLVED);
+                .containsExactly(Status.RESOLVED, Status.IN_PROGRESS);
         // Admin changes never reveal who the admin is
         assertThat(result).extracting(ComplaintHistoryEntry::changedBy)
                 .containsOnly("Hostel office");

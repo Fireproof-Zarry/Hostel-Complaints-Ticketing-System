@@ -29,6 +29,25 @@ import './AdminHome.css'
 const PROFILE_VIEW = 'My Profile'
 const STAFF_VIEW = 'Staff Management'
 
+// Where a complaint can move next; ComplaintTransitionService enforces the same rules
+const STATUS_TRANSITIONS = {
+  PENDING: ['ASSIGNED', 'IN_PROGRESS', 'REJECTED'],
+  ASSIGNED: ['IN_PROGRESS', 'RESOLVED', 'PENDING', 'REJECTED'],
+  IN_PROGRESS: ['RESOLVED', 'ASSIGNED', 'PENDING', 'REJECTED'],
+  RESOLVED: ['PENDING', 'IN_PROGRESS'],
+  REJECTED: ['PENDING', 'IN_PROGRESS'],
+}
+
+// Rejected requests carry their reason as JSON, or as plain text from older endpoints
+async function responseError(response, fallback) {
+  const message = await response.text()
+  try {
+    return JSON.parse(message).message || message || fallback
+  } catch {
+    return message || fallback
+  }
+}
+
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
   if (!query) return complaints
@@ -310,10 +329,8 @@ export default function AdminHome() {
       )
 
       if (!response.ok) {
-        const message = await response.text()
-
         throw new Error(
-          message || `Failed to update status: ${response.status}`
+          await responseError(response, `Failed to update status: ${response.status}`)
         )
       }
 
@@ -374,16 +391,8 @@ export default function AdminHome() {
       )
 
       if (!response.ok) {
-        const message = await response.text()
-        let reason = message
-        try {
-          reason = JSON.parse(message).message || message
-        } catch {
-          // plain-text error body
-        }
-
         throw new Error(
-          reason || `Failed to assign complaint: ${response.status}`
+          await responseError(response, `Failed to assign complaint: ${response.status}`)
         )
       }
 
@@ -448,14 +457,6 @@ export default function AdminHome() {
       ]
         .filter(Boolean)
     ),
-  ]
-
-  const statusOptions = [
-    'PENDING',
-    'ASSIGNED',
-    'IN_PROGRESS',
-    'RESOLVED',
-    'REJECTED',
   ]
 
   const statusCounts = {
@@ -998,7 +999,7 @@ export default function AdminHome() {
                                   className="table-action-button"
                                   onClick={() => {
                                     setStatusComplaint(complaint)
-                                    setNewStatus(complaint.status || '')
+                                    setNewStatus('')
                                     setStatusError('')
                                   }}
                                 >
@@ -1273,7 +1274,7 @@ export default function AdminHome() {
                 <span className="detail-label">New Status</span>
 
                 <div className="status-options">
-                  {statusOptions.map((status) => (
+                  {(STATUS_TRANSITIONS[statusComplaint.status] ?? []).map((status) => (
                     <button
                       key={status}
                       type="button"

@@ -14,10 +14,25 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ComplaintTransitionService {
+
+    /**
+     * The complaint workflow. ASSIGNED can resolve directly, for small jobs nobody
+     * marked as started; PENDING cannot. Going back undoes a mistake or a cancelled
+     * assignment. Staff can reopen a closed complaint.
+     */
+    private static final Map<Status, Set<Status>> ALLOWED_TRANSITIONS = Map.of(
+            Status.PENDING, EnumSet.of(Status.ASSIGNED, Status.IN_PROGRESS, Status.REJECTED),
+            Status.ASSIGNED, EnumSet.of(Status.IN_PROGRESS, Status.RESOLVED, Status.PENDING, Status.REJECTED),
+            Status.IN_PROGRESS, EnumSet.of(Status.RESOLVED, Status.ASSIGNED, Status.PENDING, Status.REJECTED),
+            Status.RESOLVED, EnumSet.of(Status.PENDING, Status.IN_PROGRESS),
+            Status.REJECTED, EnumSet.of(Status.PENDING, Status.IN_PROGRESS));
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
@@ -35,9 +50,12 @@ public class ComplaintTransitionService {
         this.fcmNotificationService = fcmNotificationService;
     }
 
+    /** Refuses a move the workflow does not allow, with a 409 the frontend can show. */
     public void validateTransition(Status current, Status next) {
-        // All status transitions are currently allowed.
-        // This can be restricted later if the workflow requires it.
+        if (!ALLOWED_TRANSITIONS.get(current).contains(next)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A complaint cannot move from " + current + " to " + next);
+        }
     }
 
     /**

@@ -192,9 +192,10 @@ public class ComplaintService {
     }
 
     /**
-     * Status history of the caller's own complaint, oldest first, as summaries
-     * that never include the actor's account details. Read-only transaction so
-     * the lazily loaded actor can be read while mapping.
+     * Status history of a complaint, newest first, as summaries that never
+     * include the actor's account details. Students get their own complaints, with
+     * staff shown as "Hostel office"; admins and staff get any complaint, with real
+     * names. Read-only transaction so the lazily loaded actor can be read while mapping.
      */
     @Transactional(readOnly = true)
     public List<ComplaintHistoryEntry> getComplaintHistory(Long id, String email) {
@@ -206,20 +207,25 @@ public class ComplaintService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
-        if (!complaint.getStudent().getId().equals(student.getId())) {
+        boolean isStaff = student.getRole() == Role.ADMIN || student.getRole() == Role.STAFF;
+        if (!isStaff && !complaint.getStudent().getId().equals(student.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND, "Complaint not found");
         }
 
-        return complaintHistoryRepository.findByComplaintOrderByChangedAtAsc(complaint).stream()
-                .map(ComplaintService::toHistoryEntry)
+        return complaintHistoryRepository.findByComplaintOrderByChangedAtDesc(complaint).stream()
+                .map(history -> toHistoryEntry(history, isStaff))
                 .toList();
     }
 
-    private static ComplaintHistoryEntry toHistoryEntry(ComplaintHistory history) {
+    private static ComplaintHistoryEntry toHistoryEntry(ComplaintHistory history, boolean forStaff) {
         User actor = history.getActor();
         String changedBy;
-        if (actor == null || actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF) {
+        if (actor == null) {
+            changedBy = "Hostel office";
+        } else if (forStaff) {
+            changedBy = WorkOrderService.displayName(actor);
+        } else if (actor.getRole() == Role.ADMIN || actor.getRole() == Role.STAFF) {
             changedBy = "Hostel office";
         } else {
             changedBy = actor.getFullName() != null ? actor.getFullName() : actor.getName();
