@@ -9,11 +9,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.Map;
 
 /**
- * The work-order and staff rules reject requests with reasons written for the
+ * The work-order, staff and login rules reject requests with reasons written for the
  * user ("Staff can only assign complaints to themselves"). Spring's default
  * error body drops the reason, so return it as JSON the frontend can show.
  */
-@RestControllerAdvice(assignableTypes = {AdminController.class, StaffController.class, WorkOrderController.class})
+@RestControllerAdvice(assignableTypes = {
+        AdminController.class, AuthController.class, StaffController.class, WorkOrderController.class})
 public class WorkOrderExceptionHandler {
 
     @ExceptionHandler(ResponseStatusException.class)
