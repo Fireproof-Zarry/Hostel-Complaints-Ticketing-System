@@ -57,7 +57,8 @@ public class AdminService {
             String floor,
             String assignedTo,
             LocalDateTime from,
-            LocalDateTime to) {
+            LocalDateTime to,
+            Boolean communityArea) {
 
         Specification<Complaint> specification =
                 ComplaintSpecification.withFilters(
@@ -66,7 +67,8 @@ public class AdminService {
                         floor,
                         assignedTo,
                         from,
-                        to
+                        to,
+                        communityArea
                 );
 
         return complaintRepository.findAll(specification);

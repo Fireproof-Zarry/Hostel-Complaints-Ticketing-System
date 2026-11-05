@@ -37,7 +37,9 @@ public class AdminController {
             LocalDateTime from,
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            LocalDateTime to) {
+            LocalDateTime to,
+            // true: community-area issues, false: room issues, omitted: both
+            @RequestParam(required = false) Boolean communityArea) {
 
         return adminService.getComplaints(
                 status,
@@ -45,7 +47,8 @@ public class AdminController {
                 floor,
                 assignedTo,
                 from,
-                to
+                to,
+                communityArea
         );
     }
 

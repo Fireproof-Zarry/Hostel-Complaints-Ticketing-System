@@ -112,6 +112,8 @@ export default function AdminHome() {
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [floorFilter, setFloorFilter] = useState('')
+  // '' both, 'false' room issues, 'true' community issues
+  const [typeFilter, setTypeFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [assignedToFilter, setAssignedToFilter] = useState('')
@@ -164,6 +166,10 @@ export default function AdminHome() {
 
       if (filters.floor) {
         params.append('floor', filters.floor)
+      }
+
+      if (filters.communityArea) {
+        params.append('communityArea', filters.communityArea)
       }
 
       if (filters.assignedTo) {
@@ -259,6 +265,7 @@ export default function AdminHome() {
       status: statusFilter,
       category: categoryFilter,
       floor: floorFilter,
+      communityArea: typeFilter,
       assignedTo: assignedToFilter,
       from: fromDate,
       to: toDate,
@@ -273,6 +280,7 @@ export default function AdminHome() {
     setStatusFilter('')
     setCategoryFilter('')
     setFloorFilter('')
+    setTypeFilter('')
     setFromDate('')
     setToDate('')
     setAssignedToFilter('')
@@ -468,6 +476,7 @@ export default function AdminHome() {
       status,
       category: categoryFilter,
       floor: floorFilter,
+      communityArea: typeFilter,
       assignedTo: assignedToFilter,
       from: fromDate,
       to: toDate,
@@ -478,6 +487,7 @@ export default function AdminHome() {
     status: statusFilter,
     category: categoryFilter,
     floor: floorFilter,
+    communityArea: typeFilter,
     assignedTo: assignedToFilter,
     from: fromDate,
     to: toDate,
@@ -780,6 +790,18 @@ export default function AdminHome() {
                       <option value="Fourth">Fourth</option>
                       <option value="Fifth">Fifth</option>
                       <option value="Sixth">Sixth</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>Type</span>
+                    <select
+                      value={typeFilter}
+                      onChange={(event) => setTypeFilter(event.target.value)}
+                    >
+                      <option value="">All types</option>
+                      <option value="false">Room issues</option>
+                      <option value="true">Community issues</option>
                     </select>
                   </label>
 
