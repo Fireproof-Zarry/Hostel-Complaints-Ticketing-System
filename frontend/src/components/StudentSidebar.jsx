@@ -3,15 +3,19 @@ import { STUDENT_NAVIGATION } from './studentNavigation';
 
 /** Sidebar shared by the student dashboard and the Profile page. */
 export default function StudentSidebar({ activeId, onSelect }) {
+  const activeItem = STUDENT_NAVIGATION.find((item) => item.id === activeId);
+
   return (
     <aside className="flex w-full flex-col bg-slate-900 text-slate-300 md:min-h-screen md:w-64 md:shrink-0">
       <div className="flex items-center gap-3 p-5 md:p-6">
         <div className="rounded-lg bg-indigo-500 p-2 text-white">
           <Wrench className="h-6 w-6" />
         </div>
-        <div>
-          <h1 className="font-bold leading-tight text-white">HostelFix</h1>
-          <p className="text-xs text-slate-400">Student Portal</p>
+        {/* Explicit size and m-0: Tailwind's base reset is not loaded, so the
+            browser's default h1 (2em) and p margins would apply */}
+        <div className="flex flex-col justify-center">
+          <h1 className="m-0 text-lg font-bold leading-tight text-white">HostelFix</h1>
+          <p className="m-0 mt-0.5 text-xs leading-tight text-slate-400">Student Portal</p>
         </div>
       </div>
 
@@ -33,7 +37,7 @@ export default function StudentSidebar({ activeId, onSelect }) {
       </nav>
 
       <div className="hidden border-t border-slate-800 p-4 text-xs leading-5 text-slate-400 md:block">
-        Your submitted complaints and their current status.
+        {activeItem?.description}
       </div>
     </aside>
   );

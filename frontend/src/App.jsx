@@ -171,7 +171,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <RoleRoute requiredRole="ADMIN">
+              <RoleRoute requiredRole={['ADMIN', 'STAFF']}>
                 <AdminHome />
               </RoleRoute>
             }

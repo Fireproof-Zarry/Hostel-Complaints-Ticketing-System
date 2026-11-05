@@ -87,7 +87,7 @@ class AuthenticationAuthorizationIntegrationTest {
         when(jwtDecoder.decode(anyString()))
                 .thenAnswer(invocation -> tokens.get(invocation.getArgument(0)));
         when(adminService.getComplaints(
-                isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
+                isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(List.of());
         when(studentService.getStudentComplaints(any(User.class))).thenReturn(List.<Complaint>of());
     }

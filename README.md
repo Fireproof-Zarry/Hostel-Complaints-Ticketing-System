@@ -23,6 +23,17 @@ npm install
 npm run dev
 ```
 
+## Run Locally With Make
+
+After creating `backend/.env` (see below), run each of these in its own terminal from the repository root:
+
+```bash
+make backend
+make frontend
+```
+
+`make frontend` picks a suitable Node version through nvm and runs `npm install` when the lockfile has changed.
+
 ## Backend - Run Without Docker
 
 No additional dependencies are required apart from Java 17/21.

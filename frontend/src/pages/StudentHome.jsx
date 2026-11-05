@@ -10,6 +10,7 @@ import {
   LogOut,
   RefreshCw,
   KeyRound,
+  Phone,
   Trash2,
 } from 'lucide-react';
 import CommunityDashboard from '../components/CommunityDashboard';
@@ -92,6 +93,24 @@ function ComplaintCard({ complaint, onDelete }) {
           </span>
         )}
       </div>
+      {complaint.assignee && (
+        <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-slate-700">
+          <p className="m-0">
+            Being handled by <span className="font-semibold text-slate-900">{complaint.assignee.name}</span>
+          </p>
+          {complaint.assignee.phoneNumber ? (
+            <a
+              href={`tel:${complaint.assignee.phoneNumber}`}
+              className="mt-1 inline-flex items-center gap-1.5 font-medium text-indigo-700 hover:underline"
+            >
+              <Phone className="h-4 w-4" aria-hidden="true" />
+              {complaint.assignee.phoneNumber}
+            </a>
+          ) : (
+            <p className="m-0 mt-1 text-xs text-slate-500">No phone number added yet.</p>
+          )}
+        </div>
+      )}
       {/* Only before an admin picks it up */}
       {complaint.status?.toUpperCase() === 'PENDING' && (
         <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">

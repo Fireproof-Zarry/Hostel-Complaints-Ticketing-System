@@ -8,17 +8,17 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
-  Home,
   LogOut,
   Menu,
   Search,
-  Settings,
   ShieldCheck,
   UserRound,
   Users,
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import StaffManagement from '../components/StaffManagement'
+import WorkOrderPanel from '../components/WorkOrderPanel'
 import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
@@ -27,6 +27,7 @@ import './AdminHome.css'
 
 // Shown in the main area like the other sidebar pages
 const PROFILE_VIEW = 'My Profile'
+const STAFF_VIEW = 'Staff Management'
 
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
@@ -102,11 +103,17 @@ export default function AdminHome() {
   const [error, setError] = useState('')
   const [admins, setAdmins] = useState([])
   const [comingSoonPage, setComingSoonPage] = useState(null)
+  // ADMIN or STAFF; staff share this dashboard but cannot manage staff and
+  // can only assign complaints to themselves
+  const [currentUser, setCurrentUser] = useState(null)
+  const isAdmin = currentUser?.role === 'ADMIN'
 
   // Filter values
   const [statusFilter, setStatusFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [floorFilter, setFloorFilter] = useState('')
+  // '' both, 'false' room issues, 'true' community issues
+  const [typeFilter, setTypeFilter] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
   const [assignedToFilter, setAssignedToFilter] = useState('')
@@ -124,6 +131,10 @@ export default function AdminHome() {
   // Complaint assignment
   const [assignComplaint, setAssignComplaint] = useState(null)
   const [selectedAdmin, setSelectedAdmin] = useState('')
+  const [assignPriority, setAssignPriority] = useState('MEDIUM')
+  const [assignDeadline, setAssignDeadline] = useState('')
+  // Admins only: email -> { activeWorkOrders, overdueWorkOrders } for the assign list
+  const [workload, setWorkload] = useState({})
   const [assignUpdating, setAssignUpdating] = useState(false)
   const [assignError, setAssignError] = useState('')
 
@@ -155,6 +166,10 @@ export default function AdminHome() {
 
       if (filters.floor) {
         params.append('floor', filters.floor)
+      }
+
+      if (filters.communityArea) {
+        params.append('communityArea', filters.communityArea)
       }
 
       if (filters.assignedTo) {
@@ -213,9 +228,30 @@ export default function AdminHome() {
     }
   }
 
+  const fetchWorkload = async () => {
+    try {
+      const response = await apiFetch(`${import.meta.env.VITE_API_URL}/admin/staff`)
+      if (!response.ok) return
+      const members = await response.json()
+      setWorkload(Object.fromEntries(members.map((member) => [member.email, member])))
+    } catch (error) {
+      console.error('Failed to load staff workload:', error)
+    }
+  }
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await apiFetch(`${import.meta.env.VITE_API_URL}/auth/me`)
+      if (response.ok) setCurrentUser(await response.json())
+    } catch (error) {
+      console.error('Failed to load the signed-in user:', error)
+    }
+  }
+
   useEffect(() => {
     fetchComplaints()
     fetchAdmins()
+    fetchCurrentUser()
   }, [])
 
   const handleSearch = () => {
@@ -229,6 +265,7 @@ export default function AdminHome() {
       status: statusFilter,
       category: categoryFilter,
       floor: floorFilter,
+      communityArea: typeFilter,
       assignedTo: assignedToFilter,
       from: fromDate,
       to: toDate,
@@ -243,6 +280,7 @@ export default function AdminHome() {
     setStatusFilter('')
     setCategoryFilter('')
     setFloorFilter('')
+    setTypeFilter('')
     setFromDate('')
     setToDate('')
     setAssignedToFilter('')
@@ -322,8 +360,14 @@ export default function AdminHome() {
       setAssignUpdating(true)
       setAssignError('')
 
+      const params = new URLSearchParams({ email: selectedAdmin, priority: assignPriority })
+      if (assignDeadline) {
+        // datetime-local has no seconds
+        params.append('deadline', `${assignDeadline}:00`)
+      }
+
       const response = await apiFetch(
-        `${import.meta.env.VITE_API_URL}/admin/complaints/${assignComplaint.id}/assign?email=${encodeURIComponent(selectedAdmin)}`,
+        `${import.meta.env.VITE_API_URL}/admin/complaints/${assignComplaint.id}/assign?${params}`,
         {
           method: 'PATCH',
         }
@@ -331,9 +375,15 @@ export default function AdminHome() {
 
       if (!response.ok) {
         const message = await response.text()
+        let reason = message
+        try {
+          reason = JSON.parse(message).message || message
+        } catch {
+          // plain-text error body
+        }
 
         throw new Error(
-          message || `Failed to assign complaint: ${response.status}`
+          reason || `Failed to assign complaint: ${response.status}`
         )
       }
 
@@ -426,6 +476,7 @@ export default function AdminHome() {
       status,
       category: categoryFilter,
       floor: floorFilter,
+      communityArea: typeFilter,
       assignedTo: assignedToFilter,
       from: fromDate,
       to: toDate,
@@ -436,6 +487,7 @@ export default function AdminHome() {
     status: statusFilter,
     category: categoryFilter,
     floor: floorFilter,
+    communityArea: typeFilter,
     assignedTo: assignedToFilter,
     from: fromDate,
     to: toDate,
@@ -456,17 +508,6 @@ export default function AdminHome() {
 
         <p className="admin-nav-label">{sidebarOpen ? 'WORKSPACE' : 'NAV'}</p>
         <nav className="admin-nav" aria-label="Admin navigation">
-          <button
-            type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Dashboard' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Dashboard')}
-            title="Dashboard"
-          >
-            <Home size={19} />
-            {sidebarOpen && <span>Dashboard</span>}
-            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
-          </button>
-
           <button
             type="button"
             className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
@@ -492,27 +533,17 @@ export default function AdminHome() {
             {sidebarOpen && <span>Analytics</span>}
           </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Staff Management' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Staff Management')}
-            title="Staff management"
-          >
-            <Users size={19} />
-            {sidebarOpen && <span>Staff management</span>}
-            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
-          </button>
-
-          <button
-            type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Settings' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Settings')}
-            title="Settings"
-          >
-            <Settings size={19} />
-            {sidebarOpen && <span>Settings</span>}
-            {sidebarOpen && <span className="admin-nav-badge">Soon</span>}
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              className={`admin-nav-item ${comingSoonPage === STAFF_VIEW ? 'active' : ''}`}
+              onClick={() => setComingSoonPage(STAFF_VIEW)}
+              title="Staff management"
+            >
+              <Users size={19} />
+              {sidebarOpen && <span>Staff management</span>}
+            </button>
+          )}
         </nav>
 
         <div className="admin-sidebar-bottom">
@@ -530,8 +561,8 @@ export default function AdminHome() {
             <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
             {sidebarOpen && (
               <span className="admin-user-copy">
-                <strong>Administrator</strong>
-                <small>Hostel support team</small>
+                <strong>{currentUser?.role === 'STAFF' ? 'Hostel staff' : 'Administrator'}</strong>
+                <small>{currentUser?.email || 'Hostel support team'}</small>
               </span>
             )}
           </div>
@@ -583,6 +614,8 @@ export default function AdminHome() {
             <AdminAnalytics />
           ) : comingSoonPage === PROFILE_VIEW ? (
             <ProfileForm />
+          ) : comingSoonPage === STAFF_VIEW && isAdmin ? (
+            <StaffManagement />
           ) : comingSoonPage ? (
             <div className="admin-work-in-progress">
               <ComingSoon title={comingSoonPage} />
@@ -757,6 +790,18 @@ export default function AdminHome() {
                       <option value="Fourth">Fourth</option>
                       <option value="Fifth">Fifth</option>
                       <option value="Sixth">Sixth</option>
+                    </select>
+                  </label>
+
+                  <label className="admin-filter-control">
+                    <span>Type</span>
+                    <select
+                      value={typeFilter}
+                      onChange={(event) => setTypeFilter(event.target.value)}
+                    >
+                      <option value="">All types</option>
+                      <option value="false">Room issues</option>
+                      <option value="true">Community issues</option>
                     </select>
                   </label>
 
@@ -938,8 +983,11 @@ export default function AdminHome() {
                                   className="table-action-button"
                                   onClick={() => {
                                     setAssignComplaint(complaint)
-                                    setSelectedAdmin(complaint.assignedTo || '')
+                                    setSelectedAdmin(isAdmin ? complaint.assignedTo || '' : currentUser?.email || '')
+                                    setAssignPriority('MEDIUM')
+                                    setAssignDeadline('')
                                     setAssignError('')
+                                    if (isAdmin) fetchWorkload()
                                   }}
                                 >
                                   Assign
@@ -1134,6 +1182,27 @@ export default function AdminHome() {
                   {formatComplaintDateTime(selectedComplaint.updatedAt)}
                 </span>
               </div>
+
+              <div className="detail-item detail-item-full">
+                <span className="detail-label">
+                  Work Order
+                </span>
+
+                <WorkOrderPanel
+                  key={selectedComplaint.id}
+                  complaintId={selectedComplaint.id}
+                  currentUser={currentUser}
+                  onComplaintChanged={(workOrder) => {
+                    setSelectedComplaint((complaint) => complaint && {
+                      ...complaint,
+                      status: workOrder.complaintStatus,
+                      assignedTo: workOrder.status === 'CANCELLED' ? null : complaint.assignedTo,
+                    })
+                    handleRefreshComplaints()
+                  }}
+                />
+              </div>
+
             </div>
 
             <div className="complaint-modal-footer">
@@ -1307,7 +1376,7 @@ export default function AdminHome() {
                 <span className="detail-label">Assign To</span>
 
                 <div className="admin-options">
-                  {admins.map((admin) => (
+                  {(isAdmin ? admins : admins.filter((admin) => admin.email === currentUser?.email)).map((admin) => (
                     <button
                       key={admin.email}
                       type="button"
@@ -1317,7 +1386,19 @@ export default function AdminHome() {
                     >
                       <div className="admin-option-content">
                         <span>{admin.name || admin.email}</span>
-                        <span className="admin-email">{admin.email}</span>
+                        <span className="admin-email">
+                          {admin.email}
+                          {workload[admin.email] && (
+                            <>
+                              {` · ${workload[admin.email].activeWorkOrders} active`}
+                              {workload[admin.email].overdueWorkOrders > 0 && (
+                                <span className="font-semibold text-rose-700">
+                                  {` · ${workload[admin.email].overdueWorkOrders} overdue`}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </span>
                       </div>
 
                       {selectedAdmin === admin.email && (
@@ -1326,6 +1407,40 @@ export default function AdminHome() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="detail-item">
+                <label className="detail-label" htmlFor="assign-priority">
+                  Priority
+                </label>
+
+                <select
+                  id="assign-priority"
+                  value={assignPriority}
+                  onChange={(event) => setAssignPriority(event.target.value)}
+                  disabled={assignUpdating}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="LOW">Low</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="HIGH">High</option>
+                  <option value="URGENT">Urgent</option>
+                </select>
+              </div>
+
+              <div className="detail-item">
+                <label className="detail-label" htmlFor="assign-deadline">
+                  Deadline (optional)
+                </label>
+
+                <input
+                  id="assign-deadline"
+                  type="datetime-local"
+                  value={assignDeadline}
+                  onChange={(event) => setAssignDeadline(event.target.value)}
+                  disabled={assignUpdating}
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm"
+                />
               </div>
 
               {assignError && (

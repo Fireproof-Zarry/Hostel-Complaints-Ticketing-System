@@ -45,12 +45,13 @@ export default function Login() {
       }
 
       const user = await response.json();
-      if (user.role !== 'ADMIN' && user.role !== 'STUDENT') {
+      if (!['ADMIN', 'STAFF', 'STUDENT'].includes(user.role)) {
         throw new Error('Your account does not have access to this portal.');
       }
 
       saveToken(credentialResponse.credential);
-      navigate(user.role === 'ADMIN' ? '/admin' : '/student', { replace: true });
+      // Hostel staff share the admin dashboard
+      navigate(user.role === 'STUDENT' ? '/student' : '/admin', { replace: true });
     } catch (signInError) {
       clearToken();
       setError(signInError instanceof Error ? signInError.message : 'Sign-in failed. Please try again.');

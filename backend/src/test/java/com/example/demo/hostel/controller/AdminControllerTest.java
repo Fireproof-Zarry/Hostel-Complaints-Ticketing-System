@@ -93,7 +93,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                null, null, null, null, null, null))
+                                null, null, null, null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -102,7 +102,7 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(
-                                                null, null, null, null, null, null);
+                                                null, null, null, null, null, null, null);
         }
 
         @Test
@@ -110,7 +110,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                Status.PENDING, null, null, null, null, null))
+                                Status.PENDING, null, null, null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -120,7 +120,7 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(
-                                                Status.PENDING, null, null, null, null, null);
+                                                Status.PENDING, null, null, null, null, null, null);
         }
 
         @Test
@@ -128,7 +128,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                null, "Plumbing", null, null, null, null))
+                                null, "Plumbing", null, null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -138,7 +138,7 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(
-                                                null, "Plumbing", null, null, null, null);
+                                                null, "Plumbing", null, null, null, null, null);
         }
 
         @Test
@@ -146,7 +146,7 @@ class AdminControllerTest {
                 AdminService adminService = mock(AdminService.class);
 
                 when(adminService.getComplaints(
-                                null, null, "Second", null, null, null))
+                                null, null, "Second", null, null, null, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -156,7 +156,7 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(
-                                                null, null, "Second", null, null, null);
+                                                null, null, "Second", null, null, null, null);
         }
 
         @Test
@@ -167,7 +167,7 @@ class AdminControllerTest {
                 LocalDateTime to = LocalDateTime.of(2026, 10, 6, 23, 59);
 
                 when(adminService.getComplaints(
-                                null, null, null, null, from, to))
+                                null, null, null, null, from, to, null))
                                 .thenReturn(List.of());
 
                 mockMvc(adminService)
@@ -178,19 +178,23 @@ class AdminControllerTest {
 
                 verify(adminService)
                                 .getComplaints(
-                                                null, null, null, null, from, to);
+                                                null, null, null, null, from, to, null);
         }
 
         @Test
         void assignComplaint_withValidAdmin_returns200() throws Exception {
                 AdminService adminService = mock(AdminService.class);
+                authenticateAsAdmin();
 
                 Complaint complaint = new Complaint();
                 complaint.setAssignedTo("admin@smail.iitm.ac.in");
 
                 when(adminService.assignComplaint(
                         1L,
-                        "admin@smail.iitm.ac.in"
+                        "admin@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 )).thenReturn(complaint);
 
                 mockMvc(adminService)
@@ -202,17 +206,24 @@ class AdminControllerTest {
 
                 verify(adminService).assignComplaint(
                         1L,
-                        "admin@smail.iitm.ac.in"
+                        "admin@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 );
         }
 
         @Test
         void assignComplaint_whenUserNotFound_returns400() throws Exception {
                 AdminService adminService = mock(AdminService.class);
+                authenticateAsAdmin();
 
                 when(adminService.assignComplaint(
                         1L,
-                        "unknown@smail.iitm.ac.in"
+                        "unknown@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 )).thenThrow(
                         new IllegalArgumentException("User not found")
                 );
@@ -226,20 +237,27 @@ class AdminControllerTest {
 
                 verify(adminService).assignComplaint(
                         1L,
-                        "unknown@smail.iitm.ac.in"
+                        "unknown@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 );
         }
 
         @Test
-        void assignComplaint_whenUserIsNotAdmin_returns400() throws Exception {
+        void assignComplaint_whenUserIsNotStaffOrAdmin_returns400() throws Exception {
                 AdminService adminService = mock(AdminService.class);
+                authenticateAsAdmin();
 
                 when(adminService.assignComplaint(
                         1L,
-                        "student@smail.iitm.ac.in"
+                        "student@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 )).thenThrow(
                         new IllegalArgumentException(
-                                "Complaint can only be assigned to an admin"
+                                "Complaints can only be assigned to staff or admins"
                         )
                 );
 
@@ -252,7 +270,10 @@ class AdminControllerTest {
 
                 verify(adminService).assignComplaint(
                         1L,
-                        "student@smail.iitm.ac.in"
+                        "student@smail.iitm.ac.in",
+                        null,
+                        null,
+                        ADMIN_EMAIL
                 );
         }
 }
