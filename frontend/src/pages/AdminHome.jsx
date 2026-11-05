@@ -19,6 +19,7 @@ import {
 import ComingSoon from './ComingSoon'
 import StaffManagement from '../components/StaffManagement'
 import WorkOrderPanel from '../components/WorkOrderPanel'
+import ComplaintTimeline from '../components/ComplaintTimeline'
 import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
@@ -140,6 +141,8 @@ export default function AdminHome() {
 
   // Selected complaint for View
   const [selectedComplaint, setSelectedComplaint] = useState(null)
+  // Bumped after a work order change so the popup's timeline reloads
+  const [timelineVersion, setTimelineVersion] = useState(0)
 
   // Complaint for status update
   const [statusComplaint, setStatusComplaint] = useState(null)
@@ -1185,23 +1188,38 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item detail-item-full">
-                <span className="detail-label">
-                  Work Order
-                </span>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div>
+                    <span className="detail-label">Timeline</span>
+                    <div className="mt-2">
+                      <ComplaintTimeline
+                        complaintId={selectedComplaint.id}
+                        createdAt={selectedComplaint.createdAt}
+                        refreshKey={timelineVersion}
+                      />
+                    </div>
+                  </div>
 
-                <WorkOrderPanel
-                  key={selectedComplaint.id}
-                  complaintId={selectedComplaint.id}
-                  currentUser={currentUser}
-                  onComplaintChanged={(workOrder) => {
-                    setSelectedComplaint((complaint) => complaint && {
-                      ...complaint,
-                      status: workOrder.complaintStatus,
-                      assignedTo: workOrder.status === 'CANCELLED' ? null : complaint.assignedTo,
-                    })
-                    handleRefreshComplaints()
-                  }}
-                />
+                  <div>
+                    <span className="detail-label">Work Order Details</span>
+                    <div className="mt-2">
+                      <WorkOrderPanel
+                        key={selectedComplaint.id}
+                        complaintId={selectedComplaint.id}
+                        currentUser={currentUser}
+                        onComplaintChanged={(workOrder) => {
+                          setSelectedComplaint((complaint) => complaint && {
+                            ...complaint,
+                            status: workOrder.complaintStatus,
+                            assignedTo: workOrder.status === 'CANCELLED' ? null : complaint.assignedTo,
+                          })
+                          setTimelineVersion((version) => version + 1)
+                          handleRefreshComplaints()
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
             </div>

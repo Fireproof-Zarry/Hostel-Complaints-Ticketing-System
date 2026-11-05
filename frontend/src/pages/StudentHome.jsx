@@ -9,8 +9,6 @@ import {
   FilePlus2,
   LogOut,
   RefreshCw,
-  KeyRound,
-  Phone,
   Trash2,
 } from 'lucide-react';
 import CommunityDashboard from '../components/CommunityDashboard';
@@ -18,6 +16,7 @@ import DeleteComplaintDialog from '../components/DeleteComplaintDialog';
 import DuplicateWarning from '../components/DuplicateWarning';
 import ImageUpload from '../components/ImageUpload';
 import SubmissionConfirmation from '../components/SubmissionConfirmation';
+import StudentComplaintDetails from '../components/StudentComplaintDetails';
 import StudentSidebar from '../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../components/studentNavigation';
 import { apiFetch, decodeTokenPayload, getToken, logout } from '../auth/session';
@@ -51,7 +50,7 @@ function activeComplaint(complaint) {
   return !['RESOLVED', 'REJECTED'].includes(complaint.status?.toUpperCase());
 }
 
-function ComplaintCard({ complaint, onDelete }) {
+function ComplaintCard({ complaint, onView, onDelete }) {
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -65,17 +64,7 @@ function ComplaintCard({ complaint, onDelete }) {
           {formatStatus(complaint.status)}
         </span>
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">{complaint.description}</p>
-      {complaint.imageUrl && (
-        <a href={complaint.imageUrl} target="_blank" rel="noreferrer" className="mt-4 inline-block">
-          <img
-            src={complaint.imageUrl}
-            alt={`Photo for complaint #${complaint.id}`}
-            loading="lazy"
-            className="h-32 w-auto max-w-full rounded-lg border border-slate-200 object-cover"
-          />
-        </a>
-      )}
+      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">{complaint.description}</p>
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
         <span className="inline-flex items-center gap-1.5">
           <CalendarDays className="h-4 w-4" />
@@ -85,35 +74,17 @@ function ComplaintCard({ complaint, onDelete }) {
           {complaint.floor || 'Floor unavailable'} ·{' '}
           {complaint.communityArea ? complaint.wing || 'Community area' : `Room ${complaint.room || 'N/A'}`}
         </span>
-        {complaint.availableTimeSlot && <span>Available: {complaint.availableTimeSlot}</span>}
-        {complaint.keyWithSecurity && (
-          <span className="inline-flex items-center gap-1.5">
-            <KeyRound className="h-4 w-4" />
-            Key with security
-          </span>
-        )}
       </div>
-      {complaint.assignee && (
-        <div className="mt-4 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-sm text-slate-700">
-          <p className="m-0">
-            Being handled by <span className="font-semibold text-slate-900">{complaint.assignee.name}</span>
-          </p>
-          {complaint.assignee.phoneNumber ? (
-            <a
-              href={`tel:${complaint.assignee.phoneNumber}`}
-              className="mt-1 inline-flex items-center gap-1.5 font-medium text-indigo-700 hover:underline"
-            >
-              <Phone className="h-4 w-4" aria-hidden="true" />
-              {complaint.assignee.phoneNumber}
-            </a>
-          ) : (
-            <p className="m-0 mt-1 text-xs text-slate-500">No phone number added yet.</p>
-          )}
-        </div>
-      )}
-      {/* Only before an admin picks it up */}
-      {complaint.status?.toUpperCase() === 'PENDING' && (
-        <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <button
+          type="button"
+          onClick={() => onView(complaint)}
+          className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+        >
+          View
+        </button>
+        {/* Only before an admin picks it up */}
+        {complaint.status?.toUpperCase() === 'PENDING' && (
           <button
             type="button"
             onClick={() => onDelete(complaint)}
@@ -122,8 +93,8 @@ function ComplaintCard({ complaint, onDelete }) {
             <Trash2 className="h-4 w-4" aria-hidden="true" />
             Delete
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </article>
   );
 }
@@ -141,6 +112,10 @@ export default function StudentHome() {
   const [draftRestored, setDraftRestored] = useState(() => !isDraftEmpty(initialDraft));
   const [submittedComplaint, setSubmittedComplaint] = useState(null);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
+  // An id, so a refresh of the list also updates the open popup
+  const [viewedComplaintId, setViewedComplaintId] = useState(null);
+  const viewedComplaint = complaints.find((complaint) => complaint.id === viewedComplaintId);
+  const closeComplaintDetails = useCallback(() => setViewedComplaintId(null), []);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const closeDeleteDialog = useCallback(() => {
@@ -868,6 +843,7 @@ export default function StudentHome() {
                     <ComplaintCard
                       key={complaint.id}
                       complaint={complaint}
+                      onView={(selected) => setViewedComplaintId(selected.id)}
                       onDelete={(selected) => {
                         setError('');
                         setSuccess('');
@@ -891,6 +867,10 @@ export default function StudentHome() {
           </section>
         </div>
       </main>
+      {viewedComplaint && (
+        <StudentComplaintDetails complaint={viewedComplaint} onClose={closeComplaintDetails} />
+      )}
+
       {complaintToDelete && (
         <DeleteComplaintDialog
           complaint={complaintToDelete}
