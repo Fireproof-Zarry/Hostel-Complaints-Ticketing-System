@@ -13,4 +13,6 @@ import java.util.UUID;
 public interface ComplaintHistoryRepository extends JpaRepository<ComplaintHistory, UUID> {
 
         List<ComplaintHistory> findByComplaintOrderByChangedAtAsc(Complaint complaint);
+
+        List<ComplaintHistory> findByComplaintOrderByChangedAtDesc(Complaint complaint);
 }

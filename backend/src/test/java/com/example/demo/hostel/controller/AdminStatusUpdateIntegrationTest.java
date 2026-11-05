@@ -142,7 +142,7 @@ class AdminStatusUpdateIntegrationTest {
         // The exception escapes the controller, so MockMvc rethrows it
         assertThatThrownBy(() ->
                 mockMvc.perform(patch("/api/admin/complaints/{id}/status", complaintId)
-                        .param("status", "RESOLVED")
+                        .param("status", "REJECTED")
                         .with(adminJwt()))
         ).hasRootCauseMessage("simulated history failure");
 

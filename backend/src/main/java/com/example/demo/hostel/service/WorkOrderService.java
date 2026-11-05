@@ -187,10 +187,10 @@ public class WorkOrderService {
     }
 
     /**
-     * An admin set the complaint's status directly: bring its active work order
-     * in line, so a stale one cannot reopen the complaint or stay overdue
-     * forever. Moving it back to PENDING also unassigns it. Runs in the caller's
-     * transaction.
+     * An admin or staff member set the complaint's status directly: bring its
+     * work order in line, so a stale one cannot reopen the complaint or stay
+     * overdue forever. Moving it back to PENDING also unassigns it, and reopening
+     * it as IN_PROGRESS resumes the last work order. Runs in the caller's transaction.
      */
     @Transactional
     public void syncWithComplaintStatus(Long complaintId, Status status) {
@@ -198,6 +198,12 @@ public class WorkOrderService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
         WorkOrder active = workOrderRepository.findFirstByComplaintAndStatusIn(complaint, ACTIVE).orElse(null);
         if (active == null) {
+            if (status == Status.IN_PROGRESS) {
+                resumeLastWorkOrder(complaint);
+            } else if (status == Status.PENDING) {
+                complaint.setAssignedTo(null);
+                complaintRepository.save(complaint);
+            }
             return;
         }
 
@@ -210,6 +216,30 @@ public class WorkOrderService {
         workOrderRepository.save(active);
 
         if (status == Status.PENDING) {
+            complaint.setAssignedTo(null);
+            complaintRepository.save(complaint);
+        }
+    }
+
+    /**
+     * A closed complaint keeps its assignee, unlike a cancelled one, so it can pick
+     * up where it stopped. If they are no longer staff it is left unassigned.
+     */
+    private void resumeLastWorkOrder(Complaint complaint) {
+        if (complaint.getAssignedTo() == null) {
+            return;
+        }
+        WorkOrder last = workOrderRepository.findByComplaintOrderByCreatedAtDesc(complaint).stream()
+                .findFirst()
+                .orElse(null);
+        if (last == null) {
+            return;
+        }
+        if (isStaffOrAdmin(last.getAssignee())) {
+            last.setStatus(WorkOrderStatus.IN_PROGRESS);
+            last.setCompletionNotes(null);
+            workOrderRepository.save(last);
+        } else {
             complaint.setAssignedTo(null);
             complaintRepository.save(complaint);
         }
