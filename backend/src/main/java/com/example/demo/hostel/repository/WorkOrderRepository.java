@@ -24,6 +24,15 @@ public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
         /** The complaint's active work order, if any (at most one, see schema_nov03.sql). */
         Optional<WorkOrder> findFirstByComplaintAndStatusIn(Complaint complaint, Collection<WorkOrderStatus> statuses);
 
+        /** The given complaints' work orders in these statuses, with their assignees. */
+        @Query("""
+                SELECT w FROM WorkOrder w JOIN FETCH w.assignee
+                WHERE w.complaint IN :complaints AND w.status IN :statuses
+                """)
+        List<WorkOrder> findWithAssigneeByComplaints(
+                        @Param("complaints") Collection<Complaint> complaints,
+                        @Param("statuses") Collection<WorkOrderStatus> statuses);
+
         /**
          * All of an assignee's work orders in the given statuses (e.g. to cancel
          * when removing staff). Skips soft-deleted complaints, which can no longer

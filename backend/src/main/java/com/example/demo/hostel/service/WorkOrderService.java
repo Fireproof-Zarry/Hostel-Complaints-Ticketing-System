@@ -295,7 +295,7 @@ public class WorkOrderService {
         }
     }
 
-    private static String displayName(User user) {
+    static String displayName(User user) {
         if (user.getFullName() != null && !user.getFullName().isBlank()) return user.getFullName();
         return user.getName() != null ? user.getName() : user.getEmail();
     }

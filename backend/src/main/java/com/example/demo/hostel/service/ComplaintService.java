@@ -1,7 +1,9 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.dto.AssigneeContact;
 import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
+import com.example.demo.hostel.dto.MyComplaint;
 import com.example.demo.hostel.model.Category;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
@@ -9,11 +11,13 @@ import com.example.demo.hostel.model.Location;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
+import com.example.demo.hostel.model.WorkOrder;
 import com.example.demo.hostel.repository.CategoryRepository;
 import com.example.demo.hostel.repository.ComplaintHistoryRepository;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.LocationRepository;
 import com.example.demo.hostel.repository.UserRepository;
+import com.example.demo.hostel.repository.WorkOrderRepository;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 
 import org.springframework.http.HttpStatus;
@@ -23,7 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class ComplaintService {
@@ -35,6 +41,7 @@ public class ComplaintService {
     private final SupabaseStorageService storageService;
     private final RoomLocationValidator roomLocationValidator;
     private final ComplaintHistoryRepository complaintHistoryRepository;
+    private final WorkOrderRepository workOrderRepository;
 
     public ComplaintService(
             ComplaintRepository complaintRepository,
@@ -43,7 +50,8 @@ public class ComplaintService {
             LocationRepository locationRepository,
             SupabaseStorageService storageService,
             RoomLocationValidator roomLocationValidator,
-            ComplaintHistoryRepository complaintHistoryRepository) {
+            ComplaintHistoryRepository complaintHistoryRepository,
+            WorkOrderRepository workOrderRepository) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
@@ -51,6 +59,7 @@ public class ComplaintService {
         this.storageService = storageService;
         this.roomLocationValidator = roomLocationValidator;
         this.complaintHistoryRepository = complaintHistoryRepository;
+        this.workOrderRepository = workOrderRepository;
     }
 
     /**
@@ -127,6 +136,28 @@ public class ComplaintService {
     public List<Complaint> getMyComplaints(String email) {
         User student = userRepository.findByEmail(email).orElseThrow();
         return complaintRepository.findByStudentOrderByCreatedAtDesc(student);
+    }
+
+    /**
+     * The caller's own complaints, each with the name and phone number of whoever
+     * is handling it. Only the owner gets this, and only while the work order is
+     * active: the contact goes away once it is done or cancelled.
+     */
+    public List<MyComplaint> getMyComplaintsWithContacts(String email) {
+        List<Complaint> complaints = getMyComplaints(email);
+        if (complaints.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, AssigneeContact> contacts = new HashMap<>();
+        for (WorkOrder workOrder : workOrderRepository.findWithAssigneeByComplaints(complaints, WorkOrderService.ACTIVE)) {
+            User assignee = workOrder.getAssignee();
+            contacts.put(workOrder.getComplaint().getId(),
+                    new AssigneeContact(WorkOrderService.displayName(assignee), assignee.getPhoneNumber()));
+        }
+        return complaints.stream()
+                .map(complaint -> new MyComplaint(complaint, contacts.get(complaint.getId())))
+                .toList();
     }
 
     public Complaint getComplaintById(Long id, String email) {

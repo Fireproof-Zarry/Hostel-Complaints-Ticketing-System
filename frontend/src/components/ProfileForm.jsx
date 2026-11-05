@@ -203,7 +203,9 @@ export default function ProfileForm() {
               id="profile-phone"
               label="Phone number"
               error={visibleErrors.phoneNumber}
-              hint="Workers may call this number to coordinate a visit."
+              hint={isStudent
+                ? 'Workers may call this number to coordinate a visit.'
+                : 'Students will see this once you are assigned to a complaint.'}
             >
               <input
                 id="profile-phone"
