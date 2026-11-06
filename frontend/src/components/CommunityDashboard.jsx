@@ -107,7 +107,7 @@ function CommunityComplaintCard({ complaint, pending, onToggle }) {
  * upvote. Self-contained: owns its data and upvote state, independent of the
  * student's personal complaints feed.
  */
-export default function CommunityDashboard() {
+export default function CommunityDashboard({ refreshSignal = 0 }) {
   const [sort, setSort] = useState('upvotes');
   const [floor, setFloor] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
@@ -116,6 +116,7 @@ export default function CommunityDashboard() {
   const [pendingIds, setPendingIds] = useState(() => new Set());
   // Mirrors pendingIds for click handlers, which may run before a re-render
   const pendingRef = useRef(new Set());
+  const handledRefreshRef = useRef(refreshSignal);
 
   // Loading is derived: the feed is stale until it was fetched for the current filters
   const queryKey = JSON.stringify([sort, floor, reloadCount]);
@@ -143,6 +144,36 @@ export default function CommunityDashboard() {
       active = false;
     };
   }, [floor, queryKey, sort]);
+
+  // A status changed: update the cards in place, keeping the list and any
+  // pages loaded with Load more. The Refresh button still works if this fails.
+  useEffect(() => {
+    if (handledRefreshRef.current === refreshSignal) return undefined;
+    handledRefreshRef.current = refreshSignal;
+
+    let active = true;
+    const pages = Array.from({ length: feed.page + 1 }, (_, page) => page);
+
+    Promise.all(pages.map((page) => fetchCommunityPage({ sort, floor, page })))
+      .then((results) => {
+        if (!active) return;
+        const fresh = new Map(
+          results.flatMap((data) => data.items ?? []).map((item) => [item.id, item])
+        );
+        setFeed((current) => ({
+          ...current,
+          items: current.items.map((item) =>
+            // An upvote in progress is newer than this response
+            pendingRef.current.has(item.id) ? item : (fresh.get(item.id) ?? item)
+          ),
+        }));
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [feed.page, floor, refreshSignal, sort]);
 
   const handleLoadMore = async () => {
     const nextPage = feed.page + 1;
