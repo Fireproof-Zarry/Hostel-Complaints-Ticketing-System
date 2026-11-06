@@ -1,8 +1,11 @@
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FilePlus2, LogOut } from 'lucide-react';
+import NotificationToast from '../components/NotificationToast';
 import ProfileForm from '../components/ProfileForm';
 import StudentSidebar from '../components/StudentSidebar';
 import { getToken, logout } from '../auth/session';
+import { removeFcmToken } from '../notifications/pushNotifications';
+import useForegroundNotifications from '../notifications/useForegroundNotifications';
 
 /** Student profile page, with the same sidebar as the student dashboard. */
 export default function Profile() {
@@ -11,10 +14,12 @@ export default function Profile() {
   // Set when the student came here from the complaint form (e.g. to fix their room number)
   const returnToComplaint = location.state?.returnTo === 'submit';
   const token = getToken();
+  const { notificationToast, dismissNotificationToast } = useForegroundNotifications();
 
   if (!token) return <Navigate to="/login" replace />;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await removeFcmToken();
     logout();
     navigate('/login', { replace: true });
   };
@@ -61,6 +66,14 @@ export default function Profile() {
           <ProfileForm />
         </div>
       </main>
+
+      {notificationToast && (
+        <NotificationToast
+          toast={notificationToast}
+          onOpen={() => navigate('/student')}
+          onDismiss={dismissNotificationToast}
+        />
+      )}
     </div>
   );
 }

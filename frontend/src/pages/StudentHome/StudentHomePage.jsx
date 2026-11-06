@@ -8,6 +8,7 @@ import {
 
 import CommunityDashboard from '../../components/CommunityDashboard';
 import DeleteComplaintDialog from '../../components/DeleteComplaintDialog';
+import NotificationToast from '../../components/NotificationToast';
 import SubmissionConfirmation from '../../components/SubmissionConfirmation';
 import StudentComplaintDetails from '../../components/StudentComplaintDetails';
 import StudentSidebar from '../../components/StudentSidebar';
@@ -21,6 +22,8 @@ import StudentHeader from './components/StudentHeader';
 import useComplaintForm from './hooks/useComplaintForm';
 import useStudentComplaints from './hooks/useStudentComplaints';
 import useStudentNotifications from './hooks/useStudentNotifications';
+import { removeFcmToken } from '../../notifications/pushNotifications';
+import useForegroundNotifications from '../../notifications/useForegroundNotifications';
 import { isDraftEmpty } from '../../utils/complaintDraft';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
@@ -38,6 +41,7 @@ export default function StudentHomePage() {
   const [success, setSuccess] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [statusUpdateCount, setStatusUpdateCount] = useState(0);
 
   const imageUploadRef = useRef(null);
 
@@ -81,9 +85,30 @@ export default function StudentHomePage() {
     setSubmittedComplaint,
   });
 
-  const notifications = useStudentNotifications(profile?.id);
+  // A status update arrived, so show it without the refresh spinner or errors.
+  const handleForegroundMessage = useCallback(async () => {
+    setStatusUpdateCount((count) => count + 1);
 
-  const handleLogout = useCallback(() => {
+    try {
+      setComplaints(await requestMyComplaints());
+    } catch {
+      // The manual Refresh button still works if this quiet update fails.
+    }
+  }, [requestMyComplaints, setComplaints]);
+
+  const notifications = useStudentNotifications(profile?.id);
+  const { notificationToast, dismissNotificationToast } =
+    useForegroundNotifications(handleForegroundMessage);
+
+  const handleOpenNotificationToast = useCallback(() => {
+    dismissNotificationToast();
+    setActiveTab('home');
+    setError('');
+    setSuccess('');
+  }, [dismissNotificationToast, setError]);
+
+  const handleLogout = useCallback(async () => {
+    await removeFcmToken();
     logout();
     navigate('/login', { replace: true });
   }, [navigate]);
@@ -185,6 +210,12 @@ export default function StudentHomePage() {
   if (!token) {
     return <Navigate to="/login" replace />;
   }
+
+  // Registration failed. A failed switch-off keeps the switch instead.
+  const canRetryNotifications =
+    notifications.notificationPermission === 'granted' &&
+    notifications.notificationError &&
+    !notifications.isNotificationEnabled;
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 md:flex">
@@ -312,9 +343,7 @@ export default function StudentHomePage() {
                       complaint moves to a new status, even when you are not
                       viewing the portal.
                     </p>
-                    {(notifications.notificationPermission === 'default' ||
-                      (notifications.notificationPermission === 'granted' &&
-                        notifications.notificationError)) && (
+                    {canRetryNotifications ? (
                       <button
                         type="button"
                         onClick={notifications.handleEnableNotifications}
@@ -325,10 +354,52 @@ export default function StudentHomePage() {
                       >
                         {notifications.isEnablingNotifications
                           ? 'Enabling...'
-                          : notifications.notificationPermission === 'granted'
-                            ? 'Try Again'
-                            : 'Enable Notifications'}
+                          : 'Try Again'}
                       </button>
+                    ) : (
+                      ['default', 'granted'].includes(
+                        notifications.notificationPermission
+                      ) && (
+                        <div className="mt-5 flex items-center gap-3">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={notifications.isNotificationEnabled}
+                            aria-label="Push notifications"
+                            onClick={
+                              notifications.isNotificationEnabled
+                                ? notifications.handleDisableNotifications
+                                : notifications.handleEnableNotifications
+                            }
+                            disabled={
+                              notifications.isEnablingNotifications ||
+                              notifications.isDisablingNotifications ||
+                              !profile?.id
+                            }
+                            className={`relative h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                              notifications.isNotificationEnabled
+                                ? 'bg-blue-600'
+                                : 'bg-slate-300'
+                            }`}
+                          >
+                            <span
+                              className={`absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                notifications.isNotificationEnabled
+                                  ? 'translate-x-5'
+                                  : ''
+                              }`}
+                            />
+                          </button>
+
+                          <span className="text-sm font-medium text-slate-700">
+                            {notifications.isDisablingNotifications
+                              ? 'Turning off...'
+                              : notifications.isNotificationEnabled
+                                ? 'Notifications on'
+                                : 'Enable Notifications'}
+                          </span>
+                        </div>
+                      )
                     )}
 
                     {notifications.notificationPermission === 'granted' &&
@@ -366,8 +437,7 @@ export default function StudentHomePage() {
                       </p>
                     )}
 
-                    {notifications.notificationPermission === 'granted' &&
-                      notifications.notificationError && (
+                    {canRetryNotifications && (
                         <p className="mt-1 text-sm text-slate-600">
                           If Try Again doesn&apos;t work, reload the page.
                         </p>
@@ -378,9 +448,19 @@ export default function StudentHomePage() {
             </section>
           )}
 
-          {activeTab === 'community' && <CommunityDashboard />}
+          {activeTab === 'community' && (
+            <CommunityDashboard refreshSignal={statusUpdateCount} />
+          )}
         </div>
       </main>
+
+      {notificationToast && (
+        <NotificationToast
+          toast={notificationToast}
+          onOpen={handleOpenNotificationToast}
+          onDismiss={dismissNotificationToast}
+        />
+      )}
 
       {viewedComplaint && (
         <StudentComplaintDetails

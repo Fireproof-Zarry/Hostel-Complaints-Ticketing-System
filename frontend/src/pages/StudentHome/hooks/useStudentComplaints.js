@@ -5,14 +5,22 @@ import { isActiveComplaint } from '../utils/studentUtils';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+// Shown straight away when the student returns from My Profile, while the
+// fresh list loads. The token ties it to the current login.
+let lastComplaints = null;
+
 export default function useStudentComplaints(
   token,
   search = '',
   statusFilter = 'ALL'
 ) {
-  const [complaints, setComplaints] = useState([]);
+  const [complaints, setComplaints] = useState(() =>
+    lastComplaints?.token === token ? lastComplaints.complaints : []
+  );
   const [profile, setProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(
+    () => lastComplaints?.token !== token
+  );
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
 
@@ -91,6 +99,12 @@ export default function useStudentComplaints(
       isActive = false;
     };
   }, [requestMyComplaints, token]);
+
+  useEffect(() => {
+    if (token && !isLoading && !error) {
+      lastComplaints = { token, complaints };
+    }
+  }, [complaints, error, isLoading, token]);
 
   const refreshComplaints = useCallback(async () => {
     setIsRefreshing(true);

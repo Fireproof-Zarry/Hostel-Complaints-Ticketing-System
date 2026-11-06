@@ -2,11 +2,13 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import {
+  areNotificationsTurnedOff,
+  disablePushNotifications,
   enablePushNotifications,
   forgetFcmRegistration,
   getNotificationPermission,
   registerExistingPermission,
-  listenForForegroundMessages,
+  setNotificationsTurnedOff,
 } from '../../../notifications/pushNotifications';
 
 export default function useStudentNotifications(profileId) {
@@ -18,45 +20,14 @@ export default function useStudentNotifications(profileId) {
   const [isEnablingNotifications, setIsEnablingNotifications] =
     useState(false);
 
+  const [isDisablingNotifications, setIsDisablingNotifications] =
+    useState(false);
+
   const [isNotificationEnabled, setIsNotificationEnabled] =
     useState(false);
 
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationError, setNotificationError] = useState('');
-
-  // Keep the foreground listener active while the student page is mounted.
-  useEffect(() => {
-    let unsubscribe;
-    let cancelled = false;
-
-    listenForForegroundMessages(({ title, body }) => {
-      if (
-        typeof window !== 'undefined' &&
-        'Notification' in window &&
-        Notification.permission === 'granted'
-      ) {
-        new Notification(title, { body });
-      }
-    })
-      .then((cleanup) => {
-        if (cancelled) {
-          cleanup?.();
-        } else {
-          unsubscribe = cleanup;
-        }
-      })
-      .catch((error) => {
-        console.error(
-          '[FCM] Failed to initialize foreground listener:',
-          error
-        );
-      });
-
-    return () => {
-      cancelled = true;
-      unsubscribe?.();
-    };
-  }, []);
 
   // Permission can change in browser settings while the portal is open.
   // No event fires reliably for this, so re-read it when the student returns.
@@ -86,7 +57,11 @@ export default function useStudentNotifications(profileId) {
       forgetFcmRegistration();
     }
 
-    if (!profileId || notificationPermission !== 'granted') {
+    if (
+      !profileId ||
+      notificationPermission !== 'granted' ||
+      areNotificationsTurnedOff(profileId)
+    ) {
       setIsEnablingNotifications(false);
       setNotificationMessage('');
       return undefined;
@@ -131,15 +106,19 @@ export default function useStudentNotifications(profileId) {
     };
   }, [profileId, notificationPermission]);
 
-  // Called when the student clicks Enable Notifications or Try Again.
+  // Called when the student turns notifications on or clicks Try Again.
   const handleEnableNotifications = useCallback(async () => {
-    if (!profileId || isEnablingNotifications) return;
+    if (!profileId || isEnablingNotifications || isDisablingNotifications) {
+      return;
+    }
 
     setIsEnablingNotifications(true);
     setNotificationMessage('');
     setNotificationError('');
 
     try {
+      setNotificationsTurnedOff(profileId, false);
+
       await enablePushNotifications(profileId);
 
       setIsNotificationEnabled(true);
@@ -155,14 +134,42 @@ export default function useStudentNotifications(profileId) {
       setIsEnablingNotifications(false);
       setNotificationPermission(getNotificationPermission());
     }
-  }, [profileId, isEnablingNotifications]);
+  }, [profileId, isEnablingNotifications, isDisablingNotifications]);
+
+  // Called when the student turns notifications off.
+  const handleDisableNotifications = useCallback(async () => {
+    if (!profileId || isEnablingNotifications || isDisablingNotifications) {
+      return;
+    }
+
+    setIsDisablingNotifications(true);
+    setNotificationError('');
+
+    try {
+      await disablePushNotifications();
+
+      setNotificationsTurnedOff(profileId, true);
+      setIsNotificationEnabled(false);
+      setNotificationMessage('');
+    } catch (error) {
+      console.error('[FCM] Failed to turn off notifications:', error);
+
+      setNotificationError(
+        'Could not turn off notifications. Please try again.'
+      );
+    } finally {
+      setIsDisablingNotifications(false);
+    }
+  }, [profileId, isEnablingNotifications, isDisablingNotifications]);
 
   return {
     notificationPermission,
     isEnablingNotifications,
+    isDisablingNotifications,
     isNotificationEnabled,
     notificationMessage,
     notificationError,
     handleEnableNotifications,
+    handleDisableNotifications,
   };
 }
