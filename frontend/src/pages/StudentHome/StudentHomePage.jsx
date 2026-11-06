@@ -1,0 +1,415 @@
+import { useCallback, useRef, useState } from 'react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import {
+  AlertCircle,
+  Bell,
+  CheckCircle2,
+} from 'lucide-react';
+
+import CommunityDashboard from '../../components/CommunityDashboard';
+import DeleteComplaintDialog from '../../components/DeleteComplaintDialog';
+import SubmissionConfirmation from '../../components/SubmissionConfirmation';
+import StudentComplaintDetails from '../../components/StudentComplaintDetails';
+import StudentSidebar from '../../components/StudentSidebar';
+import { STUDENT_NAVIGATION } from '../../components/studentNavigation';
+import { apiFetch, getToken, logout } from '../../auth/session';
+
+import ComplaintForm from './sections/ComplaintForm';
+import ComplaintList from './sections/ComplaintList';
+import StudentDashboard from './sections/StudentDashboard';
+import StudentHeader from './components/StudentHeader';
+import useComplaintForm from './hooks/useComplaintForm';
+import useStudentComplaints from './hooks/useStudentComplaints';
+import useStudentNotifications from './hooks/useStudentNotifications';
+import { isDraftEmpty } from '../../utils/complaintDraft';
+
+const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+
+export default function StudentHomePage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const token = getToken();
+
+  const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
+  const [submittedComplaint, setSubmittedComplaint] = useState(null);
+  const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  const imageUploadRef = useRef(null);
+
+  const {
+    complaints,
+    setComplaints,
+    profile,
+    isLoading,
+    isRefreshing,
+    error,
+    setError,
+    activeCount,
+    filteredComplaints,
+    requestMyComplaints,
+    refreshComplaints,
+  } = useStudentComplaints(token, search, statusFilter);
+
+  // An id, so a refresh of the list also updates the open popup
+  const [viewedComplaintId, setViewedComplaintId] = useState(null);
+  const viewedComplaint = complaints.find(
+    (complaint) => complaint.id === viewedComplaintId
+  );
+  const closeComplaintDetails = useCallback(
+    () => setViewedComplaintId(null),
+    []
+  );
+  const handleViewComplaint = useCallback(
+    (complaint) => setViewedComplaintId(complaint.id),
+    []
+  );
+
+
+  const form = useComplaintForm({
+    token,
+    profile,
+    imageUploadRef,
+    requestMyComplaints,
+    setComplaints,
+    setError,
+    setSuccess,
+    setSubmittedComplaint,
+  });
+
+  const notifications = useStudentNotifications(profile?.id);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    navigate('/login', { replace: true });
+  }, [navigate]);
+
+  const handleOpenNotifications = useCallback(() => {
+    setActiveTab('notifications');
+    setError('');
+    setSuccess('');
+  }, [setError]);
+
+  const handleOpenComplaints = useCallback(() => {
+    setActiveTab('complaints');
+    setStatusFilter('ALL');
+    setSearch('');
+    setError('');
+    setSuccess('');
+  }, [setError]);
+
+  const handleFileComplaint = useCallback(() => {
+    setActiveTab('submit');
+    setError('');
+    setSuccess('');
+  }, [setError]);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      await refreshComplaints();
+    } catch {
+      // The hook stores the refresh error for the page-level alert.
+    }
+  }, [refreshComplaints]);
+
+  const openProfileFromComplaint = useCallback(() => {
+    navigate('/profile', { state: { returnTo: 'submit' } });
+  }, [navigate]);
+
+  const closeDeleteDialog = useCallback(() => {
+    setComplaintToDelete(null);
+    setDeleteError('');
+  }, []);
+
+  const closeConfirmation = useCallback(() => {
+    setSubmittedComplaint(null);
+  }, []);
+
+  const handleDeleteComplaint = useCallback(
+    (complaint) => {
+      setError('');
+      setSuccess('');
+      setDeleteError('');
+      setComplaintToDelete(complaint);
+    },
+    [setError]
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!complaintToDelete) return;
+
+    const complaint = complaintToDelete;
+    setIsDeleting(true);
+    setDeleteError('');
+
+    try {
+      const response = await apiFetch(`${apiBaseUrl}/complaints/${complaint.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.status === 409) {
+        const updated = await requestMyComplaints();
+        setComplaints(updated);
+        throw new Error(
+          'This complaint is already being handled, so it can no longer be deleted.'
+        );
+      }
+
+      if (!response.ok && response.status !== 404) {
+        throw new Error(
+          `The complaint could not be deleted (HTTP ${response.status}). Please try again.`
+        );
+      }
+
+      // A 404 means the complaint is already gone, so remove it locally too.
+      setComplaints((current) =>
+        current.filter((item) => item.id !== complaint.id)
+      );
+      setComplaintToDelete(null);
+      setSuccess(`Complaint #${complaint.id} was deleted.`);
+    } catch (deleteFailure) {
+      setDeleteError(
+        deleteFailure instanceof Error
+          ? deleteFailure.message
+          : 'Network error. Please try again.'
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [complaintToDelete, requestMyComplaints, setComplaints]);
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900 md:flex">
+      <StudentSidebar
+        activeId={activeTab}
+        onSelect={(id) => {
+          if (id === 'profile') {
+            if (activeTab === 'submit' && !isDraftEmpty(form.formData)) {
+              openProfileFromComplaint();
+            } else {
+              navigate('/profile');
+            }
+            return;
+          }
+
+          setActiveTab(id);
+          setError('');
+          setSuccess('');
+        }}
+      />
+
+      <main className="min-w-0 flex-1">
+        <StudentHeader
+          title={STUDENT_NAVIGATION.find((item) => item.id === activeTab)?.label}
+          isNotificationsActive={activeTab === 'notifications'}
+          onOpenNotifications={handleOpenNotifications}
+          onLogout={handleLogout}
+        />
+
+        <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
+          {error && (
+            <div
+              role="alert"
+              className="flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800"
+            >
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div
+              role="status"
+              className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
+            >
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+              <p>{success}</p>
+            </div>
+          )}
+
+          {activeTab === 'home' && (
+            <StudentDashboard
+              complaints={complaints}
+              activeCount={activeCount}
+              isLoading={isLoading}
+              isRefreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              onFileComplaint={handleFileComplaint}
+              onOpenComplaints={handleOpenComplaints}
+            />
+          )}
+
+          {activeTab === 'submit' && (
+            <ComplaintForm
+              formData={form.formData}
+              setFormData={form.setFormData}
+              updateForm={form.updateForm}
+              handleSubmit={form.handleSubmit}
+              draftRestored={form.draftRestored}
+              hasRestoredDraft={form.hasRestoredDraft}
+              onDismissDraft={form.dismissDraft}
+              missingProfileRoom={form.missingProfileRoom}
+              openProfileFromComplaint={openProfileFromComplaint}
+              profileRoom={form.profileRoom}
+              profileRoomFloor={form.profileRoomFloor}
+              visibleDuplicates={form.visibleDuplicates}
+              duplicateMode={form.duplicateMode}
+              upvotingId={form.upvotingId}
+              handleUpvoteDuplicate={form.handleUpvoteDuplicate}
+              onDismissDuplicates={form.dismissDuplicates}
+              imageUploadRef={imageUploadRef}
+              isSubmitting={form.isSubmitting}
+            />
+          )}
+
+          {activeTab === 'complaints' && (
+            <ComplaintList
+              complaints={complaints}
+              filteredComplaints={filteredComplaints}
+              isLoading={isLoading}
+              isRefreshing={isRefreshing}
+              search={search}
+              setSearch={setSearch}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              onRefresh={handleRefresh}
+              onFileComplaint={handleFileComplaint}
+              onViewComplaint={handleViewComplaint}
+              onDeleteComplaint={handleDeleteComplaint}
+            />
+          )}
+
+          {activeTab === 'notifications' && (
+            <section className="mx-auto max-w-3xl space-y-5">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">
+                  Push Notifications
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Get notified when the status of your complaints changes.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="rounded-full bg-indigo-50 p-3 text-indigo-600">
+                    <Bell className="h-6 w-6" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-semibold text-slate-900">
+                      Browser notifications
+                    </h4>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">
+                      Enable browser notifications to receive updates when your
+                      complaint moves to a new status, even when you are not
+                      viewing the portal.
+                    </p>
+                    {(notifications.notificationPermission === 'default' ||
+                      (notifications.notificationPermission === 'granted' &&
+                        notifications.notificationError)) && (
+                      <button
+                        type="button"
+                        onClick={notifications.handleEnableNotifications}
+                        disabled={
+                          notifications.isEnablingNotifications || !profile?.id
+                        }
+                        className="mt-5 inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {notifications.isEnablingNotifications
+                          ? 'Enabling...'
+                          : notifications.notificationPermission === 'granted'
+                            ? 'Try Again'
+                            : 'Enable Notifications'}
+                      </button>
+                    )}
+
+                    {notifications.notificationPermission === 'granted' &&
+                      notifications.isEnablingNotifications &&
+                      !notifications.notificationError && (
+                        <p role="status" className="mt-3 text-sm text-slate-600">
+                          Setting up notifications...
+                        </p>
+                      )}
+
+                    {notifications.notificationPermission === 'denied' && (
+                      <p role="alert" className="mt-3 text-sm leading-6 text-amber-700">
+                        Notifications are blocked for this site. To turn them
+                        on, click the icon beside the address bar, open the site
+                        settings, and set Notifications to Allow. This page
+                        updates when you return to it.
+                      </p>
+                    )}
+
+                    {notifications.notificationPermission === 'unsupported' && (
+                      <p role="status" className="mt-3 text-sm text-slate-600">
+                        This browser does not support notifications.
+                      </p>
+                    )}
+
+                    {notifications.notificationMessage && (
+                      <p role="status" className="mt-3 text-sm text-green-700">
+                        {notifications.notificationMessage}
+                      </p>
+                    )}
+
+                    {notifications.notificationError && (
+                      <p role="alert" className="mt-3 text-sm text-red-600">
+                        {notifications.notificationError}
+                      </p>
+                    )}
+
+                    {notifications.notificationPermission === 'granted' &&
+                      notifications.notificationError && (
+                        <p className="mt-1 text-sm text-slate-600">
+                          If Try Again doesn&apos;t work, reload the page.
+                        </p>
+                      )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {activeTab === 'community' && <CommunityDashboard />}
+        </div>
+      </main>
+
+      {viewedComplaint && (
+        <StudentComplaintDetails
+          complaint={viewedComplaint}
+          onClose={closeComplaintDetails}
+        />
+      )}
+
+      {complaintToDelete && (
+        <DeleteComplaintDialog
+          complaint={complaintToDelete}
+          isDeleting={isDeleting}
+          error={deleteError}
+          onCancel={closeDeleteDialog}
+          onConfirm={handleConfirmDelete}
+        />
+      )}
+
+      {submittedComplaint && (
+        <SubmissionConfirmation
+          complaintId={submittedComplaint.id}
+          photoError={submittedComplaint.photoError}
+          onViewComplaints={() => {
+            setSubmittedComplaint(null);
+            setActiveTab('complaints');
+          }}
+          onFileAnother={closeConfirmation}
+        />
+      )}
+    </div>
+  );
+}
