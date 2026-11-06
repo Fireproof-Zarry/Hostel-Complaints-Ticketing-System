@@ -1,7 +1,7 @@
 -- HostelFix: work orders for staff / in-charges (PostgreSQL).
 --
 -- Run in the Supabase SQL editor before deploying; safe to re-run.
--- users.role is a VARCHAR, so the new STAFF role needs no change.
+-- The new STAFF role also needs schema_nov06.sql, which updates the check on users.role.
 
 ALTER TABLE work_orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
 
