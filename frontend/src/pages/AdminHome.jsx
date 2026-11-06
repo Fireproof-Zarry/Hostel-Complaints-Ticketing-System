@@ -1076,8 +1076,7 @@ export default function AdminHome() {
                 <h2>Complaint Details</h2>
 
                 <div className="complaint-meta">
-                  <span>#{selectedComplaint.id}</span>
-                  <span>•</span>
+                  <strong className="font-bold">Complaint #{selectedComplaint.id}</strong>
                   <span>{selectedComplaint.title}</span>
                   <span>•</span>
                   <span>{getTimeSinceRaised(selectedComplaint.createdAt)}</span>

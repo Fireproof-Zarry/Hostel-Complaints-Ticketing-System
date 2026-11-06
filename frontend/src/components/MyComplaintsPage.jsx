@@ -23,7 +23,9 @@ function ComplaintRow({ id, title, status, overdue, onOpen, children }) {
         }`}
       >
         <span className="flex items-start justify-between gap-3">
-          <span className="min-w-0 font-medium text-slate-900">#{id} {title}</span>
+          <span className="min-w-0 text-slate-900">
+            <strong className="font-bold">Complaint #{id}</strong> {title}
+          </span>
           <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusClasses(status)}`}>
             {formatStatus(status)}
           </span>
