@@ -6,15 +6,9 @@ importScripts(
   "https://www.gstatic.com/firebasejs/13.2.0/firebase-messaging-compat.js"
 );
 
-// Firebase configuration must match frontend/src/firebase.js.
-firebase.initializeApp({
-  apiKey: "AIzaSyCiQ4NNBX_mC30NOrkM9G6aA6JsCQdK21A",
-  authDomain: "hostelcomplaints-f6fc6.firebaseapp.com",
-  projectId: "hostelcomplaints-f6fc6",
-  storageBucket: "hostelcomplaints-f6fc6.firebasestorage.app",
-  messagingSenderId: "304613638277",
-  appId: "1:304613638277:web:fce6502801c5ea2afde9ec",
-});
+// vite.config.js fills this in from .env and serves the result as
+// /firebase-messaging-sw.js, because files in public/ cannot read env values.
+firebase.initializeApp(__FIREBASE_CONFIG__);
 
 // Handle notification clicks. This must be registered before firebase.messaging(),
 // whose own click handler stops later handlers and does nothing without a link.
