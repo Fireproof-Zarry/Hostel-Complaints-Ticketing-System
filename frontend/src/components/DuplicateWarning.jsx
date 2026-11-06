@@ -7,7 +7,8 @@ function formatStatus(status) {
 /**
  * Inline banner listing open complaints similar to the one being filed, either
  * on the same floor (scope "community") or in the student's room (scope "room").
- * "Yes, this is my issue" upvotes the existing ticket instead.
+ * "Yes, this is my issue" upvotes the existing ticket instead. Without onUpvote
+ * (staff cannot upvote) it only lists them.
  */
 export default function DuplicateWarning({ scope = 'community', candidates, upvotingId, onUpvote, onDismiss }) {
   return (
@@ -21,7 +22,9 @@ export default function DuplicateWarning({ scope = 'community', candidates, upvo
           <h4 id="duplicate-warning-title" className="font-semibold">Wait! Has this already been reported?</h4>
           <p className="mt-0.5 text-amber-900">
             {scope === 'room' ? 'These open complaints for your room' : 'These open complaints on the same floor'} look
-            similar. If one is your issue, upvote it instead of filing a new one.
+            similar. {onUpvote
+              ? 'If one is your issue, upvote it instead of filing a new one.'
+              : 'If one is the same issue, you may not need to file a new one.'}
           </p>
 
           <ul className="mt-3 space-y-2">
@@ -47,7 +50,7 @@ export default function DuplicateWarning({ scope = 'community', candidates, upvo
                     <CheckCircle2 className="h-4 w-4" />
                     You've already upvoted this
                   </span>
-                ) : (
+                ) : onUpvote && (
                   <button
                     type="button"
                     onClick={() => onUpvote(candidate)}

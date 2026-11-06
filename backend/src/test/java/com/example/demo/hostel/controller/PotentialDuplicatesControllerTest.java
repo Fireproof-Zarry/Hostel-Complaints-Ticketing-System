@@ -66,7 +66,7 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void returnsCandidatesWithoutStudentDetails() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", "East wing"))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", "East wing", null))
                 .thenReturn(List.of(new DuplicateCandidate(
                         7L, "Washroom not cleaned", Status.PENDING, "First", "East wing washroom", null,
                         3L, LocalDateTime.of(2026, 10, 30, 9, 0), false, true)));
@@ -88,7 +88,7 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void wingIsOptional() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", null))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, "First", null, null))
                 .thenReturn(List.of());
 
         mockMvc.perform(get("/api/complaints/potential-duplicates")
@@ -101,7 +101,7 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void communityAreaWithoutFloorIsRejectedByTheService() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, null, null))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Dirty washroom", true, null, null, null))
                 .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid floor is required"));
 
         mockMvc.perform(get("/api/complaints/potential-duplicates")
@@ -112,7 +112,7 @@ class PotentialDuplicatesControllerTest {
 
     @Test
     void personalIssueNeedsNoLocation() throws Exception {
-        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Fan not working", false, null, null))
+        when(duplicateDetectionService.findPotentialDuplicates(EMAIL, "Fan not working", false, null, null, null))
                 .thenReturn(List.of(new DuplicateCandidate(
                         31L, "Ceiling fan not working", Status.PENDING, "First", null, "204",
                         0L, LocalDateTime.of(2026, 10, 30, 9, 0), true, false)));

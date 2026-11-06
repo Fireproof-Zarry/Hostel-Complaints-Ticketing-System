@@ -132,7 +132,7 @@ class DuplicateDetectionServiceIntegrationTest {
     @Test
     void findsOnlyOpenCommunityComplaintsOnTheSameFloor() {
         List<Long> ids = ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom"));
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom", null));
 
         assertThat(ids).contains(eastTapLeak, westTapLeak).hasSizeLessThanOrEqualTo(3);
         assertThat(ids).doesNotContain(otherFloorTapLeak, personalRoomTapLeak, resolvedTapLeak, dispenser);
@@ -141,17 +141,17 @@ class DuplicateDetectionServiceIntegrationTest {
     @Test
     void sameWingWinsATie() {
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom")).getFirst())
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom", null)).getFirst())
                 .isEqualTo(eastTapLeak);
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "west wing washroom")).getFirst())
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "west wing washroom", null)).getFirst())
                 .isEqualTo(westTapLeak);
     }
 
     @Test
     void matchesWordsInTheDescription() {
         List<Long> ids = ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "leaking all night", true, "First", null));
+                NEIGHBOUR_EMAIL, "leaking all night", true, "First", null, null));
 
         assertThat(ids).first().isEqualTo(describedLeak);
     }
@@ -159,7 +159,7 @@ class DuplicateDetectionServiceIntegrationTest {
     @Test
     void unrelatedTitleFindsNothing() {
         assertThat(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Broken window glass", true, "First", null)).isEmpty();
+                NEIGHBOUR_EMAIL, "Broken window glass", true, "First", null, null)).isEmpty();
     }
 
     @Test
@@ -168,7 +168,7 @@ class DuplicateDetectionServiceIntegrationTest {
         complaint("Washroom tap is leaking", "Test fixture", Status.PENDING, firstWest);
 
         assertThat(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null)).hasSize(3);
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null, null)).hasSize(3);
     }
 
     @Test
@@ -178,7 +178,7 @@ class DuplicateDetectionServiceIntegrationTest {
         complaintRepository.save(complaint);
 
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null))).doesNotContain(eastTapLeak);
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null, null))).doesNotContain(eastTapLeak);
     }
 
     @Test
@@ -187,7 +187,7 @@ class DuplicateDetectionServiceIntegrationTest {
         jdbcTemplate.update("UPDATE complaints SET deleted_at = now() WHERE id = ?", eastTapLeak);
 
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null))).doesNotContain(eastTapLeak);
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null, null))).doesNotContain(eastTapLeak);
     }
 
     @Test
@@ -195,7 +195,7 @@ class DuplicateDetectionServiceIntegrationTest {
         upvoteService.toggleUpvote(eastTapLeak, neighbour.getId());
 
         DuplicateCandidate forNeighbour = find(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom"), eastTapLeak);
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom", null), eastTapLeak);
         assertThat(forNeighbour.upvoteCount()).isEqualTo(1);
         assertThat(forNeighbour.upvotedByYou()).isTrue();
         assertThat(forNeighbour.reportedByYou()).isFalse();
@@ -203,7 +203,7 @@ class DuplicateDetectionServiceIntegrationTest {
         assertThat(forNeighbour.wing()).isEqualTo("East wing washroom");
 
         DuplicateCandidate forReporter = find(duplicateDetectionService.findPotentialDuplicates(
-                REPORTER_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom"), eastTapLeak);
+                REPORTER_EMAIL, "Washroom tap leaking", true, "First", "East wing washroom", null), eastTapLeak);
         assertThat(forReporter.reportedByYou()).isTrue();
         assertThat(forReporter.upvotedByYou()).isFalse();
     }
@@ -215,7 +215,7 @@ class DuplicateDetectionServiceIntegrationTest {
         userRepository.save(neighbour);
 
         List<DuplicateCandidate> candidates = duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", false, null, null);
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", false, null, null, null);
 
         assertThat(ids(candidates)).containsExactly(personalRoomTapLeak);
         assertThat(candidates.getFirst().room()).isEqualTo("204");
@@ -227,13 +227,13 @@ class DuplicateDetectionServiceIntegrationTest {
     @Test
     void personalIssueWithoutProfileRoomFindsNothing() {
         assertThat(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", false, null, null)).isEmpty();
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", false, null, null, null)).isEmpty();
     }
 
     @Test
     void communitySearchNeverReturnsPersonalComplaints() {
         assertThat(ids(duplicateDetectionService.findPotentialDuplicates(
-                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null)))
+                NEIGHBOUR_EMAIL, "Washroom tap leaking", true, "First", null, null)))
                 .doesNotContain(personalRoomTapLeak, otherRoomTapLeak);
     }
 

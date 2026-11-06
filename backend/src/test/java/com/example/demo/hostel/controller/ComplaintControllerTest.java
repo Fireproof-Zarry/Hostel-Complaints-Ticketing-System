@@ -46,7 +46,7 @@ class ComplaintControllerTest {
     }
 
     @Test
-    void personalIssue_ignoresFloorAndRoomFromPayload() {
+    void personalIssue_ignoresFloorAndWingAndPassesTheRoomOn() {
         CreateComplaintRequest payload = new CreateComplaintRequest(
                 " Broken fan ", " Not spinning ", "Electrical",
                 false, "Ground", "101", "Some wing",
@@ -58,7 +58,7 @@ class ComplaintControllerTest {
         CreateComplaintRequest sent = captureRequest();
         assertFalse(sent.communityArea());
         assertNull(sent.floor());
-        assertNull(sent.room());
+        assertEquals("101", sent.room());
         assertNull(sent.wing());
         assertEquals("Broken fan", sent.title());
         assertEquals("Mon: 2 PM - 5 PM", sent.availableTimeSlot());

@@ -34,6 +34,10 @@ import java.util.Map;
 @Service
 public class ComplaintService {
 
+    private static final int MAX_OPEN_COMPLAINTS = 5;
+    // Staff report on behalf of the hostel; this only stops something going badly wrong
+    private static final int MAX_OPEN_COMPLAINTS_STAFF = 50;
+
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
@@ -64,7 +68,8 @@ public class ComplaintService {
 
     /**
      * Creates a complaint from a validated request.
-     * Personal issues use the student's profile room.
+     * Personal issues use the student's profile room; staff and admins have no
+     * room of their own, so they name the room in the request.
      * Community-area issues use the requested floor and wing.
      */
     public Complaint createComplaint(String email, CreateComplaintRequest request) {
@@ -72,13 +77,15 @@ public class ComplaintService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "User not found"));
 
+        boolean isStaff = student.getRole() == Role.ADMIN || student.getRole() == Role.STAFF;
+        int openLimit = isStaff ? MAX_OPEN_COMPLAINTS_STAFF : MAX_OPEN_COMPLAINTS;
         long openComplaints = complaintRepository.countByStudentAndStatusIn(
-                student, List.of(Status.PENDING, Status.IN_PROGRESS));
+                student, List.of(Status.PENDING, Status.ASSIGNED, Status.IN_PROGRESS));
 
-        if (openComplaints >= 5) {
+        if (openComplaints >= openLimit) {
             throw new ResponseStatusException(
                     HttpStatus.TOO_MANY_REQUESTS,
-                    "You cannot have more than 5 open complaints at a time.");
+                    "You cannot have more than " + openLimit + " open complaints at a time.");
         }
 
         Category complaintCategory = categoryRepository.findByNameIgnoreCase(request.category())
@@ -88,7 +95,7 @@ public class ComplaintService {
 
         Location location = request.communityArea()
                 ? communityAreaLocation(request.floor(), request.wing())
-                : studentRoomLocation(student);
+                : roomLocation(isStaff ? request.room() : student.getRoomNumber(), isStaff);
 
         Complaint complaint = new Complaint();
         complaint.setTitle(request.title());
@@ -103,14 +110,15 @@ public class ComplaintService {
         return complaintRepository.save(complaint);
     }
 
-    private Location studentRoomLocation(User student) {
-        String room = student.getRoomNumber();
+    private Location roomLocation(String room, boolean isStaff) {
         String floor = roomLocationValidator.floorForRoom(room);
 
         if (floor == null) {
             throw new ResponseStatusException(
                     HttpStatus.UNPROCESSABLE_CONTENT,
-                    "Add a valid room number to your profile before filing a personal complaint.");
+                    isStaff
+                            ? "Enter a hostel room from 101 to 799."
+                            : "Add a valid room number to your profile before filing a personal complaint.");
         }
 
         return locationRepository.findByFloorAndRoomNumberAndWingIsNull(floor, room)
