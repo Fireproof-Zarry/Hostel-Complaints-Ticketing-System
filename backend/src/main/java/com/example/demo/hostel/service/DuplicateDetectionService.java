@@ -2,6 +2,7 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.model.Complaint;
+import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.UpvoteRepository;
@@ -55,7 +56,7 @@ public class DuplicateDetectionService {
     // One transaction so the thresholds set by setTrigramThresholds apply to the search
     @Transactional(readOnly = true)
     public List<DuplicateCandidate> findPotentialDuplicates(
-            String email, String title, boolean communityArea, String floor, String wing) {
+            String email, String title, boolean communityArea, String floor, String wing, String requestedRoom) {
         String query = title == null ? "" : title.trim();
         if (query.length() < MIN_TITLE_LENGTH) {
             return List.of();
@@ -77,8 +78,9 @@ public class DuplicateDetectionService {
             ids = complaintRepository.findSimilarOpenCommunityComplaintIds(
                     query, canonicalFloor, wing == null ? "" : wing.trim());
         } else {
-            // Personal complaints are filed under the profile room, so search that room
-            String room = user.getRoomNumber();
+            // Students file under their profile room; staff name the room they report on
+            boolean isStaff = user.getRole() == Role.ADMIN || user.getRole() == Role.STAFF;
+            String room = isStaff ? requestedRoom : user.getRoomNumber();
             String roomFloor = roomLocationValidator.floorForRoom(room);
             if (roomFloor == null) {
                 return List.of();

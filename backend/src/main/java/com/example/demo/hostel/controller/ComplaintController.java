@@ -86,7 +86,8 @@ public class ComplaintController {
                 category,
                 payload.communityArea(),
                 floor,
-                null,
+                // Used for staff only; students file under their profile room
+                payload.communityArea() ? null : trimToNull(payload.room()),
                 wing,
                 availableTimeSlot,
                 payload.keyLeftWithSecurity());
@@ -116,7 +117,8 @@ public class ComplaintController {
      * Open complaints similar to the title a student is typing (up to 3, most
      * similar first). Community-area issues (the default) need a floor and
      * optionally a wing; personal issues (communityArea=false) search the
-     * student's own profile room, so no location is sent.
+     * student's own profile room, so no location is sent. Staff and admins have
+     * no room of their own and send the room they are reporting on.
      */
     /**
      * Community dashboard: open community-area complaints with their upvote
@@ -141,10 +143,11 @@ public class ComplaintController {
             @RequestParam(defaultValue = "true") boolean communityArea,
             @RequestParam(required = false) String floor,
             @RequestParam(required = false) String wing,
+            @RequestParam(required = false) String room,
             @AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         return ResponseEntity.ok(
-                duplicateDetectionService.findPotentialDuplicates(email, title, communityArea, floor, wing));
+                duplicateDetectionService.findPotentialDuplicates(email, title, communityArea, floor, wing, room));
     }
 
     @GetMapping("/{id}")

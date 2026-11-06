@@ -10,7 +10,9 @@ import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.specification.ComplaintSpecification;
 
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -49,6 +51,11 @@ public class AdminService {
                         Complaint::getUpdatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .toList();
+    }
+
+    public Complaint getComplaint(Long id) {
+        return complaintRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
     }
 
     public List<Complaint> getComplaints(

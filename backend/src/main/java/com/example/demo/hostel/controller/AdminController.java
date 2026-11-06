@@ -98,6 +98,12 @@ public class AdminController {
     }
 
     // Admin-only: everything under /api/admin requires ROLE_ADMIN (SecurityConfig)
+    /** One complaint, for opening it from a work order or a staff member's own list. */
+    @GetMapping("/{id:\\d+}")
+    public Complaint getComplaint(@PathVariable Long id) {
+        return adminService.getComplaint(id);
+    }
+
     @GetMapping("/archived")
     public List<Complaint> getArchivedComplaints() {
         return adminService.getArchivedComplaints();

@@ -8,6 +8,8 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  FilePlus2,
+  Inbox,
   LogOut,
   Menu,
   Search,
@@ -17,6 +19,8 @@ import {
   Wrench,
 } from 'lucide-react'
 import ComingSoon from './ComingSoon'
+import MyComplaintsPage from '../components/MyComplaintsPage'
+import StaffComplaintForm from '../components/StaffComplaintForm'
 import StaffManagement from '../components/StaffManagement'
 import WorkOrderPanel from '../components/WorkOrderPanel'
 import ComplaintTimeline from '../components/ComplaintTimeline'
@@ -29,6 +33,8 @@ import './AdminHome.css'
 // Shown in the main area like the other sidebar pages
 const PROFILE_VIEW = 'My Profile'
 const STAFF_VIEW = 'Staff Management'
+const MY_COMPLAINTS_VIEW = 'My Complaints'
+const FILE_COMPLAINT_VIEW = 'File Complaint'
 
 // Where a complaint can move next; ComplaintTransitionService enforces the same rules
 const STATUS_TRANSITIONS = {
@@ -487,6 +493,15 @@ export default function AdminHome() {
     })
   }
 
+  // From My complaints; the row may be hidden by the main list's filters
+  const handleOpenComplaint = async (id) => {
+    const response = await apiFetch(`${import.meta.env.VITE_API_URL}/admin/complaints/${id}`)
+    if (!response.ok) {
+      throw new Error('This complaint could not be opened.')
+    }
+    setSelectedComplaint(await response.json())
+  }
+
   const handleRefreshComplaints = () => fetchComplaints({
     status: statusFilter,
     category: categoryFilter,
@@ -524,6 +539,26 @@ export default function AdminHome() {
             <ClipboardList size={19} />
             {sidebarOpen && <span>Complaints</span>}
             {sidebarOpen && <span className="admin-nav-count">{statusCounts.total}</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === MY_COMPLAINTS_VIEW ? 'active' : ''}`}
+            onClick={() => setComingSoonPage(MY_COMPLAINTS_VIEW)}
+            title="My complaints"
+          >
+            <Inbox size={19} />
+            {sidebarOpen && <span>My complaints</span>}
+          </button>
+
+          <button
+            type="button"
+            className={`admin-nav-item ${comingSoonPage === FILE_COMPLAINT_VIEW ? 'active' : ''}`}
+            onClick={() => setComingSoonPage(FILE_COMPLAINT_VIEW)}
+            title="File complaint"
+          >
+            <FilePlus2 size={19} />
+            {sidebarOpen && <span>File complaint</span>}
           </button>
 
           {/* Analytics navigation */}
@@ -565,8 +600,8 @@ export default function AdminHome() {
             <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
             {sidebarOpen && (
               <span className="admin-user-copy">
-                <strong>{currentUser?.role === 'STAFF' ? 'Hostel staff' : 'Administrator'}</strong>
-                <small>{currentUser?.email || 'Hostel support team'}</small>
+                <strong>{currentUser?.role === 'STAFF' ? 'Hostel Staff' : 'Administrator'}</strong>
+                <small>{currentUser?.fullName || currentUser?.name || 'Hostel support team'}</small>
               </span>
             )}
           </div>
@@ -617,9 +652,13 @@ export default function AdminHome() {
           {comingSoonPage === 'Analytics' ? (
             <AdminAnalytics />
           ) : comingSoonPage === PROFILE_VIEW ? (
-            <ProfileForm />
+            <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />
           ) : comingSoonPage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
+          ) : comingSoonPage === MY_COMPLAINTS_VIEW ? (
+            <MyComplaintsPage onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
+          ) : comingSoonPage === FILE_COMPLAINT_VIEW ? (
+            <StaffComplaintForm onFiled={handleRefreshComplaints} />
           ) : comingSoonPage ? (
             <div className="admin-work-in-progress">
               <ComingSoon title={comingSoonPage} />
@@ -1037,7 +1076,8 @@ export default function AdminHome() {
                 <h2>Complaint Details</h2>
 
                 <div className="complaint-meta">
-                  <span>#{selectedComplaint.id}</span>
+                  <strong className="font-bold">Complaint #{selectedComplaint.id}</strong>
+                  <span>{selectedComplaint.title}</span>
                   <span>•</span>
                   <span>{getTimeSinceRaised(selectedComplaint.createdAt)}</span>
                 </div>
@@ -1077,7 +1117,7 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Student Email</span>
+                <span className="detail-label">Reporter Email</span>
                 <span className="detail-value detail-value-large">
                   {selectedComplaint.student?.email || 'No email'}
                 </span>
@@ -1109,7 +1149,7 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Student</span>
+                <span className="detail-label">Reported By</span>
                 <span className="detail-value">
                   {selectedComplaint.student?.fullName ||
                     selectedComplaint.student?.name ||
@@ -1120,7 +1160,7 @@ export default function AdminHome() {
               </div>
 
               <div className="detail-item">
-                <span className="detail-label">Student Phone</span>
+                <span className="detail-label">Reporter Phone</span>
                 <span className="detail-value">
                   {selectedComplaint.student?.phoneNumber || 'Not provided'}
                 </span>

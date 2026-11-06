@@ -59,7 +59,7 @@ function Field({ id, label, hint, error, children }) {
  * Profile form for the signed-in user (students and admins). Used on the
  * student Profile page and inside the admin dashboard.
  */
-export default function ProfileForm() {
+export default function ProfileForm({ onSaved }) {
   const token = getToken();
 
   const [user, setUser] = useState(null);
@@ -146,6 +146,7 @@ export default function ProfileForm() {
       });
       setShowErrors(false);
       setSuccess('Profile saved.');
+      onSaved?.(saved);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : 'Network error. Please try again.');
     } finally {

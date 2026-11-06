@@ -84,7 +84,7 @@ class ComplaintServiceTest {
         when(userRepository.findByEmail("student@smail.iitm.ac.in"))
                 .thenReturn(Optional.of(testStudent));
         when(complaintRepository.countByStudentAndStatusIn(
-                testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
+                testStudent, List.of(Status.PENDING, Status.ASSIGNED, Status.IN_PROGRESS)))
                 .thenReturn(3L);
     }
 
@@ -194,7 +194,7 @@ class ComplaintServiceTest {
         when(userRepository.findByEmail("student@smail.iitm.ac.in"))
                 .thenReturn(Optional.of(testStudent));
         when(complaintRepository.countByStudentAndStatusIn(
-                testStudent, List.of(Status.PENDING, Status.IN_PROGRESS)))
+                testStudent, List.of(Status.PENDING, Status.ASSIGNED, Status.IN_PROGRESS)))
                 .thenReturn(5L);
 
         ResponseStatusException exception = assertThrows(
