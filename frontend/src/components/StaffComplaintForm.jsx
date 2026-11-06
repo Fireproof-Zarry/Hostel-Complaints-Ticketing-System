@@ -149,7 +149,7 @@ export default function StaffComplaintForm({ onFiled }) {
       {error && <p role="alert" className="m-0 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
-        <fieldset className="m-0 border-0 p-0">
+        <fieldset className="mx-0 mb-6 mt-0 border-0 p-0">
           <legend className="mb-2 p-0 text-sm font-medium text-slate-700">Complaint type</legend>
           <div className="flex flex-wrap gap-4 text-sm text-slate-700">
             <label className="inline-flex items-center gap-2">
