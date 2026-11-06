@@ -40,7 +40,7 @@ function duplicateQuery(form) {
 }
 
 /**
- * Filing a complaint as hostel staff or an admin, about a shared area or any
+ * Filing a complaint as hostel staff or an admin, about a community area or any
  * room: staff have no room of their own, so they enter it here.
  */
 export default function StaffComplaintForm({ onFiled }) {
@@ -142,7 +142,7 @@ export default function StaffComplaintForm({ onFiled }) {
     <section className="mx-auto max-w-2xl space-y-5">
       <div>
         <h2 className="m-0 text-2xl font-bold text-slate-900">File a complaint</h2>
-        <p className="m-0 mt-1 text-sm text-slate-500">Report an issue in a shared area or in any room.</p>
+        <p className="m-0 mt-1 text-sm text-slate-500">Report an issue in a community area or in any room.</p>
       </div>
 
       {notice && <p role="status" className="m-0 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{notice}</p>}
@@ -150,7 +150,7 @@ export default function StaffComplaintForm({ onFiled }) {
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <fieldset className="m-0 border-0 p-0">
-          <legend className="mb-2 p-0 text-sm font-medium text-slate-700">Where is the issue?</legend>
+          <legend className="mb-2 p-0 text-sm font-medium text-slate-700">Complaint type</legend>
           <div className="flex flex-wrap gap-4 text-sm text-slate-700">
             <label className="inline-flex items-center gap-2">
               <input
@@ -159,7 +159,7 @@ export default function StaffComplaintForm({ onFiled }) {
                 checked={form.isCommunityArea}
                 onChange={() => setForm((current) => ({ ...current, isCommunityArea: true }))}
               />
-              Shared area
+              Community area complaint
             </label>
             <label className="inline-flex items-center gap-2">
               <input
@@ -168,7 +168,7 @@ export default function StaffComplaintForm({ onFiled }) {
                 checked={!form.isCommunityArea}
                 onChange={() => setForm((current) => ({ ...current, isCommunityArea: false }))}
               />
-              A room
+              Room complaint
             </label>
           </div>
         </fieldset>

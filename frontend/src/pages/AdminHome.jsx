@@ -600,8 +600,8 @@ export default function AdminHome() {
             <span className="admin-user-avatar"><ShieldCheck size={18} /></span>
             {sidebarOpen && (
               <span className="admin-user-copy">
-                <strong>{currentUser?.role === 'STAFF' ? 'Hostel staff' : 'Administrator'}</strong>
-                <small>{currentUser?.email || 'Hostel support team'}</small>
+                <strong>{currentUser?.role === 'STAFF' ? 'Hostel Staff' : 'Administrator'}</strong>
+                <small>{currentUser?.fullName || currentUser?.name || 'Hostel support team'}</small>
               </span>
             )}
           </div>
@@ -652,7 +652,7 @@ export default function AdminHome() {
           {comingSoonPage === 'Analytics' ? (
             <AdminAnalytics />
           ) : comingSoonPage === PROFILE_VIEW ? (
-            <ProfileForm />
+            <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />
           ) : comingSoonPage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
           ) : comingSoonPage === MY_COMPLAINTS_VIEW ? (
@@ -1077,6 +1077,8 @@ export default function AdminHome() {
 
                 <div className="complaint-meta">
                   <span>#{selectedComplaint.id}</span>
+                  <span>•</span>
+                  <span>{selectedComplaint.title}</span>
                   <span>•</span>
                   <span>{getTimeSinceRaised(selectedComplaint.createdAt)}</span>
                 </div>

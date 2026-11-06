@@ -177,9 +177,12 @@
 }
 
 .admin-user-copy small {
+  overflow: hidden;
   margin-top: 3px;
   color: #8e9ab0;
   font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-shell .admin-nav-item.admin-logout {
