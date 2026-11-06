@@ -155,11 +155,11 @@ class ComplaintArchivalServiceIntegrationTest {
     void adminDashboardHidesArchivedAndArchiveEndpointListsThem() {
         archivalService.archiveOldComplaints();
 
-        List<Long> dashboard = ids(adminService.getComplaints(null, null, null, null, null, null));
+        List<Long> dashboard = ids(adminService.getComplaints(null, null, null, null, null, null, null));
         assertThat(dashboard).containsExactlyInAnyOrder(recentResolved, oldPending, oldInProgress);
 
         // Status filters also skip archived complaints
-        assertThat(ids(adminService.getComplaints(Status.RESOLVED, null, null, null, null, null)))
+        assertThat(ids(adminService.getComplaints(Status.RESOLVED, null, null, null, null, null, null)))
                 .containsExactly(recentResolved);
 
         // Archive view: most recently updated first
@@ -181,7 +181,7 @@ class ComplaintArchivalServiceIntegrationTest {
         transitionService.changeComplaintStatus(oldResolved, adminId, "IN_PROGRESS", "Leak is back");
 
         assertThat(isArchived(oldResolved)).isFalse();
-        assertThat(ids(adminService.getComplaints(null, null, null, null, null, null))).contains(oldResolved);
+        assertThat(ids(adminService.getComplaints(null, null, null, null, null, null, null))).contains(oldResolved);
     }
 
     @Test

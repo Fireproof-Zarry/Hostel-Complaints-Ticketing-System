@@ -77,7 +77,7 @@ class ComplaintFilterSpecificationTest {
                         " second ",
                         "ADMIN@SMAIL.IITM.AC.IN",
                         from,
-                        to
+                        to, null
                 )
         );
 

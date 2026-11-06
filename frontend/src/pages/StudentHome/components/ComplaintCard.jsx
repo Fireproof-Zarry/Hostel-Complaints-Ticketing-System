@@ -1,9 +1,9 @@
-import { CalendarDays, KeyRound, Trash2 } from 'lucide-react';
+import { CalendarDays, Trash2 } from 'lucide-react';
 
 import { formatStatus, statusClasses } from '../../../utils/complaintStatus';
 import { formatDate } from '../utils/studentUtils';
 
-export default function ComplaintCard({ complaint, onDelete }) {
+export default function ComplaintCard({ complaint, onView, onDelete }) {
     return (
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -23,25 +23,9 @@ export default function ComplaintCard({ complaint, onDelete }) {
                 </span>
             </div>
 
-            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-600">
+            <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-600">
                 {complaint.description}
             </p>
-
-            {complaint.imageUrl && (
-                <a
-                    href={complaint.imageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="mt-4 inline-block"
-                >
-                    <img
-                        src={complaint.imageUrl}
-                        alt={`Photo for complaint #${complaint.id}`}
-                        loading="lazy"
-                        className="h-32 w-auto max-w-full rounded-lg border border-slate-200 object-cover"
-                    />
-                </a>
-            )}
 
             <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-medium text-slate-500">
                 <span className="inline-flex items-center gap-1.5">
@@ -55,21 +39,19 @@ export default function ComplaintCard({ complaint, onDelete }) {
                         ? complaint.wing || 'Community area'
                         : `Room ${complaint.room || 'N/A'}`}
                 </span>
-
-                {complaint.availableTimeSlot && (
-                    <span>Available: {complaint.availableTimeSlot}</span>
-                )}
-
-                {complaint.keyWithSecurity && (
-                    <span className="inline-flex items-center gap-1.5">
-                        <KeyRound className="h-4 w-4" />
-                        Key with security
-                    </span>
-                )}
             </div>
 
-            {complaint.status?.toUpperCase() === 'PENDING' && (
-                <div className="mt-4 flex justify-end border-t border-slate-100 pt-3">
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+                <button
+                    type="button"
+                    onClick={() => onView(complaint)}
+                    className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                >
+                    View
+                </button>
+
+                {/* Only before an admin picks it up */}
+                {complaint.status?.toUpperCase() === 'PENDING' && (
                     <button
                         type="button"
                         onClick={() => onDelete(complaint)}
@@ -78,8 +60,8 @@ export default function ComplaintCard({ complaint, onDelete }) {
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                         Delete
                     </button>
-                </div>
-            )}
+                )}
+            </div>
         </article>
     );
 }

@@ -2,14 +2,11 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
-import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
-import com.example.demo.hostel.model.WorkOrder;
 import com.example.demo.hostel.repository.ComplaintHistoryRepository;
 import com.example.demo.hostel.repository.ComplaintRepository;
 import com.example.demo.hostel.repository.UserRepository;
-import com.example.demo.hostel.repository.WorkOrderRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,34 +14,48 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
+import java.util.EnumSet;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class ComplaintTransitionService {
 
+    /**
+     * The complaint workflow. ASSIGNED can resolve directly, for small jobs nobody
+     * marked as started; PENDING cannot. Going back undoes a mistake or a cancelled
+     * assignment. Staff can reopen a closed complaint.
+     */
+    private static final Map<Status, Set<Status>> ALLOWED_TRANSITIONS = Map.of(
+            Status.PENDING, EnumSet.of(Status.ASSIGNED, Status.IN_PROGRESS, Status.REJECTED),
+            Status.ASSIGNED, EnumSet.of(Status.IN_PROGRESS, Status.RESOLVED, Status.PENDING, Status.REJECTED),
+            Status.IN_PROGRESS, EnumSet.of(Status.RESOLVED, Status.ASSIGNED, Status.PENDING, Status.REJECTED),
+            Status.RESOLVED, EnumSet.of(Status.PENDING, Status.IN_PROGRESS),
+            Status.REJECTED, EnumSet.of(Status.PENDING, Status.IN_PROGRESS));
+
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
-    private final WorkOrderRepository workOrderRepository;
     private final ComplaintHistoryRepository complaintHistoryRepository;
     private final FcmNotificationService fcmNotificationService;
 
     public ComplaintTransitionService(
             ComplaintRepository complaintRepository,
             UserRepository userRepository,
-            WorkOrderRepository workOrderRepository,
             ComplaintHistoryRepository complaintHistoryRepository,
             FcmNotificationService fcmNotificationService) {
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
-        this.workOrderRepository = workOrderRepository;
         this.complaintHistoryRepository = complaintHistoryRepository;
         this.fcmNotificationService = fcmNotificationService;
     }
 
+    /** Refuses a move the workflow does not allow, with a 409 the frontend can show. */
     public void validateTransition(Status current, Status next) {
-        // All status transitions are currently allowed.
-        // This can be restricted later if the workflow requires it.
+        if (!ALLOWED_TRANSITIONS.get(current).contains(next)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A complaint cannot move from " + current + " to " + next);
+        }
     }
 
     /**
@@ -108,49 +119,5 @@ public class ComplaintTransitionService {
         } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown status: " + status);
         }
-    }
-
-    /**
-     * Moves the complaint to IN_PROGRESS and creates its work order in one
-     * transaction: if either write fails, neither is committed.
-     */
-    @Transactional
-    public WorkOrder assignWorkOrder(Long complaintId, String assigneeId, String priority, LocalDateTime deadline) {
-        if (priority == null || priority.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Priority is required");
-        }
-
-        Complaint complaint = complaintRepository.findById(complaintId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
-
-        User assignee = userRepository.findById(assigneeId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignee not found"));
-
-        if (assignee.getRole() != Role.ADMIN) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Complaint can only be assigned to an admin");
-        }
-
-        Status oldStatus = complaint.getStatus();
-        validateTransition(oldStatus, Status.IN_PROGRESS);
-
-        complaint.setStatus(Status.IN_PROGRESS);
-        complaint.setAssignedTo(assignee.getEmail());
-        complaintRepository.save(complaint);
-
-        ComplaintHistory history = new ComplaintHistory();
-        history.setComplaint(complaint);
-        history.setActor(assignee);
-        history.setOldStatus(oldStatus);
-        history.setNewStatus(Status.IN_PROGRESS);
-        history.setReason("Work order assigned");
-
-        complaintHistoryRepository.save(history);
-
-        WorkOrder workOrder = new WorkOrder();
-        workOrder.setComplaint(complaint);
-        workOrder.setAssignee(assignee);
-        workOrder.setPriority(priority.trim().toUpperCase(Locale.ROOT));
-        workOrder.setDeadline(deadline);
-        return workOrderRepository.save(workOrder);
     }
 }

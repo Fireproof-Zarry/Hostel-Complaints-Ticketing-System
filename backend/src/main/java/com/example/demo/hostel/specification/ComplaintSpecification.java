@@ -16,7 +16,8 @@ public class ComplaintSpecification {
             String floor,
             String assignedTo,
             LocalDateTime from,
-            LocalDateTime to) {
+            LocalDateTime to,
+            Boolean communityArea) {
 
         return (root, query, criteriaBuilder) -> {
 
@@ -78,6 +79,13 @@ public class ComplaintSpecification {
                                 root.get("createdAt"),
                                 to
                         )
+                );
+            }
+
+            if (communityArea != null) {
+                predicates = criteriaBuilder.and(
+                        predicates,
+                        criteriaBuilder.equal(root.get("location").get("communityArea"), communityArea)
                 );
             }
 

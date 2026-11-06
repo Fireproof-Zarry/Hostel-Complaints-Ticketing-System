@@ -3,6 +3,7 @@ package com.example.demo.hostel.config;
 import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
@@ -36,7 +37,13 @@ public class SecurityConfig {
                 // rejected sign-in. Error dispatches only render the original error.
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/health").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // The login page's token is verified inside this endpoint
+                .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                // Staff management is admin-only; the rest of the admin area
+                // (complaints, archive, assignment) is shared with hostel staff
+                .requestMatchers("/api/admin/staff/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
+                .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "STAFF")
                 .anyRequest().authenticated()
             )
             .oauth2ResourceServer(oauth2 -> oauth2

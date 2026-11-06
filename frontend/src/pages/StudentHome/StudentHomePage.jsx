@@ -9,6 +9,7 @@ import {
 import CommunityDashboard from '../../components/CommunityDashboard';
 import DeleteComplaintDialog from '../../components/DeleteComplaintDialog';
 import SubmissionConfirmation from '../../components/SubmissionConfirmation';
+import StudentComplaintDetails from '../../components/StudentComplaintDetails';
 import StudentSidebar from '../../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../../components/studentNavigation';
 import { apiFetch, getToken, logout } from '../../auth/session';
@@ -53,6 +54,20 @@ export default function StudentHomePage() {
     requestMyComplaints,
     refreshComplaints,
   } = useStudentComplaints(token, search, statusFilter);
+
+  // An id, so a refresh of the list also updates the open popup
+  const [viewedComplaintId, setViewedComplaintId] = useState(null);
+  const viewedComplaint = complaints.find(
+    (complaint) => complaint.id === viewedComplaintId
+  );
+  const closeComplaintDetails = useCallback(
+    () => setViewedComplaintId(null),
+    []
+  );
+  const handleViewComplaint = useCallback(
+    (complaint) => setViewedComplaintId(complaint.id),
+    []
+  );
 
 
   const form = useComplaintForm({
@@ -267,6 +282,7 @@ export default function StudentHomePage() {
               setStatusFilter={setStatusFilter}
               onRefresh={handleRefresh}
               onFileComplaint={handleFileComplaint}
+              onViewComplaint={handleViewComplaint}
               onDeleteComplaint={handleDeleteComplaint}
             />
           )}
@@ -365,6 +381,13 @@ export default function StudentHomePage() {
           {activeTab === 'community' && <CommunityDashboard />}
         </div>
       </main>
+
+      {viewedComplaint && (
+        <StudentComplaintDetails
+          complaint={viewedComplaint}
+          onClose={closeComplaintDetails}
+        />
+      )}
 
       {complaintToDelete && (
         <DeleteComplaintDialog

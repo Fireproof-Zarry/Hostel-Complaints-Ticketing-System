@@ -1,11 +1,14 @@
 package com.example.demo.hostel.service;
 
+import com.example.demo.hostel.model.LoginType;
 import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Arrays;
 import java.util.Locale;
@@ -32,6 +35,40 @@ public class AuthService {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    /**
+     * The Student Login and Staff Login tabs. Students must use a verified smail
+     * account, which is created if new. Staff Login never creates anyone except
+     * the admins in ADMIN_EMAILS, who would otherwise have no way in on a new
+     * database; staff must already have been added by an admin. Every later
+     * request is still checked by processGoogleLogin.
+     */
+    public User login(Jwt jwt, LoginType loginType) {
+        String rawEmail = jwt.getClaimAsString("email");
+        if (rawEmail == null || rawEmail.isBlank() || !Boolean.TRUE.equals(jwt.getClaim("email_verified"))) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Google must verify your email address before you can sign in.");
+        }
+
+        String email = rawEmail.toLowerCase(Locale.ROOT);
+        boolean isSmailAccount = isSmailAccount(email, jwt);
+        boolean isStaffOrAdmin = adminEmails.contains(email) || userRepository.findByEmail(email)
+                .filter(user -> user.getRole() == Role.STAFF)
+                .isPresent();
+
+        if (loginType == LoginType.ADMIN && !isStaffOrAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized staff email");
+        }
+        if (loginType == LoginType.STUDENT && !isSmailAccount) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, isStaffOrAdmin
+                    ? "Please use Staff Login."
+                    : "Students must sign in with their @smail.iitm.ac.in account.");
+        }
+        if (loginType == LoginType.STUDENT && isStaffOrAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please use Staff Login.");
+        }
+        return processGoogleLogin(jwt);
+    }
+
     public User processGoogleLogin(Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         if (email == null || email.isBlank()) {
@@ -43,20 +80,21 @@ public class AuthService {
         }
 
         email = email.toLowerCase(Locale.ROOT);
-        String hostedDomain = jwt.getClaimAsString("hd");
-        boolean isSmailAccount = email.endsWith("@" + STUDENT_DOMAIN)
-                && STUDENT_DOMAIN.equals(hostedDomain);
+        boolean isSmailAccount = isSmailAccount(email, jwt);
         boolean isAdmin = adminEmails.contains(email);
+        User user = userRepository.findByEmail(email).orElse(null);
+        // Hostel staff are added by an admin (StaffService) and may use any verified
+        // email; their role is kept across logins rather than recomputed
+        boolean isStaff = user != null && user.getRole() == Role.STAFF;
 
-        if (!isSmailAccount && !isAdmin) {
+        if (!isSmailAccount && !isAdmin && !isStaff) {
             throw new IllegalArgumentException(
-                    "Use your verified @smail.iitm.ac.in student account or an approved administrator account."
+                    "Use your verified @smail.iitm.ac.in student account or an approved administrator or staff account."
             );
         }
 
         String name = jwt.getClaimAsString("name");
-        Role role = isAdmin ? Role.ADMIN : Role.STUDENT;
-        User user = userRepository.findByEmail(email).orElse(null);
+        Role role = isAdmin ? Role.ADMIN : isStaff ? Role.STAFF : Role.STUDENT;
         boolean isNewUser = user == null;
         if (isNewUser) {
             user = new User();
@@ -71,5 +109,9 @@ public class AuthService {
         }
         user.setRole(role);
         return changed ? userRepository.save(user) : user;
+    }
+
+    private static boolean isSmailAccount(String email, Jwt jwt) {
+        return email.endsWith("@" + STUDENT_DOMAIN) && STUDENT_DOMAIN.equals(jwt.getClaimAsString("hd"));
     }
 }

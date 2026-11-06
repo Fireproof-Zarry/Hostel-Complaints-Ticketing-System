@@ -130,9 +130,15 @@ class ComplaintHistoryResponseTest {
     }
 
     @Test
-    void nonOwnersCannotReadTheHistory() throws Exception {
+    void otherStudentsCannotReadTheHistory() throws Exception {
+        User other = new User();
+        other.setEmail("other@smail.iitm.ac.in");
+        other.setName("Other Student");
+        other.setRole(Role.STUDENT);
+        userRepository.save(other);
+
         mockMvc.perform(get("/api/complaints/{id}/history", complaintId)
-                        .with(jwt().jwt(token -> token.claim("email", ADMIN_EMAIL))))
+                        .with(jwt().jwt(token -> token.claim("email", other.getEmail()))))
                 .andExpect(status().isNotFound());
     }
 }

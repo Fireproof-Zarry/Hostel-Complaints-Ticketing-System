@@ -23,6 +23,17 @@ npm install
 npm run dev
 ```
 
+## Run Locally With Make
+
+After creating `backend/.env` (see below), run each of these in its own terminal from the repository root:
+
+```bash
+make backend
+make frontend
+```
+
+`make frontend` picks a suitable Node version through nvm and runs `npm install` when the lockfile has changed.
+
 ## Backend - Run Without Docker
 
 No additional dependencies are required apart from Java 17/21.
@@ -59,7 +70,7 @@ npm run dev
 
 Open `http://localhost:5173` and sign in with Google. If Google rejects the local app origin, add `http://localhost:5173` as an authorized JavaScript origin for the configured Google OAuth client.
 
-Use your `@smail.iitm.ac.in` account to check the student dashboard and complaint list. Accounts listed in `ADMIN_EMAILS` are assigned the admin role; other verified `@smail.iitm.ac.in` accounts are students. Admin emails may use any domain. Sign out and in again after changing the list so the backend refreshes the saved account role.
+Use **Student Login** with your `@smail.iitm.ac.in` account to check the student dashboard and complaint list. Admins and hostel staff use **Staff Login**. Accounts listed in `ADMIN_EMAILS` are assigned the admin role; other verified `@smail.iitm.ac.in` accounts are students. Admin emails may use any domain. Sign out and in again after changing the list so the backend refreshes the saved account role.
 
 ## Backend - Docker
 

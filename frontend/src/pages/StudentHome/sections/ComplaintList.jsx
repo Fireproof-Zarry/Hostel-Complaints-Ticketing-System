@@ -14,6 +14,7 @@ export default function ComplaintList({
     setStatusFilter,
     onRefresh,
     onFileComplaint,
+    onViewComplaint,
     onDeleteComplaint,
 }) {
     return (
@@ -99,6 +100,7 @@ export default function ComplaintList({
                         <ComplaintCard
                             key={complaint.id}
                             complaint={complaint}
+                            onView={onViewComplaint}
                             onDelete={onDeleteComplaint}
                         />
                     ))}

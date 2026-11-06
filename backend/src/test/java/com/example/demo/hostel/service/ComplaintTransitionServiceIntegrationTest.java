@@ -150,7 +150,7 @@ class ComplaintTransitionServiceIntegrationTest {
 
         assertThatThrownBy(() ->
                 transitionService.changeComplaintStatus(
-                        complaintId, adminId, "RESOLVED", "Fixed")
+                        complaintId, adminId, "REJECTED", "Fixed")
         ).hasMessageContaining("simulated history failure");
 
         verify(complaintHistoryRepository).save(any(ComplaintHistory.class));
@@ -169,7 +169,7 @@ class ComplaintTransitionServiceIntegrationTest {
         // The status change completes, but the surrounding transaction rolls back.
         transactionTemplate.executeWithoutResult(tx -> {
             transitionService.changeComplaintStatus(
-                    complaintId, adminId, "RESOLVED", null);
+                    complaintId, adminId, "REJECTED", null);
 
             verify(fcmNotificationService, never())
                     .sendStatusUpdateNotification(anyString(), anyString(), anyString());
@@ -191,10 +191,10 @@ class ComplaintTransitionServiceIntegrationTest {
         userRepository.save(student);
 
         transitionService.changeComplaintStatus(
-                complaintId, adminId, "RESOLVED", null);
+                complaintId, adminId, "REJECTED", null);
 
         assertThat(complaintRepository.findById(complaintId).orElseThrow().getStatus())
-                .isEqualTo(Status.RESOLVED);
+                .isEqualTo(Status.REJECTED);
 
         verify(fcmNotificationService, never())
                 .sendStatusUpdateNotification(anyString(), anyString(), anyString());

@@ -4,6 +4,7 @@ import com.example.demo.hostel.dto.CommunityComplaintPage;
 import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
+import com.example.demo.hostel.dto.MyComplaint;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
@@ -104,11 +105,11 @@ public class ComplaintController {
     }
 
     @GetMapping("/mine")
-    public ResponseEntity<List<Complaint>> getMyComplaints(
+    public ResponseEntity<List<MyComplaint>> getMyComplaints(
             @AuthenticationPrincipal Jwt jwt) {
 
         String email = jwt.getClaimAsString("email");
-        return ResponseEntity.ok(complaintService.getMyComplaints(email));
+        return ResponseEntity.ok(complaintService.getMyComplaintsWithContacts(email));
     }
 
     /**

@@ -110,7 +110,7 @@ class ComplaintDeletionIntegrationTest {
 
         assertThat(complaintRepository.findById(id)).isEmpty();
         assertThat(complaintService.getMyComplaints(OWNER_EMAIL)).isEmpty();
-        assertThat(adminService.getComplaints(null, null, null, null, null, null)).isEmpty();
+        assertThat(adminService.getComplaints(null, null, null, null, null, null, null)).isEmpty();
         assertStatus(() -> complaintService.getComplaintById(id, OWNER_EMAIL), HttpStatus.NOT_FOUND);
         assertStatus(() -> complaintService.getComplaintHistory(id, OWNER_EMAIL), HttpStatus.NOT_FOUND);
         assertStatus(() -> transitionService.changeComplaintStatus(id, admin.getId(), "IN_PROGRESS", null),

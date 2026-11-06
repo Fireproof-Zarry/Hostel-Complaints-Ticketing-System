@@ -191,6 +191,47 @@
   line-height: 1.25;
 }
 
+.login-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 20px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #f1f5f9;
+}
+
+.login-tab {
+  flex: 1;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-tab:hover:not(:disabled) {
+  color: #0f172a;
+}
+
+.login-tab.is-active {
+  background: #fff;
+  color: #4f46e5;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12);
+}
+
+.login-tab:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 1px;
+}
+
+.login-tab:disabled {
+  cursor: not-allowed;
+}
+
 .login-panel-copy {
   margin-top: 10px;
   color: #64748b;
@@ -254,17 +295,6 @@
   height: 18px;
   flex: 0 0 auto;
   margin-top: 1px;
-}
-
-.login-email-note {
-  margin-top: 14px;
-  color: #64748b;
-  font-size: 12px;
-  text-align: center;
-}
-
-.login-email-note strong {
-  color: #334155;
 }
 
 .login-progress {
