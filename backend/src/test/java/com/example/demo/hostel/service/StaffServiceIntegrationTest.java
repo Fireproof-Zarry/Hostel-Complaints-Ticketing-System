@@ -20,12 +20,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:staff-test",
@@ -48,6 +50,8 @@ class StaffServiceIntegrationTest {
     @Autowired private CategoryRepository categoryRepository;
     @Autowired private LocationRepository locationRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean private FcmNotificationService notificationService;
 
     @AfterEach
     void tearDown() {
@@ -118,6 +122,22 @@ class StaffServiceIntegrationTest {
                 .extracting(w -> w.complaintId(), w -> w.status())
                 .containsExactly(org.assertj.core.groups.Tuple.tuple(complaintId, WorkOrderStatus.OPEN));
         assertThat(userRepository.findById(warden.id()).orElseThrow().getRole()).isEqualTo(Role.STUDENT);
+    }
+
+    @Test
+    void theNewAssigneeIsToldWhenWorkIsHandedOver() {
+        User admin = userRepository.save(user(ADMIN, Role.ADMIN));
+        StaffMemberView warden = staffService.addStaff("warden@gmail.com");
+        User caretaker = user("caretaker@gmail.com", Role.STAFF);
+        caretaker.setFcmToken("caretaker-token");
+        caretaker = userRepository.save(caretaker);
+        User student = userRepository.save(user("student@smail.iitm.ac.in", Role.STUDENT));
+        workOrderService.assignInCharge(complaint(student), null, WorkOrderPriority.HIGH, null, "warden@gmail.com");
+        workOrderService.assignInCharge(complaint(student), null, WorkOrderPriority.LOW, null, "warden@gmail.com");
+
+        staffService.removeStaff(warden.id(), caretaker.getId(), admin.getEmail());
+
+        verify(notificationService).sendAssignmentNotification("caretaker-token", "2 complaints were assigned to you.");
     }
 
     @Test

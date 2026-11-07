@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -34,7 +35,12 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:work-order-test",
@@ -63,6 +69,9 @@ class WorkOrderServiceIntegrationTest {
 
     @MockitoSpyBean
     private ComplaintHistoryRepository historyRepository;
+
+    @MockitoBean
+    private FcmNotificationService notificationService;
 
     private User warden;
     private User caretaker;
@@ -295,6 +304,63 @@ class WorkOrderServiceIntegrationTest {
                 .containsExactly(current.id(), cancelled.id());
     }
 
+    // ---- telling the assignee ----
+
+    @Test
+    void anAdminAssigningSomeoneNotifiesThem() {
+        giveDevice(warden, "warden-token");
+
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.HIGH, null, ADMIN);
+
+        verify(notificationService).sendAssignmentNotification(
+                "warden-token", "\"Fan not working\" was assigned to you.");
+    }
+
+    @Test
+    void assigningYourselfSendsNothing() {
+        giveDevice(warden, "warden-token");
+
+        workOrderService.assignInCharge(complaintId, null, WorkOrderPriority.HIGH, null, WARDEN);
+
+        verify(notificationService, never()).sendAssignmentNotification(any(), anyString());
+    }
+
+    @Test
+    void changingThePriorityOfTheSameAssigneeSendsNothing() {
+        giveDevice(warden, "warden-token");
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.LOW, null, ADMIN);
+        clearInvocations(notificationService);
+
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.URGENT, null, ADMIN);
+
+        verify(notificationService, never()).sendAssignmentNotification(any(), anyString());
+    }
+
+    @Test
+    void reassigningNotifiesTheNewAssignee() {
+        giveDevice(warden, "warden-token");
+        giveDevice(caretaker, "caretaker-token");
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.LOW, null, ADMIN);
+        clearInvocations(notificationService);
+
+        workOrderService.assignInCharge(complaintId, caretaker.getId(), WorkOrderPriority.LOW, null, ADMIN);
+
+        verify(notificationService).sendAssignmentNotification(eq("caretaker-token"), anyString());
+        verify(notificationService, never()).sendAssignmentNotification(eq("warden-token"), anyString());
+    }
+
+    @Test
+    void aFailedAssignmentSendsNothing() {
+        giveDevice(warden, "warden-token");
+        doThrow(new RuntimeException("simulated history failure"))
+                .when(historyRepository).save(any(ComplaintHistory.class));
+
+        assertThatThrownBy(() -> workOrderService.assignInCharge(
+                complaintId, warden.getId(), WorkOrderPriority.HIGH, null, ADMIN));
+
+        verify(notificationService, never()).sendAssignmentNotification(any(), anyString());
+    }
+
     // ---- complaint status changed directly by an admin ----
 
     @Test
@@ -465,6 +531,11 @@ class WorkOrderServiceIntegrationTest {
         WorkOrderView cleared = workOrderService.updateWorkOrder(workOrder.id(),
                 new UpdateWorkOrderRequest(null, null, "   ", null), WARDEN);
         assertThat(cleared.completionNotes()).isNull();
+    }
+
+    private void giveDevice(User user, String token) {
+        user.setFcmToken(token);
+        userRepository.save(user);
     }
 
     private WorkOrderView assignToWarden() {

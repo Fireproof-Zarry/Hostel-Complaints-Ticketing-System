@@ -105,7 +105,7 @@ public class StaffService {
                         "Choose someone other than the person being removed");
             }
             User target = requireAssignable(reassignToId, "The person to reassign to was not found");
-            workOrderService.reassignActiveWorkOrders(staff, target);
+            workOrderService.reassignActiveWorkOrders(staff, target, actor);
         } else {
             workOrderService.cancelActiveWorkOrders(staff, actor);
         }

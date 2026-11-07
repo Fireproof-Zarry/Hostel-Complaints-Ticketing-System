@@ -29,6 +29,38 @@ public class FcmNotificationService {
     }
 
     /**
+     * Tells someone a complaint was assigned to them, on a background thread.
+     * Failures are logged and never propagate to the caller.
+     */
+    @Async
+    public void sendAssignmentNotification(String targetToken, String body) {
+        FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
+        if (messaging == null || targetToken == null || targetToken.isBlank()) {
+            return;
+        }
+
+        Message message = Message.builder()
+                .setToken(targetToken)
+                .setNotification(Notification.builder()
+                        .setTitle("New complaint assigned")
+                        .setBody(body)
+                        .build())
+                .build();
+
+        try {
+            messaging.send(message);
+        } catch (FirebaseMessagingException e) {
+            log.warn("Could not send assignment notification to token {}: {} ({})",
+                    abbreviate(targetToken), e.getMessage(), e.getMessagingErrorCode());
+            if (e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                clearToken(targetToken);
+            }
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while sending assignment notification", e);
+        }
+    }
+
+    /**
      * Sends a push notification on a background thread. Failures are logged
      * and never propagate to the caller.
      */

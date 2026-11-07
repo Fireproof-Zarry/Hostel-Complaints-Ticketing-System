@@ -9,9 +9,9 @@ import {
   getNotificationPermission,
   registerExistingPermission,
   setNotificationsTurnedOff,
-} from '../../../notifications/pushNotifications';
+} from './pushNotifications';
 
-export default function useStudentNotifications(profileId) {
+export default function usePushNotifications(profileId) {
   // 'granted', 'denied', 'default', or 'unsupported' without the Notification API.
   const [notificationPermission, setNotificationPermission] = useState(
     getNotificationPermission

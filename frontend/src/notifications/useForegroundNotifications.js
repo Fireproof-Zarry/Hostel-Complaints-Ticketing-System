@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { listenForForegroundMessages } from './pushNotifications';
 
-// Every student page uses this, because Firebase shows no popup while a
+// Every signed-in page uses this, because Firebase shows no popup while a
 // HostelFix page is visible and a message nothing listens for is lost.
 export default function useForegroundNotifications(onMessage) {
   const [notificationToast, setNotificationToast] = useState(null);

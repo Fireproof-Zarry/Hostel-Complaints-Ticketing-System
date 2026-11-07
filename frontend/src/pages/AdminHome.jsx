@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertCircle,
@@ -18,6 +18,7 @@ import {
   Wrench,
 } from 'lucide-react'
 import MyComplaintsPage from '../components/MyComplaintsPage'
+import NotificationToast from '../components/NotificationToast'
 import StaffComplaintForm from '../components/StaffComplaintForm'
 import StaffManagement from '../components/StaffManagement'
 import WorkOrderPanel from '../components/WorkOrderPanel'
@@ -25,6 +26,9 @@ import ComplaintTimeline from '../components/ComplaintTimeline'
 import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
+import { removeFcmToken } from '../notifications/pushNotifications'
+import useForegroundNotifications from '../notifications/useForegroundNotifications'
+import usePushNotifications from '../notifications/usePushNotifications'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import './AdminHome.css'
 
@@ -147,6 +151,11 @@ export default function AdminHome() {
   const [selectedComplaint, setSelectedComplaint] = useState(null)
   // Bumped after a work order change so the popup's timeline reloads
   const [timelineVersion, setTimelineVersion] = useState(0)
+
+  const notifications = usePushNotifications(currentUser?.id)
+  // A new assignment may have arrived, so reload My complaints
+  const handleForegroundMessage = useCallback(() => setTimelineVersion((version) => version + 1), [])
+  const { notificationToast, dismissNotificationToast } = useForegroundNotifications(handleForegroundMessage)
 
   // Complaint for status update
   const [statusComplaint, setStatusComplaint] = useState(null)
@@ -473,7 +482,8 @@ export default function AdminHome() {
     resolved: complaints.filter((complaint) => complaint.status === 'RESOLVED').length,
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await removeFcmToken()
     logout()
     navigate('/login', { replace: true })
   }
@@ -642,7 +652,7 @@ export default function AdminHome() {
           ) : activePage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
           ) : activePage === MY_COMPLAINTS_VIEW ? (
-            <MyComplaintsPage onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
+            <MyComplaintsPage notifications={notifications} onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
           ) : activePage === FILE_COMPLAINT_VIEW ? (
             <StaffComplaintForm onFiled={handleRefreshComplaints} />
           ) : (
@@ -1503,6 +1513,17 @@ export default function AdminHome() {
             </div>
           </div>
         </div>
+      )}
+
+      {notificationToast && (
+        <NotificationToast
+          toast={notificationToast}
+          onOpen={() => {
+            dismissNotificationToast()
+            setActivePage(MY_COMPLAINTS_VIEW)
+          }}
+          onDismiss={dismissNotificationToast}
+        />
       )}
 
       {/* Success Toast */}
