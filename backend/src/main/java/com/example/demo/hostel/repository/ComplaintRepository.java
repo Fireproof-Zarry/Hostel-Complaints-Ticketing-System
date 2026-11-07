@@ -19,6 +19,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Complaint queries, including the admin filters (ComplaintSpecification), the community
+ * dashboard and the pg_trgm similarity search. The native queries need PostgreSQL.
+ */
 @Repository
 public interface ComplaintRepository
         extends JpaRepository<Complaint, Long>,

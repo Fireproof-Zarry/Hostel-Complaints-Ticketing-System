@@ -24,6 +24,7 @@ import {
     formatResolutionTime,
 } from '../utils/analyticsUtils'
 
+// Chart colour for each status
 const STATUS_COLORS = {
     Resolved: '#16a36a',
     Unresolved: '#f59e0b',
@@ -204,6 +205,7 @@ function StatusDistributionChart({ resolved, unresolved, rejected }) {
     )
 }
 
+/** The Resolution tab: monthly trends and current status. */
 function Resolution({ overview, monthlyTrendData = [] }) {
     const resolved = Number(overview?.resolved ?? 0)
     const unresolved = Number(overview?.unresolved ?? 0)

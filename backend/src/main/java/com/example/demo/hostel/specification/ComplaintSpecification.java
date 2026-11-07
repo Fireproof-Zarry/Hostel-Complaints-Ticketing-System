@@ -8,8 +8,13 @@ import org.springframework.data.jpa.domain.Specification;
 import java.time.LocalDateTime;
 import java.util.Locale;
 
+/** Builds the admin complaint list's filters. */
 public class ComplaintSpecification {
 
+    /**
+     * Combines the given filters with AND, always leaving out archived complaints. Null or
+     * blank filters are skipped; text filters ignore case and surrounding spaces.
+     */
     public static Specification<Complaint> withFilters(
             Status status,
             String category,

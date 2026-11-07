@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.Locale;
 
+/**
+ * Push notifications through Firebase Cloud Messaging. Does nothing if Firebase is not
+ * configured, and sending can never fail the request that triggered it.
+ */
 @Service
 public class FcmNotificationService {
 

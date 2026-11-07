@@ -19,6 +19,7 @@ const FIREBASE_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
 // Logout must not hang on a slow network.
 const MAX_LOGOUT_WAIT_MS = 3000;
 
+/** The browser's permission, or 'unsupported' without the Notification API. */
 export function getNotificationPermission() {
   return 'Notification' in window ? Notification.permission : 'unsupported';
 }
@@ -29,10 +30,12 @@ function turnedOffKey(userId) {
   return `hostelfix.notificationsOff.${userId}`;
 }
 
+/** Whether this user switched notifications off on this browser. */
 export function areNotificationsTurnedOff(userId) {
   return localStorage.getItem(turnedOffKey(userId)) === 'true';
 }
 
+/** Remembers this user's on or off choice on this browser. */
 export function setNotificationsTurnedOff(userId, turnedOff) {
   if (turnedOff) {
     localStorage.setItem(turnedOffKey(userId), 'true');
@@ -46,6 +49,7 @@ export function forgetFcmRegistration() {
   currentRegistration = null;
 }
 
+/** Gets this browser's device token from Firebase and saves it for the user. */
 async function registerFcmToken(userId) {
   if (!userId) {
     throw new Error('User ID is required.');
@@ -143,6 +147,7 @@ export async function registerExistingPermission(userId) {
   return currentRegistration.promise;
 }
 
+/** Removes the saved device from the user's account. */
 async function deleteFcmToken(registration) {
   // A registration still in progress must not restore the token afterwards.
   await registration?.promise.catch(() => {});
@@ -231,6 +236,7 @@ export async function listenForForegroundMessages(callback) {
   });
 }
 
+/** Shows a notification through Firebase's service worker. */
 async function showSystemNotification(title, body) {
   try {
     const registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);

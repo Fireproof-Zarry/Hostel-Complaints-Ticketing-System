@@ -3,6 +3,7 @@
 // logging out and back in. Drafts expire 7 days after they were last saved.
 // A selected photo cannot be stored and has to be re-attached.
 
+// Drafts older than this are discarded
 export const DRAFT_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const KEY_PREFIX = 'hostelfix.complaintDraft.';
 // Earlier versions kept a single draft per browser tab in sessionStorage
@@ -26,6 +27,7 @@ export function mergeDraftFields(fields, defaults) {
   return merged;
 }
 
+/** The storage key for one account's draft. */
 export function draftKey(owner) {
   return KEY_PREFIX + String(owner).trim().toLowerCase();
 }
@@ -56,6 +58,7 @@ function purgeExpiredDrafts(now) {
   }
 }
 
+/** This account's saved draft merged over the empty form, or the empty form. */
 export function loadComplaintDraft(defaults, owner, now = Date.now()) {
   if (!owner) return { ...defaults };
   try {
@@ -82,6 +85,7 @@ export function loadComplaintDraft(defaults, owner, now = Date.now()) {
   }
 }
 
+/** Saves the form as a draft; an empty form removes it. */
 export function saveComplaintDraft(form, owner, now = Date.now()) {
   if (!owner) return;
   try {
@@ -92,6 +96,7 @@ export function saveComplaintDraft(form, owner, now = Date.now()) {
   }
 }
 
+/** Removes this account's draft. */
 export function clearComplaintDraft(owner) {
   if (!owner) return;
   try {

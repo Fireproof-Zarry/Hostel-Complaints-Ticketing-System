@@ -1,5 +1,6 @@
 // Shared status badge helpers for complaint lists
 
+/** Tailwind classes for a status badge. */
 export function statusClasses(status) {
   switch (status?.toUpperCase()) {
     case 'PENDING':
@@ -17,6 +18,7 @@ export function statusClasses(status) {
   }
 }
 
+/** A status for display: IN_PROGRESS becomes In Progress. */
 export function formatStatus(status) {
   return status?.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Unknown';
 }

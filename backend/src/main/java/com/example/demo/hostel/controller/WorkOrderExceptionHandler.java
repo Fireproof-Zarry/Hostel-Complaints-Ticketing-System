@@ -17,6 +17,7 @@ import java.util.Map;
         AdminController.class, AuthController.class, StaffController.class, WorkOrderController.class})
 public class WorkOrderExceptionHandler {
 
+    /** Returns the rejection as {error, message}. */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<Map<String, String>> handle(ResponseStatusException e) {
         HttpStatus status = HttpStatus.resolve(e.getStatusCode().value());

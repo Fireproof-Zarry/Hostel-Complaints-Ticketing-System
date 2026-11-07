@@ -28,6 +28,7 @@ import { isDraftEmpty } from '../../utils/complaintDraft';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+/** The student dashboard: the sidebar, each tab, and the complaint dialogs. */
 export default function StudentHomePage() {
   const location = useLocation();
   const navigate = useNavigate();

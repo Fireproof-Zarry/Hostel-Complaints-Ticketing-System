@@ -15,6 +15,7 @@ import java.util.Map;
 @RestControllerAdvice
 public class ConcurrencyExceptionHandler {
 
+    /** Turns the lost update into a 409 with a message the frontend can show. */
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ResponseEntity<Map<String, String>> handleConcurrentUpdate(ObjectOptimisticLockingFailureException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(

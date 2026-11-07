@@ -1,6 +1,7 @@
 
 import { RefreshCw } from 'lucide-react'
 
+/** The page title and refresh button. */
 function AnalyticsHeader({ onRefresh, loading }) {
     return (
         <div className="analytics-header">

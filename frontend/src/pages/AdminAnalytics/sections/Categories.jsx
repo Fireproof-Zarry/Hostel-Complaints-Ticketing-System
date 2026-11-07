@@ -13,6 +13,7 @@ import {
     calculatePercentage,
 } from '../utils/analyticsUtils'
 
+/** Complaint counts per category, as a list. */
 function CategoryBreakdown({ categories, total }) {
     return (
         <article className="analytics-chart-card analytics-category-list">
@@ -75,6 +76,7 @@ function CategoryBreakdown({ categories, total }) {
     )
 }
 
+/** Each category's share of complaints. */
 function CategoryPieChart({ categories }) {
     const chartData = categories.filter((item) => item.count > 0)
 
@@ -124,6 +126,7 @@ function CategoryPieChart({ categories }) {
     )
 }
 
+/** The Categories tab. */
 function Categories({ categoryBreakdown = [] }) {
     const categories = categoryBreakdown.map((item) => ({
         ...item,

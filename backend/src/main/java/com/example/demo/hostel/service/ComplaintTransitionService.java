@@ -19,6 +19,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * The only place a complaint's status changes. It enforces the workflow, writes the history
+ * row and notifies the reporter, all in one transaction.
+ */
 @Service
 public class ComplaintTransitionService {
 

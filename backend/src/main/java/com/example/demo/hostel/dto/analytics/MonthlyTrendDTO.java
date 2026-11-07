@@ -1,5 +1,6 @@
 package com.example.demo.hostel.dto.analytics;
 
+/** Complaints filed and resolved in one month, written as yyyy-MM. */
 public class MonthlyTrendDTO {
 
     // Format: yyyy-MM

@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 import org.springframework.core.convert.converter.Converter;
 
+/** Turns a verified Google token into a signed-in user with a role, on every request. */
 @Component
 public class CustomJwtAuthenticationConverter
         implements Converter<Jwt, AbstractAuthenticationToken> {
@@ -20,6 +21,7 @@ public class CustomJwtAuthenticationConverter
         this.authService = authService;
     }
 
+    /** Applies AuthService's rules; an account that may not sign in becomes a rejected token. */
     public AbstractAuthenticationToken convert(Jwt jwt) {
         User user;
         try {

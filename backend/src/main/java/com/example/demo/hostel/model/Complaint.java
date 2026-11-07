@@ -14,6 +14,16 @@ import org.hibernate.annotations.UpdateTimestamp;
 // ComplaintPurgeService hard-deletes them; meanwhile Hibernate hides them from
 // every entity query. Native SQL must filter them itself.
 // (@SoftDelete is not used: it forbids the LAZY to-one links other entities have.)
+/**
+ * A reported issue. The student field is whoever filed it, which may be staff or an admin
+ * filing on the hostel's behalf.
+ *
+ * Deleting is soft: deletedAt hides the row from every query (@SQLRestriction) until
+ * ComplaintPurgeService removes it. isArchived hides old closed complaints from the admin
+ * dashboard only. @Version makes a simultaneous update fail with a 409 instead of
+ * overwriting. Change status through ComplaintTransitionService, not setStatus, so the
+ * workflow is enforced and the change is logged.
+ */
 @SQLRestriction("deleted_at IS NULL")
 public class Complaint {
 

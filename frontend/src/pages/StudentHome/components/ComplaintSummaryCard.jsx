@@ -1,3 +1,4 @@
+/** A clickable count on the dashboard. */
 export default function ComplaintSummaryCard({
     icon: Icon,
     value,

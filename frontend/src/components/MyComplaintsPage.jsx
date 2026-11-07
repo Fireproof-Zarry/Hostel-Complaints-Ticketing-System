@@ -13,6 +13,7 @@ function formatDeadline(value) {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** One complaint as a clickable row; overdue work is highlighted. */
 function ComplaintRow({ id, title, status, overdue, onOpen, children }) {
   return (
     <li>
@@ -37,6 +38,7 @@ function ComplaintRow({ id, title, status, overdue, onOpen, children }) {
   );
 }
 
+/** A titled list, or a message when it is empty. */
 function Section({ title, count, empty, children }) {
   return (
     <section className="space-y-3">

@@ -39,6 +39,7 @@ function validateProfile(form, isStudent) {
   return errors;
 }
 
+/** A labelled input with its hint or validation error. */
 function Field({ id, label, hint, error, children }) {
   return (
     <div>

@@ -20,6 +20,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+/**
+ * Turns the queries in AnalyticsRepository into the dashboard's figures. The date range
+ * applies to when complaints were filed, except that resolution figures use when they
+ * were resolved. Soft-deleted complaints are never counted.
+ */
 @Service
 public class AnalyticsService {
 
@@ -31,9 +36,10 @@ public class AnalyticsService {
         this.analyticsRepository = analyticsRepository;
     }
 
-    /*
-     * Main method:
+    /**
      * Fetches all analytics data and constructs the response DTO.
+     *
+     * @throws IllegalArgumentException if startDate is after endDate
      */
     public AnalyticsResponseDTO getAnalytics(
             LocalDate startDate,

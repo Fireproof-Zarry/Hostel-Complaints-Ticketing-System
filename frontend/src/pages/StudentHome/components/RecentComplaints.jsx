@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import { formatStatus, statusClasses } from '../../../utils/complaintStatus';
 import { formatDate, sortComplaintsByDate } from '../utils/studentUtils';
 
+/** The newest complaints on the dashboard. */
 export default function RecentComplaints({
     complaints,
     isLoading,

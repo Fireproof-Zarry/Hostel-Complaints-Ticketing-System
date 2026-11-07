@@ -19,6 +19,10 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Sign-in and the current user. Google verifies who someone is; this controller says
+ * what they may do here.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -52,6 +56,7 @@ public class AuthController {
         return toBody(authService.login(jwt, request.loginType()));
     }
 
+    /** The signed-in user's profile and role. Pages call this to decide what to show. */
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
         try {

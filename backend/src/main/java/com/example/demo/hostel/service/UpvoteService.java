@@ -71,10 +71,12 @@ public class UpvoteService {
         return true;
     }
 
+    /** Upvotes on one complaint. */
     public long countUpvotes(Long complaintId) {
         return upvoteRepository.countByIdComplaintId(complaintId);
     }
 
+    /** The user id for a signed-in email, or 404. */
     public String userIdForEmail(String email) {
         return userRepository.findByEmail(email)
                 .map(User::getId)

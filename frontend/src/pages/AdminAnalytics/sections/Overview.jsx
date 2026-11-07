@@ -13,6 +13,7 @@ import AnalyticsSummaryCards from '../components/AnalyticsSummaryCards'
 import AnalyticsMetricCards from '../components/AnalyticsMetricCards'
 import { formatMonth } from '../utils/analyticsUtils'
 
+/** The Overview tab, with the monthly complaint trend. */
 function Overview({ overview, monthlyTrendData }) {
     return (
         <div className="analytics-section">

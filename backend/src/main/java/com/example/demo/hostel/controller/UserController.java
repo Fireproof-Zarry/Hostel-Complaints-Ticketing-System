@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+/** Each user's own profile and notification device. Users can only change their own. */
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
@@ -44,6 +45,7 @@ public class UserController {
         return ResponseEntity.ok(userService.updateProfile(id, jwt.getClaimAsString("email"), request));
     }
 
+    /** Stops notifications to this user's device, for example on logout. */
     @DeleteMapping("/{id}/fcm-token")
     public ResponseEntity<Void> clearFcmToken(@PathVariable String id, @AuthenticationPrincipal Jwt jwt) {
         userService.clearFcmToken(id, jwt.getClaimAsString("email"));

@@ -5,6 +5,10 @@ import org.springframework.stereotype.Component;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * Hostel room rules: floors run Ground to Sixth, and a room's first digit gives its floor
+ * (101 is Ground, 204 is First, up to 799).
+ */
 @Component
 public class RoomLocationValidator {
 
@@ -45,6 +49,7 @@ public class RoomLocationValidator {
         return FLOOR_NAMES_BY_HUNDREDS[room.charAt(0) - '0'];
     }
 
+    /** Whether the room number belongs to that floor. */
     public boolean isRoomOnFloor(String floor, String room) {
         if (floor == null || room == null) {
             return false;

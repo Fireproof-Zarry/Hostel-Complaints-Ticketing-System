@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 
+/** The analytics dashboard's data, for admins and staff (SecurityConfig: /api/admin/**). */
 @RestController
 @RequestMapping("/api/admin/analytics")
 public class AnalyticsController {
@@ -21,6 +22,10 @@ public class AnalyticsController {
         this.analyticsService = analyticsService;
     }
 
+    /**
+     * All dashboard figures. startDate and endDate are optional and inclusive; a start after
+     * the end is a 400.
+     */
     @GetMapping
     public ResponseEntity<?> getAnalytics(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,

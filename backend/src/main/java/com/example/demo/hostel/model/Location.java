@@ -3,6 +3,10 @@ package com.example.demo.hostel.model;
 import jakarta.persistence.*;
 import java.util.UUID;
 
+/**
+ * Where a complaint is: a room (floor and room number) or a community area (floor and
+ * wing or area name). Complaints in the same place share a row.
+ */
 @Entity
 @Table(name = "locations")
 public class Location {

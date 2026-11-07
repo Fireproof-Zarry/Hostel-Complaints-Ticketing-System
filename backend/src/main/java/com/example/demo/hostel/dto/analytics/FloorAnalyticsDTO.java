@@ -1,5 +1,6 @@
 package com.example.demo.hostel.dto.analytics;
 
+/** Complaints on one floor. */
 public class FloorAnalyticsDTO {
 
     private String floor;

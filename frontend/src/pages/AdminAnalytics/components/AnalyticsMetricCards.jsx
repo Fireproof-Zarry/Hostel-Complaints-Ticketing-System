@@ -2,6 +2,7 @@
 import { CheckCircle2, Clock3 } from 'lucide-react'
 import { formatResolutionTime } from '../utils/analyticsUtils'
 
+/** The headline figures from the overview. */
 function AnalyticsMetricCards({ overview }) {
     const resolutionRate = overview?.resolutionRate ?? 0
     const averageResolutionTime = overview?.averageResolutionTimeHours

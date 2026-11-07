@@ -49,6 +49,7 @@ async function loginError(response) {
   return 'Unable to sign in right now. Please try again later.';
 }
 
+/** Student Login and Staff Login tabs; the server decides who gets in. */
 export default function Login() {
   const navigate = useNavigate();
   const [loginType, setLoginType] = useState(loadLoginType);
