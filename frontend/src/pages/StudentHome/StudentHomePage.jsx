@@ -108,6 +108,28 @@ export default function StudentHomePage() {
     setSuccess('');
   }, [dismissNotificationToast, setError]);
 
+  const handleNudge = useCallback(
+    async (complaint) => {
+      const response = await apiFetch(
+        `${apiBaseUrl}/complaints/${complaint.id}/nudge`,
+        { method: 'POST' }
+      );
+
+      // Also after a refusal: the page may be out of date, and the refreshed
+      // complaint updates the button and explains why.
+      try {
+        setComplaints(await requestMyComplaints());
+      } catch {
+        // The manual Refresh button still works if this quiet update fails.
+      }
+
+      if (!response.ok) {
+        throw new Error('Could not nudge the administrators. Please try again later.');
+      }
+    },
+    [requestMyComplaints, setComplaints]
+  );
+
   const handleLogout = useCallback(async () => {
     await removeFcmToken();
     logout();
@@ -316,6 +338,7 @@ export default function StudentHomePage() {
               onFileComplaint={handleFileComplaint}
               onViewComplaint={handleViewComplaint}
               onDeleteComplaint={handleDeleteComplaint}
+              onNudgeComplaint={handleNudge}
             />
           )}
 

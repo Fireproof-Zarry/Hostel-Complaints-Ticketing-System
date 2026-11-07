@@ -1,10 +1,11 @@
 import { CalendarDays, Trash2 } from 'lucide-react';
 
+import NudgeButton from '../../../components/NudgeButton';
 import { formatStatus, statusClasses } from '../../../utils/complaintStatus';
 import { formatDate } from '../utils/studentUtils';
 
 /** A complaint's summary in My Complaints, with View and, while pending, Delete. */
-export default function ComplaintCard({ complaint, onView, onDelete }) {
+export default function ComplaintCard({ complaint, onView, onDelete, onNudge }) {
     return (
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -42,7 +43,7 @@ export default function ComplaintCard({ complaint, onView, onDelete }) {
                 </span>
             </div>
 
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-3">
+            <div className="mt-4 flex items-start justify-between gap-2 border-t border-slate-100 pt-3">
                 <button
                     type="button"
                     onClick={() => onView(complaint)}
@@ -51,17 +52,21 @@ export default function ComplaintCard({ complaint, onView, onDelete }) {
                     View
                 </button>
 
-                {/* Only before an admin picks it up */}
-                {complaint.status?.toUpperCase() === 'PENDING' && (
-                    <button
-                        type="button"
-                        onClick={() => onDelete(complaint)}
-                        className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
-                    >
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        Delete
-                    </button>
-                )}
+                <div className="flex items-start gap-2">
+                    {/* Only before an admin picks it up */}
+                    {complaint.status?.toUpperCase() === 'PENDING' && (
+                        <button
+                            type="button"
+                            onClick={() => onDelete(complaint)}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-50"
+                        >
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            Delete
+                        </button>
+                    )}
+
+                    <NudgeButton complaint={complaint} onNudge={onNudge} />
+                </div>
             </div>
         </article>
     );

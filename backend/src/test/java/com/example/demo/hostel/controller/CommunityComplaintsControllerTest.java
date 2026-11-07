@@ -9,6 +9,7 @@ import com.example.demo.hostel.service.AuthService;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
+import com.example.demo.hostel.service.NudgeService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,9 @@ class CommunityComplaintsControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private NudgeService nudgeService;
 
     @MockitoBean
     private CommunityComplaintService communityComplaintService;

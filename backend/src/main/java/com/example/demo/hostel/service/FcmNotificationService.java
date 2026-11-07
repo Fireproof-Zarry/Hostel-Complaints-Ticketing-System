@@ -2,17 +2,21 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
+import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
+import com.google.firebase.messaging.SendResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -109,12 +113,69 @@ public class FcmNotificationService {
         }
     }
 
+    /**
+     * Tells every admin about a nudge in one multicast, on a background thread.
+     * Failures are logged and never propagate to the caller.
+     */
+    @Async
+    public void sendNudgeNotification(List<String> adminTokens, Long complaintId, String complaintTitle) {
+        FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
+        if (messaging == null) {
+            log.debug("Firebase is not configured; skipping nudge notification");
+            return;
+        }
+        List<String> tokens = adminTokens.stream()
+                .filter(token -> token != null && !token.isBlank())
+                .distinct()
+                .toList();
+        if (tokens.isEmpty()) {
+            log.info("No admin has push notifications on; nudge on complaint {} not pushed", complaintId);
+            return;
+        }
+
+        MulticastMessage message = MulticastMessage.builder()
+                .addAllTokens(tokens)
+                .setNotification(Notification.builder()
+                        .setTitle("Complaint nudged")
+                        .setBody("#" + complaintId + " \"" + complaintTitle + "\" has been waiting over a week.")
+                        .build())
+                .putData("complaintId", String.valueOf(complaintId))
+                .putData("url", nudgeUrl(complaintId))
+                .build();
+
+        try {
+            BatchResponse batch = messaging.sendEachForMulticast(message);
+            log.info("Sent nudge notification for complaint {}: {} of {} delivered",
+                    complaintId, batch.getSuccessCount(), tokens.size());
+            List<SendResponse> responses = batch.getResponses();
+            for (int i = 0; i < responses.size(); i++) {
+                FirebaseMessagingException error = responses.get(i).getException();
+                if (error != null) {
+                    log.warn("Could not send nudge notification to token {}: {} ({})",
+                            abbreviate(tokens.get(i)), error.getMessage(), error.getMessagingErrorCode());
+                    if (error.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                        clearToken(tokens.get(i));
+                    }
+                }
+            }
+        } catch (FirebaseMessagingException e) {
+            log.warn("Could not send nudge notification: {} ({})", e.getMessage(), e.getMessagingErrorCode());
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while sending nudge notification", e);
+        }
+    }
+
     // The device uninstalled the app or the token expired; stop sending to it
     private void clearToken(String token) {
         for (User user : userRepository.findByFcmToken(token)) {
             user.setFcmToken(null);
             userRepository.save(user);
         }
+    }
+
+    // Where clicking a nudge takes the admin; the page highlights this complaint
+    static String nudgeUrl(Long complaintId) {
+        return "/admin?complaint=" + complaintId;
     }
 
     private static String formatStatus(String status) {

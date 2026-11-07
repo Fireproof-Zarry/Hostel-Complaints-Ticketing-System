@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   AlertCircle,
   ArrowDownToLine,
   BarChart3,
+  Bell,
+  BellOff,
+  BellRing,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -26,10 +29,11 @@ import ComplaintTimeline from '../components/ComplaintTimeline'
 import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
-import { removeFcmToken } from '../notifications/pushNotifications'
+import { areNotificationsTurnedOff, removeFcmToken } from '../notifications/pushNotifications'
 import useForegroundNotifications from '../notifications/useForegroundNotifications'
 import usePushNotifications from '../notifications/usePushNotifications'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
+import { isAwaitingNudgeResponse } from '../utils/nudge'
 import './AdminHome.css'
 
 // Shown in the main area like the other sidebar pages
@@ -47,6 +51,8 @@ const STATUS_TRANSITIONS = {
   RESOLVED: ['PENDING', 'IN_PROGRESS'],
   REJECTED: ['PENDING', 'IN_PROGRESS'],
 }
+
+const scrollRowIntoView = (row) => row?.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
 // Rejected requests carry their reason as JSON, or as plain text from older endpoints
 async function responseError(response, fallback) {
@@ -130,6 +136,9 @@ function hasFloorRoomMismatch(floor, room) {
 /** The dashboard for admins and staff: sidebar, pages, and the complaint dialogs. */
 export default function AdminHome() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  // The complaint a nudge notification pointed to; see the 10-second effect below
+  const [highlightedComplaintId, setHighlightedComplaintId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
   const [complaints, setComplaints] = useState([])
   const [filteredComplaints, setFilteredComplaints] = useState([])
@@ -142,6 +151,36 @@ export default function AdminHome() {
   // can only assign complaints to themselves
   const [currentUser, setCurrentUser] = useState(null)
   const isAdmin = currentUser?.role === 'ADMIN'
+
+  // Bumped after a work order change so the popup's timeline reloads
+  const [timelineVersion, setTimelineVersion] = useState(0)
+  const notifications = usePushNotifications(currentUser?.id)
+  const refreshComplaintsRef = useRef(null)
+  // A push can be a nudge, which reorders the list, or a new assignment for My complaints
+  const handleForegroundMessage = useCallback(() => {
+    refreshComplaintsRef.current?.()
+    setTimelineVersion((version) => version + 1)
+  }, [])
+  const { notificationToast, dismissNotificationToast } =
+    useForegroundNotifications(handleForegroundMessage)
+  // Decided from the first frame: the saved on/off choice and the browser's
+  // permission, not only the registration, which starts a moment after load
+  const isBellOn =
+    notifications.isNotificationEnabled ||
+    notifications.isEnablingNotifications ||
+    (Boolean(isAdmin) &&
+      notifications.notificationPermission === 'granted' &&
+      !areNotificationsTurnedOff(currentUser.id) &&
+      !notifications.isDisablingNotifications &&
+      !notifications.notificationError)
+  const isPushBlocked = notifications.notificationPermission === 'denied'
+  // Shown for a few seconds after clicking the bell while the browser blocks notifications
+  const [showBlockedNotice, setShowBlockedNotice] = useState(false)
+  useEffect(() => {
+    if (!showBlockedNotice) return undefined
+    const timer = setTimeout(() => setShowBlockedNotice(false), 6000)
+    return () => clearTimeout(timer)
+  }, [showBlockedNotice])
 
   // Filter values
   const [statusFilter, setStatusFilter] = useState('')
@@ -156,13 +195,6 @@ export default function AdminHome() {
 
   // Selected complaint for View
   const [selectedComplaint, setSelectedComplaint] = useState(null)
-  // Bumped after a work order change so the popup's timeline reloads
-  const [timelineVersion, setTimelineVersion] = useState(0)
-
-  const notifications = usePushNotifications(currentUser?.id)
-  // A new assignment may have arrived, so reload My complaints
-  const handleForegroundMessage = useCallback(() => setTimelineVersion((version) => version + 1), [])
-  const { notificationToast, dismissNotificationToast } = useForegroundNotifications(handleForegroundMessage)
 
   // Complaint for status update
   const [statusComplaint, setStatusComplaint] = useState(null)
@@ -191,9 +223,10 @@ export default function AdminHome() {
     }, 4000)
   }
 
-  const fetchComplaints = async (filters = {}, query = searchTerm) => {
+  // quiet: refresh in place, without swapping the table for "Loading..."
+  const fetchComplaints = async (filters = {}, query = searchTerm, { quiet = false } = {}) => {
     try {
-      setLoading(true)
+      if (!quiet) setLoading(true)
       setError('')
 
       const params = new URLSearchParams()
@@ -318,7 +351,7 @@ export default function AdminHome() {
     }
   }
 
-  const handleResetFilters = async () => {
+  const clearFilters = () => {
     setStatusFilter('')
     setCategoryFilter('')
     setFloorFilter('')
@@ -328,7 +361,44 @@ export default function AdminHome() {
     setAssignedToFilter('')
     setSearchTerm('')
 
-    const success = await fetchComplaints({}, '')
+    return fetchComplaints({}, '')
+  }
+
+  // From a nudge notification: filters could be hiding the complaint
+  const complaintLink = searchParams.get('complaint')
+  useEffect(() => {
+    if (!complaintLink) return
+    const id = Number(complaintLink)
+    setActivePage(null)
+    setHighlightedComplaintId(id)
+    // Reload only if filters or the search are hiding it
+    if (!filteredComplaints.some((complaint) => complaint.id === id)) clearFilters()
+    setSearchParams({}, { replace: true })
+  }, [complaintLink])
+
+  // The highlight lasts 10 seconds, or until the next click anywhere
+  useEffect(() => {
+    if (highlightedComplaintId === null) return undefined
+    const clear = () => setHighlightedComplaintId(null)
+    const timer = setTimeout(clear, 10000)
+    document.addEventListener('pointerdown', clear)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('pointerdown', clear)
+    }
+  }, [highlightedComplaintId])
+
+  // A click on a notification while this page is already open (see the service worker)
+  useEffect(() => {
+    const handleWorkerMessage = (event) => {
+      if (event.data?.type === 'OPEN_URL') navigate(event.data.url)
+    }
+    navigator.serviceWorker?.addEventListener('message', handleWorkerMessage)
+    return () => navigator.serviceWorker?.removeEventListener('message', handleWorkerMessage)
+  }, [navigate])
+
+  const handleResetFilters = async () => {
+    const success = await clearFilters()
 
     if (success) {
       showSuccessMessage('Filters reset')
@@ -527,6 +597,18 @@ export default function AdminHome() {
     to: toDate,
   })
 
+  useEffect(() => {
+    refreshComplaintsRef.current = () => fetchComplaints({
+      status: statusFilter,
+      category: categoryFilter,
+      floor: floorFilter,
+      communityArea: typeFilter,
+      assignedTo: assignedToFilter,
+      from: fromDate,
+      to: toDate,
+    }, searchTerm, { quiet: true })
+  })
+
   return (
     <div className={`admin-shell ${sidebarOpen ? '' : 'admin-shell-collapsed'}`}>
       <aside className="admin-sidebar">
@@ -649,6 +731,50 @@ export default function AdminHome() {
             <h1>{activePage || 'Complaints'}</h1>
           </div>
 
+          <div className="admin-header-actions">
+            {showBlockedNotice && isPushBlocked ? (
+              <small role="alert" className="text-xs text-red-600">
+                Notifications blocked by browser. Please change in site settings.
+              </small>
+            ) : (
+              notifications.notificationError && (
+                <small role="alert" className="text-xs text-red-600">
+                  {notifications.notificationError}
+                </small>
+              )
+            )}
+            {!currentUser ? (
+              // Same frame, no icon, until we know whether this is an admin
+              <span className="admin-header-icon" aria-hidden="true" />
+            ) : isAdmin ? (
+              <button
+                type="button"
+                className="admin-header-icon"
+                aria-pressed={isBellOn}
+                aria-label="Nudge notifications"
+                title={
+                  isPushBlocked
+                    ? 'Notifications blocked by browser. Please change in site settings.'
+                    : isBellOn
+                      ? 'Nudge notifications are on. Click to turn them off.'
+                      : 'Nudge notifications are off. Click to turn them on.'
+                }
+                disabled={
+                  notifications.isDisablingNotifications ||
+                  notifications.notificationPermission === 'unsupported'
+                }
+                onClick={
+                  isPushBlocked
+                    ? () => setShowBlockedNotice(true)
+                    : isBellOn
+                      ? notifications.handleDisableNotifications
+                      : notifications.handleEnableNotifications
+                }
+              >
+                {isBellOn ? <Bell size={19} /> : <BellOff size={19} />}
+              </button>
+            ) : null}
+          </div>
         </header>
 
         <section className="admin-content">
@@ -951,8 +1077,24 @@ export default function AdminHome() {
 
                       <tbody>
                         {filteredComplaints.map((complaint) => (
-                          <tr key={complaint.id}>
-                            <td>#{complaint.id}</td>
+                          <tr
+                            key={complaint.id}
+                            className={complaint.id === highlightedComplaintId ? 'complaint-row-highlighted' : undefined}
+                            ref={complaint.id === highlightedComplaintId ? scrollRowIntoView : undefined}
+                          >
+                            <td>
+                              {isAwaitingNudgeResponse(complaint) && (
+                                <span
+                                  className="admin-nudged-icon"
+                                  role="img"
+                                  aria-label={`Nudged ${formatComplaintDateTime(complaint.lastNudgedAt)}`}
+                                  title={`Nudged ${formatComplaintDateTime(complaint.lastNudgedAt)}`}
+                                >
+                                  <BellRing size={15} aria-hidden="true" />
+                                </span>
+                              )}
+                              #{complaint.id}
+                            </td>
 
                             <td>
                               <strong
@@ -1083,9 +1225,17 @@ export default function AdminHome() {
             <div className="complaint-details">
               <div className="detail-item detail-item-full complaint-title-detail">
                 <span className="detail-label">Title</span>
-                <span className="detail-title-value">
-                  {selectedComplaint.title || '—'}
-                </span>
+                <div className="detail-title-row">
+                  <span className="detail-title-value">
+                    {selectedComplaint.title || '—'}
+                  </span>
+                  {selectedComplaint.lastNudgedAt && (
+                    <span className="admin-nudged-chip">
+                      <BellRing size={14} aria-hidden="true" />
+                      Nudged on {formatComplaintDateTime(selectedComplaint.lastNudgedAt)}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="detail-item">
@@ -1527,7 +1677,8 @@ export default function AdminHome() {
           toast={notificationToast}
           onOpen={() => {
             dismissNotificationToast()
-            setActivePage(MY_COMPLAINTS_VIEW)
+            if (notificationToast.url) navigate(notificationToast.url)
+            else setActivePage(MY_COMPLAINTS_VIEW)
           }}
           onDismiss={dismissNotificationToast}
         />

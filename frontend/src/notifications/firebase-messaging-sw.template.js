@@ -18,12 +18,14 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     (async () => {
-      const notificationData = event.notification.data || {};
+      // Firebase keeps the message's data under FCM_MSG
+      const notificationData = event.notification.data?.FCM_MSG?.data || {};
 
       // Use the supplied URL if available; otherwise open HostelFix.
       let targetUrl = new URL("/", self.location.origin);
+      const hasLink = Boolean(notificationData.url);
 
-      if (notificationData.url) {
+      if (hasLink) {
         const requestedUrl = new URL(
           notificationData.url,
           self.location.origin
@@ -40,9 +42,20 @@ self.addEventListener("notificationclick", (event) => {
         includeUncontrolled: true,
       });
 
-      // Reuse an existing HostelFix tab if possible.
+      // Reuse an existing HostelFix tab if possible. A link needs a tab on that
+      // page, which moves itself: this worker does not control tabs, so it
+      // cannot navigate them.
       for (const client of windowClients) {
-        if (new URL(client.url).origin === self.location.origin) {
+        const clientUrl = new URL(client.url);
+        if (clientUrl.origin !== self.location.origin) continue;
+
+        if (!hasLink) return client.focus();
+
+        if (clientUrl.pathname === targetUrl.pathname) {
+          client.postMessage({
+            type: "OPEN_URL",
+            url: targetUrl.pathname + targetUrl.search,
+          });
           return client.focus();
         }
       }

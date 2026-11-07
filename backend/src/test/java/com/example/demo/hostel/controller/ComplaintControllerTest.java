@@ -7,6 +7,7 @@ import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
+import com.example.demo.hostel.service.NudgeService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,7 +43,8 @@ class ComplaintControllerTest {
                 .thenReturn(new Complaint());
         controller = new ComplaintController(
                 complaintService, new RoomLocationValidator(), mock(UpvoteService.class),
-                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class));
+                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class),
+                mock(NudgeService.class));
     }
 
     @Test
@@ -138,7 +140,8 @@ class ComplaintControllerTest {
         ComplaintService untouched = mock(ComplaintService.class);
         ComplaintController guarded = new ComplaintController(
                 untouched, new RoomLocationValidator(), mock(UpvoteService.class),
-                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class));
+                mock(DuplicateDetectionService.class), mock(CommunityComplaintService.class),
+                mock(NudgeService.class));
 
         assertEquals(HttpStatus.BAD_REQUEST,
                 guarded.createComplaint(JWT, payload).getStatusCode());

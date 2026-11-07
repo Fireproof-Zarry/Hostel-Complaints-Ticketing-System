@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   areNotificationsTurnedOff,
@@ -28,10 +28,13 @@ export default function usePushNotifications(profileId) {
     useState(false);
 
   const [notificationMessage, setNotificationMessage] = useState('');
+  // Bumped when the user turns notifications off, so a registration still in
+  // progress cannot switch them back on when it finishes
+  const registrationRun = useRef(0);
   const [notificationError, setNotificationError] = useState('');
 
   // Permission can change in browser settings while the portal is open.
-  // No event fires reliably for this, so re-read it when the student returns.
+  // No event fires reliably for this, so re-read it when the user returns.
   useEffect(() => {
     const refreshPermission = () => {
       if (document.visibilityState === 'visible') {
@@ -48,7 +51,7 @@ export default function usePushNotifications(profileId) {
     };
   }, []);
 
-  // Register the token only when permission is granted for a known student.
+  // Register the token only when permission is granted for a known user.
   useEffect(() => {
     setIsNotificationEnabled(false);
     setNotificationError('');
@@ -69,12 +72,14 @@ export default function usePushNotifications(profileId) {
     }
 
     let cancelled = false;
+    const run = ++registrationRun.current;
+    const isCurrent = () => !cancelled && run === registrationRun.current;
 
     setIsEnablingNotifications(true);
 
     registerExistingPermission(profileId)
       .then(() => {
-        if (!cancelled) {
+        if (isCurrent()) {
           setIsNotificationEnabled(true);
           setNotificationMessage(
             (current) =>
@@ -83,7 +88,7 @@ export default function usePushNotifications(profileId) {
         }
       })
       .catch((error) => {
-        if (!cancelled) {
+        if (isCurrent()) {
           console.error(
             '[FCM] Could not refresh notification registration:',
             error
@@ -97,7 +102,7 @@ export default function usePushNotifications(profileId) {
         }
       })
       .finally(() => {
-        if (!cancelled) {
+        if (isCurrent()) {
           setIsEnablingNotifications(false);
         }
       });
@@ -107,7 +112,7 @@ export default function usePushNotifications(profileId) {
     };
   }, [profileId, notificationPermission]);
 
-  // Called when the student turns notifications on or clicks Try Again.
+  // Called when the user turns notifications on or clicks Try Again.
   const handleEnableNotifications = useCallback(async () => {
     if (!profileId || isEnablingNotifications || isDisablingNotifications) {
       return;
@@ -137,31 +142,37 @@ export default function usePushNotifications(profileId) {
     }
   }, [profileId, isEnablingNotifications, isDisablingNotifications]);
 
-  // Called when the student turns notifications off.
+  // Called when the user turns notifications off. Works while a registration is
+  // still in progress too: it shows as off at once, and the token is removed
+  // once that registration has finished.
   const handleDisableNotifications = useCallback(async () => {
-    if (!profileId || isEnablingNotifications || isDisablingNotifications) {
+    if (!profileId || isDisablingNotifications) {
       return;
     }
 
+    registrationRun.current += 1;
     setIsDisablingNotifications(true);
+    setIsEnablingNotifications(false);
+    setIsNotificationEnabled(false);
     setNotificationError('');
 
     try {
       await disablePushNotifications();
 
       setNotificationsTurnedOff(profileId, true);
-      setIsNotificationEnabled(false);
       setNotificationMessage('');
     } catch (error) {
       console.error('[FCM] Failed to turn off notifications:', error);
 
+      // The token is probably still saved, so they are still on
+      setIsNotificationEnabled(true);
       setNotificationError(
         'Could not turn off notifications. Please try again.'
       );
     } finally {
       setIsDisablingNotifications(false);
     }
-  }, [profileId, isEnablingNotifications, isDisablingNotifications]);
+  }, [profileId, isDisablingNotifications]);
 
   return {
     notificationPermission,
