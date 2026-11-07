@@ -35,7 +35,12 @@ public class FcmNotificationService {
     @Async
     public void sendAssignmentNotification(String targetToken, String body) {
         FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
-        if (messaging == null || targetToken == null || targetToken.isBlank()) {
+        if (messaging == null) {
+            log.warn("Firebase is not configured; skipping assignment notification");
+            return;
+        }
+        if (targetToken == null || targetToken.isBlank()) {
+            log.info("Skipping assignment notification: the assignee has no registered device");
             return;
         }
 
@@ -48,7 +53,8 @@ public class FcmNotificationService {
                 .build();
 
         try {
-            messaging.send(message);
+            String messageId = messaging.send(message);
+            log.info("Sent assignment notification {}", messageId);
         } catch (FirebaseMessagingException e) {
             log.warn("Could not send assignment notification to token {}: {} ({})",
                     abbreviate(targetToken), e.getMessage(), e.getMessagingErrorCode());
