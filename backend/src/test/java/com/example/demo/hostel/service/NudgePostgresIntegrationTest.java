@@ -24,6 +24,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
@@ -47,7 +49,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -56,14 +57,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Runs schema_nov07.sql and nudges against real PostgreSQL: simultaneous nudges
- * depend on its row locks, which H2 does not reproduce, and the conditional
- * UPDATE is the last word on who may nudge. Skipped when Docker is unavailable;
- * runs in CI.
+ * The nudge feature end to end on real PostgreSQL: schema_nov07.sql, the API, and
+ * the conditional UPDATE, whose handling of simultaneous nudges depends on
+ * PostgreSQL's row locks. Skipped when Docker is unavailable; runs in CI.
  */
 @Testcontainers(disabledWithoutDocker = true)
 @SpringBootTest(properties = {
@@ -75,6 +77,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class NudgePostgresIntegrationTest {
 
     private static final String OWNER_EMAIL = "owner@smail.iitm.ac.in";
+    private static final String OTHER_EMAIL = "other@smail.iitm.ac.in";
     private static final List<Status> UNRESOLVED = List.of(Status.PENDING, Status.ASSIGNED, Status.IN_PROGRESS);
     private static final int SIMULTANEOUS_NUDGES = 8;
 
@@ -85,6 +88,7 @@ class NudgePostgresIntegrationTest {
     @MockitoBean private FcmNotificationService fcmNotificationService;
 
     @Autowired private NudgeService nudgeService;
+    @Autowired private AdminService adminService;
     @Autowired private MockMvc mockMvc;
     @Autowired private ComplaintRepository complaintRepository;
     @Autowired private UserRepository userRepository;
@@ -101,6 +105,7 @@ class NudgePostgresIntegrationTest {
     @BeforeEach
     void setUp() {
         owner = userRepository.save(user(OWNER_EMAIL, Role.STUDENT, "owner-token"));
+        userRepository.save(user(OTHER_EMAIL, Role.STUDENT, "other-token"));
         userRepository.save(user("admin1@smail.iitm.ac.in", Role.ADMIN, "admin-token-1"));
         userRepository.save(user("admin2@smail.iitm.ac.in", Role.ADMIN, "admin-token-2"));
         userRepository.save(user("admin3@smail.iitm.ac.in", Role.ADMIN, null));
@@ -191,14 +196,76 @@ class NudgePostgresIntegrationTest {
     }
 
     @Test
-    void softDeletedComplaintCannotBeNudged() {
-        Long complaint = complaintCreatedAt(LocalDateTime.now().minusDays(8), Status.PENDING);
-        jdbcTemplate.update("UPDATE complaints SET deleted_at = NOW() WHERE id = ?", complaint);
+    void repeatWithinSevenDaysIsRejectedAndSendsNothingMore() throws Exception {
+        Long complaint = complaintCreatedAt(LocalDateTime.now().minusDays(20), Status.ASSIGNED);
 
-        assertThatThrownBy(() -> nudgeService.nudge(complaint, OWNER_EMAIL))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        error -> assertThat(error.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+        nudgeOverHttp(complaint).andExpect(status().isOk());
+        nudgeOverHttp(complaint).andExpect(status().isConflict());
+
+        verify(fcmNotificationService, times(1)).sendNudgeNotification(anyList(), any(), any());
+    }
+
+    @Test
+    void canNudgeAgainOnceTheLastNudgeIsOverSevenDaysOld() throws Exception {
+        Long complaint = complaintCreatedAt(LocalDateTime.now().minusDays(20), Status.IN_PROGRESS);
+        setLastNudgedAt(complaint, LocalDateTime.now().minusDays(8));
+
+        nudgeOverHttp(complaint).andExpect(status().isOk());
+    }
+
+    @Test
+    void closedComplaintsAreRejected() throws Exception {
+        nudgeOverHttp(complaintCreatedAt(LocalDateTime.now().minusDays(20), Status.RESOLVED))
+                .andExpect(status().isConflict());
+        nudgeOverHttp(complaintCreatedAt(LocalDateTime.now().minusDays(20), Status.REJECTED))
+                .andExpect(status().isConflict());
+
         verify(fcmNotificationService, never()).sendNudgeNotification(anyList(), any(), any());
+    }
+
+    @Test
+    void missingDeletedOrSomeoneElsesComplaintIsNotFound() throws Exception {
+        Long someoneElses = complaintCreatedAt(LocalDateTime.now().minusDays(8), Status.PENDING);
+        Long deleted = complaintCreatedAt(LocalDateTime.now().minusDays(8), Status.PENDING);
+        jdbcTemplate.update("UPDATE complaints SET deleted_at = NOW() WHERE id = ?", deleted);
+
+        nudgeOverHttp(999_999L).andExpect(status().isNotFound());
+        nudgeOverHttp(deleted).andExpect(status().isNotFound());
+        nudgeOverHttp(someoneElses, OTHER_EMAIL).andExpect(status().isNotFound());
+
+        verify(fcmNotificationService, never()).sendNudgeNotification(anyList(), any(), any());
+    }
+
+    @Test
+    void myComplaintsTellTheOwnerWhetherTheyCanNudge() throws Exception {
+        Long recent = complaintCreatedAt(LocalDateTime.now().minusDays(2), Status.PENDING);
+        Long old = complaintCreatedAt(LocalDateTime.now().minusDays(9), Status.PENDING);
+        Long closed = complaintCreatedAt(LocalDateTime.now().minusDays(9), Status.RESOLVED);
+
+        mockMvc.perform(get("/api/complaints/mine").with(signedInAs(OWNER_EMAIL)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.id == %d)].canNudge".formatted(recent)).value(false))
+                .andExpect(jsonPath("$[?(@.id == %d)].nextNudgeAt".formatted(recent)).isNotEmpty())
+                .andExpect(jsonPath("$[?(@.id == %d)].canNudge".formatted(old)).value(true))
+                .andExpect(jsonPath("$[?(@.id == %d)].canNudge".formatted(closed)).value(false));
+    }
+
+    @Test
+    void adminListPutsUnresolvedNudgedComplaintsFirstLatestNudgeOnTop() {
+        Long plain = complaintCreatedAt(LocalDateTime.now().minusDays(30), Status.PENDING);
+        Long nudgedEarlier = complaintCreatedAt(LocalDateTime.now().minusDays(20), Status.PENDING);
+        Long nudgedLater = complaintCreatedAt(LocalDateTime.now().minusDays(10), Status.IN_PROGRESS);
+        Long nudgedThenResolved = complaintCreatedAt(LocalDateTime.now().minusDays(25), Status.RESOLVED);
+        setLastNudgedAt(nudgedEarlier, LocalDateTime.now().minusDays(2));
+        setLastNudgedAt(nudgedLater, LocalDateTime.now().minusDays(1));
+        setLastNudgedAt(nudgedThenResolved, LocalDateTime.now());
+
+        List<Long> ids = adminService.getComplaints(null, null, null, null, null, null, null).stream()
+                .map(Complaint::getId)
+                .toList();
+
+        assertThat(ids.subList(0, 2)).containsExactly(nudgedLater, nudgedEarlier);
+        assertThat(ids).containsExactlyInAnyOrder(plain, nudgedEarlier, nudgedLater, nudgedThenResolved);
     }
 
     // The service checks first, so these reach the UPDATE directly: it is what
@@ -278,9 +345,16 @@ class NudgePostgresIntegrationTest {
         }
     }
 
-    private org.springframework.test.web.servlet.ResultActions nudgeOverHttp(Long complaint) throws Exception {
-        return mockMvc.perform(post("/api/complaints/{id}/nudge", complaint)
-                .with(jwt().jwt(token -> token.claim("email", OWNER_EMAIL))));
+    private ResultActions nudgeOverHttp(Long complaint) throws Exception {
+        return nudgeOverHttp(complaint, OWNER_EMAIL);
+    }
+
+    private ResultActions nudgeOverHttp(Long complaint, String email) throws Exception {
+        return mockMvc.perform(post("/api/complaints/{id}/nudge", complaint).with(signedInAs(email)));
+    }
+
+    private static RequestPostProcessor signedInAs(String email) {
+        return jwt().jwt(token -> token.claim("email", email));
     }
 
     private int recordNudge(Long complaint, LocalDateTime now, LocalDateTime cutoff) {
