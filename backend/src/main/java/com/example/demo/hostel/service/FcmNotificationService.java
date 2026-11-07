@@ -76,10 +76,11 @@ public class FcmNotificationService {
 
     /**
      * Sends a push notification on a background thread. Failures are logged
-     * and never propagate to the caller.
+     * and never propagate to the caller. {@code link} is the page a click opens
+     * (see complaintUrl); null opens the app's home page.
      */
     @Async
-    public void sendStatusUpdateNotification(String targetToken, String complaintTitle, String newStatus) {
+    public void sendStatusUpdateNotification(String targetToken, String complaintTitle, String newStatus, String link) {
         FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
         if (messaging == null) {
             log.debug("Firebase is not configured; skipping status notification");
@@ -97,6 +98,7 @@ public class FcmNotificationService {
                         .setBody("\"" + complaintTitle + "\" is now " + readableStatus + ".")
                         .build())
                 .putData("status", newStatus == null ? "" : newStatus)
+                .putAllData(link == null ? java.util.Map.of() : java.util.Map.of("url", link))
                 .build();
 
         try {
@@ -171,6 +173,11 @@ public class FcmNotificationService {
             user.setFcmToken(null);
             userRepository.save(user);
         }
+    }
+
+    // Where clicking a status update takes the student: My Complaints, scrolled to it
+    static String complaintUrl(Long complaintId) {
+        return "/student?complaint=" + complaintId;
     }
 
     // Where clicking a nudge takes the admin; the page highlights this complaint

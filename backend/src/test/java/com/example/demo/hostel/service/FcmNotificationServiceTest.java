@@ -39,7 +39,7 @@ class FcmNotificationServiceTest {
     void sendsMessageWhenFirebaseIsConfigured() throws Exception {
         when(messaging.send(any(Message.class))).thenReturn("projects/p/messages/1");
 
-        service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "IN_PROGRESS");
+        service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "IN_PROGRESS", "/student?complaint=7");
 
         verify(messaging).send(any(Message.class));
     }
@@ -80,13 +80,13 @@ class FcmNotificationServiceTest {
 
     @Test
     void skipsQuietlyWhenFirebaseIsNotConfigured() {
-        assertThatCode(() -> service(null).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED"))
+        assertThatCode(() -> service(null).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED", "/student?complaint=7"))
                 .doesNotThrowAnyException();
     }
 
     @Test
     void skipsBlankToken() throws Exception {
-        service(messaging).sendStatusUpdateNotification(" ", "Leaking tap", "RESOLVED");
+        service(messaging).sendStatusUpdateNotification(" ", "Leaking tap", "RESOLVED", "/student?complaint=7");
 
         verify(messaging, never()).send(any(Message.class));
     }
@@ -97,7 +97,7 @@ class FcmNotificationServiceTest {
         when(error.getMessagingErrorCode()).thenReturn(MessagingErrorCode.UNAVAILABLE);
         when(messaging.send(any(Message.class))).thenThrow(error);
 
-        assertThatCode(() -> service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED"))
+        assertThatCode(() -> service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED", "/student?complaint=7"))
                 .doesNotThrowAnyException();
         verifyNoInteractions(userRepository);
     }
@@ -112,7 +112,7 @@ class FcmNotificationServiceTest {
         user.setFcmToken("stale-token");
         when(userRepository.findByFcmToken("stale-token")).thenReturn(List.of(user));
 
-        service(messaging).sendStatusUpdateNotification("stale-token", "Leaking tap", "RESOLVED");
+        service(messaging).sendStatusUpdateNotification("stale-token", "Leaking tap", "RESOLVED", "/student?complaint=7");
 
         verify(userRepository).save(user);
         org.assertj.core.api.Assertions.assertThat(user.getFcmToken()).isNull();
@@ -122,7 +122,7 @@ class FcmNotificationServiceTest {
     void unexpectedRuntimeErrorsDoNotEscape() throws Exception {
         when(messaging.send(any(Message.class))).thenThrow(new IllegalStateException("boom"));
 
-        assertThatCode(() -> service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED"))
+        assertThatCode(() -> service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED", "/student?complaint=7"))
                 .doesNotThrowAnyException();
     }
 
@@ -136,6 +136,21 @@ class FcmNotificationServiceTest {
 
         verify(messaging, times(1)).sendEachForMulticast(any(MulticastMessage.class));
         verify(messaging, never()).send(any(Message.class));
+    }
+
+    @Test
+    void statusUpdateWithoutALinkStillSends() throws Exception {
+        when(messaging.send(any(Message.class))).thenReturn("projects/p/messages/1");
+
+        service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED", null);
+
+        verify(messaging).send(any(Message.class));
+    }
+
+    @Test
+    void statusUpdateLinksToTheComplaintInMyComplaints() {
+        org.assertj.core.api.Assertions.assertThat(FcmNotificationService.complaintUrl(7L))
+                .isEqualTo("/student?complaint=7");
     }
 
     @Test
