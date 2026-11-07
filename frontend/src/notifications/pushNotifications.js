@@ -2,6 +2,7 @@
 import { getToken, onMessage } from 'firebase/messaging';
 import { messagingPromise } from '../firebase';
 import { apiFetch, getToken as getSessionToken } from '../auth/session';
+import { createForegroundListeners } from './foregroundListeners';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -9,6 +10,8 @@ const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 // re-runs and page remounts send one request. The key includes the session
 // token, so each new login refreshes the FCM token, even for the same student.
 let currentRegistration = null;
+
+let addForegroundListener = null;
 
 // Logout must not hang on a slow network.
 const MAX_LOGOUT_WAIT_MS = 3000;
@@ -205,7 +208,9 @@ export async function listenForForegroundMessages(callback) {
 
   console.log('[FCM] Foreground listener registered.');
 
-  return onMessage(messaging, (payload) => {
+  addForegroundListener ??= createForegroundListeners((handler) => onMessage(messaging, handler));
+
+  return addForegroundListener((payload) => {
     console.log('[FCM] Foreground message received:', payload);
 
     const title = payload.notification?.title || 'HostelFix';
