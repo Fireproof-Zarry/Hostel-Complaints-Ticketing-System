@@ -22,6 +22,12 @@ import java.util.List;
 @Service
 public class AdminService {
 
+    // Unresolved nudged complaints on top, latest nudge first; the sort is stable,
+    // so everything else keeps its order. A closed complaint needs no attention.
+    private static final Comparator<Complaint> NUDGED_FIRST = Comparator.comparing(
+            complaint -> NudgeService.isUnresolved(complaint) ? complaint.getLastNudgedAt() : null,
+            Comparator.nullsLast(Comparator.reverseOrder()));
+
     private final ComplaintRepository complaintRepository;
     private final ComplaintTransitionService transitionService;
     private final UserRepository userRepository;
@@ -78,7 +84,9 @@ public class AdminService {
                         communityArea
                 );
 
-        return complaintRepository.findAll(specification);
+        return complaintRepository.findAll(specification).stream()
+                .sorted(NUDGED_FIRST)
+                .toList();
     }
 
     @Transactional

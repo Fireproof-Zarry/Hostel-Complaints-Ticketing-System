@@ -194,4 +194,24 @@ public interface ComplaintRepository
         int archiveCompletedBefore(
                         @Param("statuses") Collection<Status> statuses,
                         @Param("cutoff") LocalDateTime cutoff);
+
+        /**
+         * Records a nudge if the complaint is still nudgeable; returns 0 if not.
+         * A single conditional UPDATE so that simultaneous nudges cannot both
+         * succeed. Bypasses @UpdateTimestamp and @Version on purpose: a nudge
+         * changes nothing an admin is editing, so it must not cause a conflict.
+         */
+        @Modifying(flushAutomatically = true, clearAutomatically = true)
+        @Query("""
+                UPDATE Complaint c SET c.lastNudgedAt = :now
+                WHERE c.id = :id
+                  AND c.status IN :statuses
+                  AND c.createdAt < :cutoff
+                  AND (c.lastNudgedAt IS NULL OR c.lastNudgedAt < :cutoff)
+                """)
+        int recordNudge(
+                        @Param("id") Long id,
+                        @Param("statuses") Collection<Status> statuses,
+                        @Param("now") LocalDateTime now,
+                        @Param("cutoff") LocalDateTime cutoff);
 }

@@ -97,7 +97,7 @@ public class ComplaintTransitionService {
 
     // Notify only once the change is committed, so a rolled-back update never
     // reaches the student's phone
-    private static void runAfterCommit(Runnable action) {
+    static void runAfterCommit(Runnable action) {
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override

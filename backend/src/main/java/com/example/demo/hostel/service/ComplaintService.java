@@ -163,8 +163,13 @@ public class ComplaintService {
             contacts.put(workOrder.getComplaint().getId(),
                     new AssigneeContact(WorkOrderService.displayName(assignee), assignee.getPhoneNumber()));
         }
+        LocalDateTime now = LocalDateTime.now();
         return complaints.stream()
-                .map(complaint -> new MyComplaint(complaint, contacts.get(complaint.getId())))
+                .map(complaint -> new MyComplaint(
+                        complaint,
+                        contacts.get(complaint.getId()),
+                        NudgeService.canNudge(complaint, now),
+                        NudgeService.nextNudgeAt(complaint)))
                 .toList();
     }
 
