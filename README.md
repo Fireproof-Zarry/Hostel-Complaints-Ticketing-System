@@ -10,6 +10,7 @@ A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras 
 - See a warning when a similar complaint already exists
 - Follow each complaint's status and timeline, and see who is handling it
 - Upvote community issues, and delete a complaint while it is still pending
+- Nudge the admins about a complaint that's been open for a week
 - Get push notifications when a status changes
 
 **Hostel staff**
@@ -23,6 +24,7 @@ A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras 
 **Admins**
 - Everything staff can do, plus assigning complaints to anyone
 - Add and remove staff, and see each person's workload
+- Get notified when a student nudges a complaint, with nudged complaints shown first
 
 ## Tech stack
 
