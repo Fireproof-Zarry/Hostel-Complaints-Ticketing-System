@@ -2,6 +2,7 @@ package com.example.demo.hostel.dto.analytics;
 
 import java.util.List;
 
+/** Everything the analytics dashboard shows, from one request. */
 public class AnalyticsResponseDTO {
 
     private OverviewDTO overview;

@@ -34,6 +34,7 @@ import './AdminHome.css'
 
 // Shown in the main area like the other sidebar pages
 const PROFILE_VIEW = 'My Profile'
+// Sidebar pages; the Complaints page is the default
 const STAFF_VIEW = 'Staff Management'
 const MY_COMPLAINTS_VIEW = 'My Complaints'
 const FILE_COMPLAINT_VIEW = 'File Complaint'
@@ -57,6 +58,7 @@ async function responseError(response, fallback) {
   }
 }
 
+/** Complaints containing every word of the search, across their main fields. */
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
   if (!query) return complaints
@@ -96,6 +98,7 @@ const istCalendarFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
+/** A server timestamp as a Date, or null. */
 function parseComplaintDate(value) {
   if (!value) return null
 
@@ -105,11 +108,13 @@ function parseComplaintDate(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+/** A server timestamp in IST. */
 function formatComplaintDateTime(value) {
   const date = parseComplaintDate(value)
   return date ? istDateFormatter.format(date) : '—'
 }
 
+/** The IST calendar day of a date, for counting days since a complaint was raised. */
 function getIstCalendarDay(date) {
   const parts = Object.fromEntries(
     istCalendarFormatter.formatToParts(date).map(({ type, value }) => [type, value])
@@ -117,10 +122,12 @@ function getIstCalendarDay(date) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
 }
 
+/** True when a complaint's room number does not belong to its floor. */
 function hasFloorRoomMismatch(floor, room) {
   return getRoomHundredsForFloor(floor) !== null && !isRoomOnFloor(floor, room)
 }
 
+/** The dashboard for admins and staff: sidebar, pages, and the complaint dialogs. */
 export default function AdminHome() {
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(true)

@@ -11,6 +11,7 @@ import {
   setNotificationsTurnedOff,
 } from './pushNotifications';
 
+/** Notification state and the on/off actions for a page. Registers the device when allowed. */
 export default function usePushNotifications(profileId) {
   // 'granted', 'denied', 'default', or 'unsupported' without the Notification API.
   const [notificationPermission, setNotificationPermission] = useState(

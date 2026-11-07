@@ -145,6 +145,16 @@ The rate limit is held in memory, which suits a single server instance.
 
 Archived complaints leave the admin dashboard, but their owners can still see them. Reopening a complaint brings it back.
 
+## Analytics
+
+`GET /api/admin/analytics` returns all the dashboard's figures at once. `AnalyticsRepository` runs native PostgreSQL queries, and `AnalyticsService` combines them.
+
+- **Date range:** this applies to when complaints were filed. Resolution figures use when they were resolved.
+- **Resolution rate:** resolved complaints as a percentage of all complaints except rejected ones.
+- **Average resolution time:** hours from filing to the latest move to Resolved, for complaints that are currently Resolved.
+- **Recurring issues:** the same category reported at least twice in one room, or in one floor and wing.
+- **Soft-deleted complaints** are never counted. Archived ones are, so old complaints still count towards trends.
+
 ## Concurrency
 
 `Complaint` has a `@Version` field. If two people change a complaint at the same moment, the second gets a 409 instead of overwriting the first.

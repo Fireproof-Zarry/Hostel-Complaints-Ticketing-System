@@ -13,6 +13,7 @@ import { INITIAL_COMPLAINT_FORM } from '../constants/studentConstants';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+/** The File Complaint form: its fields, draft, duplicate check and submission. */
 export default function useComplaintForm({
   token,
   profile,

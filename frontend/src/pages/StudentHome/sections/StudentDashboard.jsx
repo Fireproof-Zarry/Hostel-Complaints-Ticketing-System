@@ -4,6 +4,7 @@ import DashboardWelcome from '../components/DashboardWelcome';
 import ComplaintSummaryCard from '../components/ComplaintSummaryCard';
 import RecentComplaints from '../components/RecentComplaints';
 
+/** The Home tab: welcome, counts and recent complaints. */
 export default function StudentDashboard({
     complaints,
     activeCount,

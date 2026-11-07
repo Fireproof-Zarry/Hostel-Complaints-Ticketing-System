@@ -1,5 +1,9 @@
 package com.example.demo.hostel.dto.analytics;
 
+/**
+ * The same category reported at least twice in one place. type is ROOM, or COMMUNITY_AREA
+ * for a community area.
+ */
 public class RecurringIssueDTO {
 
     // ROOM or COMMUNITY_AREA

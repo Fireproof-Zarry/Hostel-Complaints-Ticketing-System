@@ -1,5 +1,6 @@
 import { FilePlus2 } from 'lucide-react';
 
+/** The dashboard's greeting banner. */
 export default function DashboardWelcome({ onFileComplaint }) {
     return (
         <section className="flex flex-col items-start justify-between gap-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white shadow-lg md:flex-row md:items-center md:p-8">

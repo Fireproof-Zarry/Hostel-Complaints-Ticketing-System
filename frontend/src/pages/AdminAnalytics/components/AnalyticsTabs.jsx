@@ -1,4 +1,5 @@
 
+/** Switches between the dashboard's sections. */
 function AnalyticsTabs({ tabs, activeTab, onTabChange }) {
     return (
         <div className="analytics-tabs">

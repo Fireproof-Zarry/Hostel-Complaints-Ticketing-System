@@ -185,7 +185,17 @@ Status can be `IN_PROGRESS`, `DONE` or `CANCELLED`.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/admin/analytics` | Data for the analytics dashboard, with optional `startDate` and `endDate` |
+| GET | `/api/admin/analytics` | Everything the analytics dashboard shows |
+
+`startDate` and `endDate` are optional dates such as `2026-11-01`, and both are inclusive. A start after the end returns 400.
+
+| Response field | Contents |
+|---|---|
+| `overview` | `totalComplaints`, a count per status, `unresolved`, `resolutionRate`, `averageResolutionTimeHours` |
+| `categoryBreakdown` | `category` and `count`, including categories with none |
+| `floorBreakdown` | `floor` and `count` |
+| `recurringIssues` | `type`, `floor`, `roomNumber`, `wing`, `category`, `count`, for the same category reported at least twice in one place |
+| `monthlyTrends` | `month` (`yyyy-MM`), `created`, `resolved`. Months with no activity are included as zero. With no dates, it covers the last 12 months |
 
 ## Original student API
 

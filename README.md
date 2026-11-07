@@ -18,11 +18,11 @@ A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras 
 - Use **My complaints** for their assigned and filed complaints
 - File community-area or room complaints
 - Get notified when a complaint is assigned to them
+- View the analytics dashboard
 
 **Admins**
 - Everything staff can do, plus assigning complaints to anyone
 - Add and remove staff, and see each person's workload
-- View the analytics dashboard
 
 ## Tech stack
 

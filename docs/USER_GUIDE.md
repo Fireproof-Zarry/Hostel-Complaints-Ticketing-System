@@ -86,6 +86,20 @@ Open **File complaint** and choose a **Community area complaint** or **Room comp
 
 Turn on **Assignment notifications** at the top of **My complaints** to hear about new work. It only applies to that browser, and logging out stops it.
 
+### Analytics
+
+Open **Analytics** to see how the hostel is doing. Choose a date range and apply it, or leave it empty to include everything.
+
+| Tab | What it shows |
+|---|---|
+| **Overview** | Headline counts and the monthly complaint trend |
+| **Categories** | Complaints per category |
+| **Floors** | Complaints per floor |
+| **Recurring Issues** | The same kind of problem reported at least twice in one place |
+| **Resolution** | Monthly filed and resolved counts, the resolution rate, and average resolution time |
+
+Resolution rate is the share of complaints resolved, leaving out rejected ones. Admins see this page too.
+
 ## Admins
 
 Admins can do everything staff can, plus the following.
@@ -103,10 +117,6 @@ Open **Staff management**.
 - **Remove staff:** click **Remove**, then move their complaints to someone else or return them to Pending.
 
 Admins themselves are set in the app's configuration, not on this page.
-
-### Analytics
-
-Open **Analytics** for trends across categories, floors, resolution times and recurring issues.
 
 ## Good to know
 

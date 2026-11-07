@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Hostel management of complaints, for admins and staff (SecurityConfig: /api/admin/**).
+ * Reporters use ComplaintController.
+ */
 @RestController
 @RequestMapping("/api/admin/complaints")
 public class AdminController {
@@ -26,6 +30,7 @@ public class AdminController {
         this.adminService = adminService;
     }
 
+    /** Non-archived complaints matching the optional filters. */
     @GetMapping
     public List<Complaint> getComplaints(
             @RequestParam(required = false) Status status,
@@ -52,6 +57,10 @@ public class AdminController {
         );
     }
 
+    /**
+     * Changes a complaint's status directly: 409 if the workflow does not allow the move.
+     * Any active work order follows; see WorkOrderService.syncWithComplaintStatus.
+     */
     @PatchMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(
             @PathVariable Long id,
@@ -75,6 +84,10 @@ public class AdminController {
         }
     }
 
+    /**
+     * Assigns a complaint by the assignee's email, creating or updating its work order.
+     * Staff can only assign themselves.
+     */
     @PatchMapping("/{id}/assign")
     public ResponseEntity<?> assignComplaint(
             @PathVariable Long id,
@@ -104,11 +117,13 @@ public class AdminController {
         return adminService.getComplaint(id);
     }
 
+    /** Archived complaints, most recently updated first. */
     @GetMapping("/archived")
     public List<Complaint> getArchivedComplaints() {
         return adminService.getArchivedComplaints();
     }
 
+    /** Everyone a complaint can be assigned to: admins and staff. */
     @GetMapping("/admins")
     public List<User> getAdmins() {
         return adminService.getAdmins();

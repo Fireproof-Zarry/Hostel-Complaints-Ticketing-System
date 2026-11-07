@@ -1,4 +1,5 @@
 
+/** The date range controls. */
 function AnalyticsFilters({
     startDate,
     endDate,

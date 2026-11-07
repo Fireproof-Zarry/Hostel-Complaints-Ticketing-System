@@ -1,5 +1,6 @@
 import { Bell, LogOut } from 'lucide-react';
 
+/** The top bar, with the notification bell and Log out. */
 export default function StudentHeader({
     title,
     isNotificationsActive,
