@@ -4,7 +4,6 @@ import {
   AlertCircle,
   ArrowDownToLine,
   BarChart3,
-  Bell,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -18,7 +17,6 @@ import {
   Users,
   Wrench,
 } from 'lucide-react'
-import ComingSoon from './ComingSoon'
 import MyComplaintsPage from '../components/MyComplaintsPage'
 import StaffComplaintForm from '../components/StaffComplaintForm'
 import StaffManagement from '../components/StaffManagement'
@@ -128,7 +126,7 @@ export default function AdminHome() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [admins, setAdmins] = useState([])
-  const [comingSoonPage, setComingSoonPage] = useState(null)
+  const [activePage, setActivePage] = useState(null)
   // ADMIN or STAFF; staff share this dashboard but cannot manage staff and
   // can only assign complaints to themselves
   const [currentUser, setCurrentUser] = useState(null)
@@ -529,9 +527,9 @@ export default function AdminHome() {
         <nav className="admin-nav" aria-label="Admin navigation">
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
+            className={`admin-nav-item ${activePage === null ? 'active' : ''}`}
             onClick={() => {
-              setComingSoonPage(null)
+              setActivePage(null)
               setError('')
             }}
             title="Complaints"
@@ -543,8 +541,8 @@ export default function AdminHome() {
 
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === MY_COMPLAINTS_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(MY_COMPLAINTS_VIEW)}
+            className={`admin-nav-item ${activePage === MY_COMPLAINTS_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(MY_COMPLAINTS_VIEW)}
             title="My complaints"
           >
             <Inbox size={19} />
@@ -553,8 +551,8 @@ export default function AdminHome() {
 
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === FILE_COMPLAINT_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(FILE_COMPLAINT_VIEW)}
+            className={`admin-nav-item ${activePage === FILE_COMPLAINT_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(FILE_COMPLAINT_VIEW)}
             title="File complaint"
           >
             <FilePlus2 size={19} />
@@ -564,8 +562,8 @@ export default function AdminHome() {
           {/* Analytics navigation */}
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Analytics' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Analytics')}
+            className={`admin-nav-item ${activePage === 'Analytics' ? 'active' : ''}`}
+            onClick={() => setActivePage('Analytics')}
             title="Analytics"
           >
             <BarChart3 size={19} />
@@ -575,8 +573,8 @@ export default function AdminHome() {
           {isAdmin && (
             <button
               type="button"
-              className={`admin-nav-item ${comingSoonPage === STAFF_VIEW ? 'active' : ''}`}
-              onClick={() => setComingSoonPage(STAFF_VIEW)}
+              className={`admin-nav-item ${activePage === STAFF_VIEW ? 'active' : ''}`}
+              onClick={() => setActivePage(STAFF_VIEW)}
               title="Staff management"
             >
               <Users size={19} />
@@ -588,8 +586,8 @@ export default function AdminHome() {
         <div className="admin-sidebar-bottom">
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === PROFILE_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(PROFILE_VIEW)}
+            className={`admin-nav-item ${activePage === PROFILE_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(PROFILE_VIEW)}
             title="My profile"
           >
             <UserRound size={19} />
@@ -630,50 +628,23 @@ export default function AdminHome() {
           </button>
 
           <div className="admin-header-title">
-            <span>HOSTELFIX / {comingSoonPage ? comingSoonPage.toUpperCase() : 'COMPLAINTS'}</span>
-            <h1>{comingSoonPage || 'Complaints'}</h1>
+            <span>HOSTELFIX / {activePage ? activePage.toUpperCase() : 'COMPLAINTS'}</span>
+            <h1>{activePage || 'Complaints'}</h1>
           </div>
 
-          <div className="admin-header-actions">
-            <button
-              type="button"
-              className="admin-header-icon"
-              aria-label="Notifications (work in progress)"
-              title="Notifications are a work in progress"
-              onClick={() => setComingSoonPage('Notifications')}
-            >
-              <Bell size={19} />
-              <i />
-            </button>
-          </div>
         </header>
 
         <section className="admin-content">
-          {comingSoonPage === 'Analytics' ? (
+          {activePage === 'Analytics' ? (
             <AdminAnalytics />
-          ) : comingSoonPage === PROFILE_VIEW ? (
+          ) : activePage === PROFILE_VIEW ? (
             <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />
-          ) : comingSoonPage === STAFF_VIEW && isAdmin ? (
+          ) : activePage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
-          ) : comingSoonPage === MY_COMPLAINTS_VIEW ? (
+          ) : activePage === MY_COMPLAINTS_VIEW ? (
             <MyComplaintsPage onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
-          ) : comingSoonPage === FILE_COMPLAINT_VIEW ? (
+          ) : activePage === FILE_COMPLAINT_VIEW ? (
             <StaffComplaintForm onFiled={handleRefreshComplaints} />
-          ) : comingSoonPage ? (
-            <div className="admin-work-in-progress">
-              <ComingSoon title={comingSoonPage} />
-              <p>
-                This section is under development. Complaint management remains
-                available in the Complaints workspace.
-              </p>
-              <button
-                type="button"
-                className="admin-primary-button"
-                onClick={() => setComingSoonPage(null)}
-              >
-                <ClipboardList size={17} /> Go to complaints
-              </button>
-            </div>
           ) : (
             <>
               <div className="admin-page-heading">
