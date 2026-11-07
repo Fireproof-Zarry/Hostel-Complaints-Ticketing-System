@@ -41,6 +41,8 @@ public class ComplaintService {
     private static final int MAX_OPEN_COMPLAINTS = 5;
     // Staff report on behalf of the hostel; this only stops something going badly wrong
     private static final int MAX_OPEN_COMPLAINTS_STAFF = 50;
+    /** Matches the length of the description column. */
+    private static final int MAX_DESCRIPTION_LENGTH = 1000;
 
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
@@ -202,6 +204,27 @@ public class ComplaintService {
         }
         complaint.setDeletedAt(LocalDateTime.now());
         complaintRepository.save(complaint);
+    }
+
+    /**
+     * Replaces the text of the caller's own complaint while it is still open:
+     * 400 if blank or over 1000 characters, 409 once resolved or rejected, 404
+     * for anyone else's complaint.
+     */
+    @Transactional
+    public Complaint updateDescription(Long id, String email, String description) {
+        String trimmed = description == null ? "" : description.trim();
+        if (trimmed.isEmpty() || trimmed.length() > MAX_DESCRIPTION_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Description must be 1 to " + MAX_DESCRIPTION_LENGTH + " characters.");
+        }
+        Complaint complaint = getComplaintById(id, email);
+        if (complaint.getStatus() == Status.RESOLVED || complaint.getStatus() == Status.REJECTED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Closed complaints can no longer be edited.");
+        }
+        complaint.setDescription(trimmed);
+        return complaintRepository.save(complaint);
     }
 
     /** Stores a photo for the user's own complaint; see SupabaseStorageService for the checks. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { CalendarDays, MapPin, RefreshCw, ThumbsUp, Users } from 'lucide-react';
-import { apiFetch } from '../auth/session';
+import { CalendarDays, MapPin, RefreshCw, ArrowBigUp, Users } from 'lucide-react';
+import { apiFetch, decodeTokenPayload, getToken } from '../auth/session';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { HOSTEL_FLOORS } from '../utils/hostelLocation';
 import { replaceComplaint, toggleUpvoteOptimistically } from '../utils/upvotes';
@@ -29,12 +29,45 @@ async function fetchCommunityPage({ sort, floor, page }) {
   return response.json();
 }
 
+// The first page of the default view (most upvoted, all floors), shown straight
+// away after a page reload while fresh data loads. Kept in this browser tab's
+// session storage (cleared on logout) and tied to the signed-in account.
+export const COMMUNITY_CACHE_KEY = 'communityFeedCache';
+const DEFAULT_SORT = 'upvotes';
+
+function currentAccount() {
+  const token = getToken();
+  return token ? decodeTokenPayload(token)?.email ?? null : null;
+}
+
+function readCachedFeed() {
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(COMMUNITY_CACHE_KEY));
+    return cached && cached.account === currentAccount() && Array.isArray(cached.items) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedFeed(data) {
+  try {
+    sessionStorage.setItem(COMMUNITY_CACHE_KEY, JSON.stringify({
+      account: currentAccount(),
+      items: data.items ?? [],
+      totalPages: data.totalPages ?? 0,
+      totalItems: data.totalItems ?? 0,
+    }));
+  } catch {
+    // Without storage the next reload simply shows Loading.
+  }
+}
+
 /** Upvote toggle showing the current count. */
 function UpvoteButton({ complaint, pending, onToggle }) {
   if (complaint.reportedByYou) {
     return (
       <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-slate-500">
-        <ThumbsUp className="h-4 w-4" aria-hidden="true" />
+        <ArrowBigUp className="h-4 w-4" aria-hidden="true" />
         {complaint.upvoteCount}
         <span className="text-xs">· Your complaint</span>
       </span>
@@ -55,7 +88,7 @@ function UpvoteButton({ complaint, pending, onToggle }) {
           : 'border border-slate-300 text-slate-700 hover:border-blue-400 hover:text-blue-700'
       }`}
     >
-      <ThumbsUp className="h-4 w-4" fill={upvoted ? 'currentColor' : 'none'} aria-hidden="true" />
+      <ArrowBigUp className="h-4 w-4" fill={upvoted ? 'currentColor' : 'none'} aria-hidden="true" />
       {complaint.upvoteCount}
     </button>
   );
@@ -110,10 +143,15 @@ function CommunityComplaintCard({ complaint, pending, onToggle }) {
  * student's personal complaints feed.
  */
 export default function CommunityDashboard({ refreshSignal = 0 }) {
-  const [sort, setSort] = useState('upvotes');
+  const [sort, setSort] = useState(DEFAULT_SORT);
   const [floor, setFloor] = useState('');
   const [reloadCount, setReloadCount] = useState(0);
-  const [feed, setFeed] = useState({ key: null, items: [], page: 0, totalPages: 0, totalItems: 0, error: '' });
+  const [feed, setFeed] = useState(() => {
+    const cached = readCachedFeed();
+    return cached
+      ? { key: JSON.stringify([DEFAULT_SORT, '', 0]), page: 0, error: '', ...cached }
+      : { key: null, items: [], page: 0, totalPages: 0, totalItems: 0, error: '' };
+  });
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [pendingIds, setPendingIds] = useState(() => new Set());
   // Mirrors pendingIds for click handlers, which may run before a re-render
@@ -129,6 +167,7 @@ export default function CommunityDashboard({ refreshSignal = 0 }) {
     fetchCommunityPage({ sort, floor, page: 0 })
       .then((data) => {
         if (!active) return;
+        if (sort === DEFAULT_SORT && !floor) writeCachedFeed(data);
         setFeed({
           key: queryKey,
           items: data.items ?? [],

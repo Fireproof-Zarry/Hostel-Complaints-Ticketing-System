@@ -284,4 +284,56 @@ class ComplaintServiceTest {
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
         verifyNoInteractions(complaintHistoryRepository);
     }
+
+    private Complaint stubOwnComplaint(Status status) {
+        Complaint complaint = new Complaint();
+        complaint.setStatus(status);
+        complaint.setDescription("Old text");
+        when(userRepository.findByEmail("student@smail.iitm.ac.in"))
+                .thenReturn(Optional.of(testStudent));
+        when(complaintRepository.findByIdAndStudent(7L, testStudent))
+                .thenReturn(Optional.of(complaint));
+        return complaint;
+    }
+
+    @Test
+    void updateDescription_savesTrimmedTextWhileOpen() {
+        Complaint complaint = stubOwnComplaint(Status.IN_PROGRESS);
+        when(complaintRepository.save(complaint)).thenReturn(complaint);
+
+        Complaint result = complaintService.updateDescription(
+                7L, "student@smail.iitm.ac.in", "  New text  ");
+
+        assertEquals("New text", result.getDescription());
+    }
+
+    @Test
+    void updateDescription_rejectsBlankText() {
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> complaintService.updateDescription(7L, "student@smail.iitm.ac.in", "   "));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(complaintRepository, never()).save(any());
+    }
+
+    @Test
+    void updateDescription_rejectsTooLongText() {
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> complaintService.updateDescription(
+                        7L, "student@smail.iitm.ac.in", "a".repeat(1001)));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+    }
+
+    @Test
+    void updateDescription_refusesClosedComplaint() {
+        Complaint complaint = stubOwnComplaint(Status.RESOLVED);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> complaintService.updateDescription(7L, "student@smail.iitm.ac.in", "New text"));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Old text", complaint.getDescription());
+        verify(complaintRepository, never()).save(any());
+    }
 }

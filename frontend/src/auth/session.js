@@ -119,6 +119,9 @@ export function logout() {
   localStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(NOTICE_KEY);
   window.google?.accounts?.id?.disableAutoSelect();
+  // The student dashboard's cached complaints, profile and community feed
+  sessionStorage.removeItem('studentDashboardCache');
+  sessionStorage.removeItem('communityFeedCache');
 }
 
 /**

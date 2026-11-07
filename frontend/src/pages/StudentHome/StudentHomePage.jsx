@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -28,13 +28,28 @@ import { isDraftEmpty } from '../../utils/complaintDraft';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+const TAB_STORAGE_KEY = 'studentActiveTab';
+const TAB_IDS = new Set(STUDENT_NAVIGATION.map((item) => item.id).filter((id) => id !== 'profile'));
+
+// The tab open before a page refresh; per browser tab, so it resets once the tab is closed
+function readSavedTab() {
+  try {
+    const saved = sessionStorage.getItem(TAB_STORAGE_KEY);
+    return TAB_IDS.has(saved) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The student dashboard: the sidebar, each tab, and the complaint dialogs. */
 export default function StudentHomePage() {
   const location = useLocation();
   const navigate = useNavigate();
   const token = getToken();
 
-  const [activeTab, setActiveTab] = useState(location.state?.tab ?? 'home');
+  const [activeTab, setActiveTab] = useState(
+    () => location.state?.tab ?? readSavedTab() ?? 'home'
+  );
   const [submittedComplaint, setSubmittedComplaint] = useState(null);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -43,6 +58,16 @@ export default function StudentHomePage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [statusUpdateCount, setStatusUpdateCount] = useState(0);
+  // Opening the Community tab refreshes its counts in place (see below)
+  const [communityVisits, setCommunityVisits] = useState(0);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(TAB_STORAGE_KEY, activeTab);
+    } catch {
+      // Without storage a refresh just opens Home.
+    }
+  }, [activeTab]);
 
   const imageUploadRef = useRef(null);
 
@@ -187,6 +212,32 @@ export default function StudentHomePage() {
     [setError]
   );
 
+  const handleSaveDescription = useCallback(
+    async (complaint, description) => {
+      const response = await apiFetch(
+        `${apiBaseUrl}/complaints/${complaint.id}/description`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description }),
+        }
+      );
+
+      if (response.status === 409) {
+        setComplaints(await requestMyComplaints());
+        throw new Error('This complaint is closed, so it can no longer be edited.');
+      }
+      if (!response.ok) {
+        throw new Error(`Could not save your changes (HTTP ${response.status}). Please try again.`);
+      }
+
+      setComplaints((current) =>
+        current.map((item) => (item.id === complaint.id ? { ...item, description } : item))
+      );
+    },
+    [requestMyComplaints, setComplaints]
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     if (!complaintToDelete) return;
 
@@ -254,6 +305,9 @@ export default function StudentHomePage() {
             return;
           }
 
+          if (id === 'community' && activeTab !== 'community') {
+            setCommunityVisits((count) => count + 1);
+          }
           setActiveTab(id);
           setError('');
           setSuccess('');
@@ -472,9 +526,11 @@ export default function StudentHomePage() {
             </section>
           )}
 
-          {activeTab === 'community' && (
-            <CommunityDashboard refreshSignal={statusUpdateCount} />
-          )}
+          {/* Always mounted, so the feed loads with the page and is ready when the
+              tab opens; each visit then updates the counts without a spinner. */}
+          <div hidden={activeTab !== 'community'}>
+            <CommunityDashboard refreshSignal={statusUpdateCount + communityVisits} />
+          </div>
         </div>
       </main>
 
@@ -490,6 +546,7 @@ export default function StudentHomePage() {
         <StudentComplaintDetails
           complaint={viewedComplaint}
           onClose={closeComplaintDetails}
+          onSaveDescription={handleSaveDescription}
         />
       )}
 

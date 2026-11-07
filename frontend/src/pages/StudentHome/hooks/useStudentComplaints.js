@@ -1,13 +1,40 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { apiFetch } from '../../../auth/session';
+import { apiFetch, decodeTokenPayload } from '../../../auth/session';
 import { isActiveComplaint } from '../utils/studentUtils';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
-// Shown straight away when the student returns from My Profile, while the
-// fresh list loads. The token ties it to the current login.
-let lastComplaints = null;
+// The last complaints and profile, shown straight away after a page reload or
+// a return from My Profile while fresh data loads. Kept in this browser tab's
+// session storage (cleared on logout) and tied to the signed-in account.
+export const STUDENT_CACHE_KEY = 'studentDashboardCache';
+
+function accountOf(token) {
+  return token ? decodeTokenPayload(token)?.email ?? null : null;
+}
+
+function readCache(token) {
+  const account = accountOf(token);
+  if (!account) return null;
+  try {
+    const cached = JSON.parse(sessionStorage.getItem(STUDENT_CACHE_KEY));
+    return cached?.account === account && Array.isArray(cached.complaints) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(token, data) {
+  const account = accountOf(token);
+  if (!account) return;
+  try {
+    const current = readCache(token) ?? {};
+    sessionStorage.setItem(STUDENT_CACHE_KEY, JSON.stringify({ ...current, ...data, account }));
+  } catch {
+    // Without storage the next reload simply shows Loading.
+  }
+}
 
 /** Loads the student's complaints and profile, and applies the search and status filter. */
 export default function useStudentComplaints(
@@ -15,13 +42,10 @@ export default function useStudentComplaints(
   search = '',
   statusFilter = 'ALL'
 ) {
-  const [complaints, setComplaints] = useState(() =>
-    lastComplaints?.token === token ? lastComplaints.complaints : []
-  );
-  const [profile, setProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(
-    () => lastComplaints?.token !== token
-  );
+  const [cached] = useState(() => readCache(token));
+  const [complaints, setComplaints] = useState(() => cached?.complaints ?? []);
+  const [profile, setProfile] = useState(() => cached?.profile ?? null);
+  const [isLoading, setIsLoading] = useState(() => !cached);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState('');
 
@@ -58,7 +82,10 @@ export default function useStudentComplaints(
     apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
-        if (data) setProfile(data);
+        if (data) {
+          setProfile(data);
+          writeCache(token, { profile: data });
+        }
       })
       .catch(() => {
         // Profile loading should not prevent the dashboard from rendering.
@@ -103,7 +130,7 @@ export default function useStudentComplaints(
 
   useEffect(() => {
     if (token && !isLoading && !error) {
-      lastComplaints = { token, complaints };
+      writeCache(token, { complaints });
     }
   }, [complaints, error, isLoading, token]);
 

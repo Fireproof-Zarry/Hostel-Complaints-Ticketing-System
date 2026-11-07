@@ -6,6 +6,7 @@ import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.dto.MyComplaint;
 import com.example.demo.hostel.dto.NudgeResponse;
+import com.example.demo.hostel.dto.UpdateDescriptionRequest;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
@@ -206,6 +207,16 @@ public class ComplaintController {
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(nudgeService.nudge(id, jwt.getClaimAsString("email")));
+    }
+
+    /** Owner edits the text of their own open complaint (409 once resolved or rejected). */
+    @PatchMapping("/{id}/description")
+    public ResponseEntity<Complaint> updateDescription(
+            @PathVariable Long id,
+            @RequestBody UpdateDescriptionRequest payload,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(complaintService.updateDescription(
+                id, jwt.getClaimAsString("email"), payload.description()));
     }
 
     /** Attaches a photo to the caller's own complaint, replacing any earlier one. */
