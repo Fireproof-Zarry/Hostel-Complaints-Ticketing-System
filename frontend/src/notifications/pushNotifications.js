@@ -2,6 +2,7 @@
 import { getToken, onMessage } from 'firebase/messaging';
 import { messagingPromise } from '../firebase';
 import { apiFetch, getToken as getSessionToken } from '../auth/session';
+import { createForegroundListeners } from './foregroundListeners';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -9,6 +10,11 @@ const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 // re-runs and page remounts send one request. The key includes the session
 // token, so each new login refreshes the FCM token, even for the same student.
 let currentRegistration = null;
+
+let addForegroundListener = null;
+
+// Where Firebase registers its service worker
+const FIREBASE_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
 
 // Logout must not hang on a slow network.
 const MAX_LOGOUT_WAIT_MS = 3000;
@@ -205,7 +211,9 @@ export async function listenForForegroundMessages(callback) {
 
   console.log('[FCM] Foreground listener registered.');
 
-  return onMessage(messaging, (payload) => {
+  addForegroundListener ??= createForegroundListeners((handler) => onMessage(messaging, handler));
+
+  return addForegroundListener((payload) => {
     console.log('[FCM] Foreground message received:', payload);
 
     const title = payload.notification?.title || 'HostelFix';
@@ -214,5 +222,20 @@ export async function listenForForegroundMessages(callback) {
       'Your complaint status has been updated.';
 
     callback({ title, body, payload });
+
+    // Firebase counts a window behind another app as visible and sends the
+    // message here, where nobody would see the in-app pop-up
+    if (!document.hasFocus()) {
+      showSystemNotification(title, body);
+    }
   });
+}
+
+async function showSystemNotification(title, body) {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+    await registration?.showNotification(title, { body });
+  } catch (error) {
+    console.warn('[FCM] Could not show the system notification:', error);
+  }
 }

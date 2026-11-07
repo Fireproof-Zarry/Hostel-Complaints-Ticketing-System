@@ -21,7 +21,7 @@ import StudentDashboard from './sections/StudentDashboard';
 import StudentHeader from './components/StudentHeader';
 import useComplaintForm from './hooks/useComplaintForm';
 import useStudentComplaints from './hooks/useStudentComplaints';
-import useStudentNotifications from './hooks/useStudentNotifications';
+import usePushNotifications from '../../notifications/usePushNotifications';
 import { removeFcmToken } from '../../notifications/pushNotifications';
 import useForegroundNotifications from '../../notifications/useForegroundNotifications';
 import { isDraftEmpty } from '../../utils/complaintDraft';
@@ -96,7 +96,7 @@ export default function StudentHomePage() {
     }
   }, [requestMyComplaints, setComplaints]);
 
-  const notifications = useStudentNotifications(profile?.id);
+  const notifications = usePushNotifications(profile?.id);
   const { notificationToast, dismissNotificationToast } =
     useForegroundNotifications(handleForegroundMessage);
 

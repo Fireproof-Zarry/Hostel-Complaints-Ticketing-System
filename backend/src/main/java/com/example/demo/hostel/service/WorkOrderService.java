@@ -42,16 +42,19 @@ public class WorkOrderService {
     private final ComplaintRepository complaintRepository;
     private final UserRepository userRepository;
     private final ComplaintTransitionService transitionService;
+    private final FcmNotificationService notificationService;
 
     public WorkOrderService(
             WorkOrderRepository workOrderRepository,
             ComplaintRepository complaintRepository,
             UserRepository userRepository,
-            ComplaintTransitionService transitionService) {
+            ComplaintTransitionService transitionService,
+            FcmNotificationService notificationService) {
         this.workOrderRepository = workOrderRepository;
         this.complaintRepository = complaintRepository;
         this.userRepository = userRepository;
         this.transitionService = transitionService;
+        this.notificationService = notificationService;
     }
 
     /**
@@ -93,6 +96,7 @@ public class WorkOrderService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This complaint is already assigned to " + displayName(workOrder.getAssignee()));
         }
+        boolean isNewAssignee = workOrder == null || !workOrder.getAssignee().getId().equals(assignee.getId());
         if (workOrder == null) {
             workOrder = new WorkOrder();
             workOrder.setComplaint(complaint);
@@ -107,6 +111,9 @@ public class WorkOrderService {
         if (complaint.getStatus() == Status.PENDING) {
             transitionService.changeComplaintStatus(complaintId, actor.getId(), Status.ASSIGNED.name(),
                     "Assigned to " + displayName(assignee));
+        }
+        if (isNewAssignee) {
+            notifyAssignee(assignee, actor, "\"" + complaint.getTitle() + "\" was assigned to you.");
         }
         return toView(workOrder);
     }
@@ -251,7 +258,7 @@ public class WorkOrderService {
      * does not change. Runs in the caller's transaction.
      */
     @Transactional
-    public int reassignActiveWorkOrders(User from, User to) {
+    public int reassignActiveWorkOrders(User from, User to, User actor) {
         List<WorkOrder> active = workOrderRepository.findByAssigneeAndStatusIn(from, ACTIVE);
         for (WorkOrder workOrder : active) {
             workOrder.setAssignee(to);
@@ -260,7 +267,21 @@ public class WorkOrderService {
             complaint.setAssignedTo(to.getEmail());
             complaintRepository.save(complaint);
         }
+        if (active.size() == 1) {
+            notifyAssignee(to, actor, "\"" + active.getFirst().getComplaint().getTitle() + "\" was assigned to you.");
+        } else if (!active.isEmpty()) {
+            notifyAssignee(to, actor, active.size() + " complaints were assigned to you.");
+        }
         return active.size();
+    }
+
+    /** Someone assigning themselves already knows. */
+    private void notifyAssignee(User assignee, User actor, String body) {
+        if (assignee.getId().equals(actor.getId())) {
+            return;
+        }
+        String token = assignee.getFcmToken();
+        ComplaintTransitionService.runAfterCommit(() -> notificationService.sendAssignmentNotification(token, body));
     }
 
     static boolean isOverdue(WorkOrder workOrder) {
