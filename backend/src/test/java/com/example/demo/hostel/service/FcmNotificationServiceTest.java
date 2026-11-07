@@ -105,6 +105,12 @@ class FcmNotificationServiceTest {
     }
 
     @Test
+    void nudgeLinksToTheComplaintOnTheAdminPage() {
+        org.assertj.core.api.Assertions.assertThat(FcmNotificationService.nudgeUrl(7L))
+                .isEqualTo("/admin?complaint=7");
+    }
+
+    @Test
     void nudgeWithNoAdminTokensSendsNothing() throws Exception {
         service(messaging).sendNudgeNotification(List.of(), 7L, "Leaking tap");
 

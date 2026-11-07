@@ -273,22 +273,23 @@ class NudgePostgresIntegrationTest {
     @Test
     void conditionalUpdateAllowsOnlyAnEligibleComplaint() {
         LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
-        LocalDateTime cutoff = now.minusDays(NudgeService.NUDGE_WAIT_DAYS);
+        LocalDateTime cutoff = NudgeService.cutoff(now, java.time.ZoneId.systemDefault());
 
         Long eligible = complaintCreatedAt(cutoff.minusNanos(1_000), Status.ASSIGNED);
         Long nudgedLongAgo = complaintCreatedAt(cutoff.minusDays(10), Status.PENDING);
         setLastNudgedAt(nudgedLongAgo, cutoff.minusNanos(1_000));
 
-        Long exactlySevenDaysOld = complaintCreatedAt(cutoff, Status.PENDING);
-        Long nudgedExactlySevenDaysAgo = complaintCreatedAt(cutoff.minusDays(10), Status.PENDING);
-        setLastNudgedAt(nudgedExactlySevenDaysAgo, cutoff);
+        // Filed or nudged at the start of the first day that has not opened yet
+        Long filedOnTheNextDay = complaintCreatedAt(cutoff, Status.PENDING);
+        Long nudgedOnTheNextDay = complaintCreatedAt(cutoff.minusDays(10), Status.PENDING);
+        setLastNudgedAt(nudgedOnTheNextDay, cutoff);
         Long resolved = complaintCreatedAt(cutoff.minusDays(10), Status.RESOLVED);
         Long rejected = complaintCreatedAt(cutoff.minusDays(10), Status.REJECTED);
 
         assertThat(recordNudge(eligible, now, cutoff)).isEqualTo(1);
         assertThat(recordNudge(nudgedLongAgo, now, cutoff)).isEqualTo(1);
-        assertThat(recordNudge(exactlySevenDaysOld, now, cutoff)).isZero();
-        assertThat(recordNudge(nudgedExactlySevenDaysAgo, now, cutoff)).isZero();
+        assertThat(recordNudge(filedOnTheNextDay, now, cutoff)).isZero();
+        assertThat(recordNudge(nudgedOnTheNextDay, now, cutoff)).isZero();
         assertThat(recordNudge(resolved, now, cutoff)).isZero();
         assertThat(recordNudge(rejected, now, cutoff)).isZero();
     }

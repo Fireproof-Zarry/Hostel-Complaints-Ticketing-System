@@ -197,6 +197,7 @@ public interface ComplaintRepository
 
         /**
          * Records a nudge if the complaint is still nudgeable; returns 0 if not.
+         * {@code cutoff} is NudgeService.cutoff: filed and last nudged before it.
          * A single conditional UPDATE so that simultaneous nudges cannot both
          * succeed. Bypasses @UpdateTimestamp and @Version on purpose: a nudge
          * changes nothing an admin is editing, so it must not cause a conflict.

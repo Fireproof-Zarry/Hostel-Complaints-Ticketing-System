@@ -98,6 +98,7 @@ public class FcmNotificationService {
                         .setBody("#" + complaintId + " \"" + complaintTitle + "\" has been waiting over a week.")
                         .build())
                 .putData("complaintId", String.valueOf(complaintId))
+                .putData("url", nudgeUrl(complaintId))
                 .build();
 
         try {
@@ -128,6 +129,11 @@ public class FcmNotificationService {
             user.setFcmToken(null);
             userRepository.save(user);
         }
+    }
+
+    // Where clicking a nudge takes the admin; the page highlights this complaint
+    static String nudgeUrl(Long complaintId) {
+        return "/admin?complaint=" + complaintId;
     }
 
     private static String formatStatus(String status) {
