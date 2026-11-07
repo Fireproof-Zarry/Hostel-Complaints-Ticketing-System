@@ -2,10 +2,13 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
+import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.google.firebase.messaging.MulticastMessage;
+import com.google.firebase.messaging.SendResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
@@ -15,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -86,5 +90,58 @@ class FcmNotificationServiceTest {
 
         assertThatCode(() -> service(messaging).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void nudgeGoesToAllAdminsInOneMulticast() throws Exception {
+        BatchResponse batch = mock(BatchResponse.class);
+        when(batch.getResponses()).thenReturn(List.of());
+        when(messaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(batch);
+
+        service(messaging).sendNudgeNotification(List.of("admin-1", "admin-2", "admin-1", " "), 7L, "Leaking tap");
+
+        verify(messaging, times(1)).sendEachForMulticast(any(MulticastMessage.class));
+        verify(messaging, never()).send(any(Message.class));
+    }
+
+    @Test
+    void nudgeLinksToTheComplaintOnTheAdminPage() {
+        org.assertj.core.api.Assertions.assertThat(FcmNotificationService.nudgeUrl(7L))
+                .isEqualTo("/admin?complaint=7");
+    }
+
+    @Test
+    void nudgeWithNoAdminTokensSendsNothing() throws Exception {
+        service(messaging).sendNudgeNotification(List.of(), 7L, "Leaking tap");
+
+        verify(messaging, never()).sendEachForMulticast(any(MulticastMessage.class));
+    }
+
+    @Test
+    void nudgeSkipsQuietlyWhenFirebaseIsNotConfigured() {
+        assertThatCode(() -> service(null).sendNudgeNotification(List.of("admin-1"), 7L, "Leaking tap"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void nudgeClearsOnlyTheTokenFirebaseReportsAsUnregistered() throws Exception {
+        FirebaseMessagingException error = mock(FirebaseMessagingException.class);
+        when(error.getMessagingErrorCode()).thenReturn(MessagingErrorCode.UNREGISTERED);
+        SendResponse delivered = mock(SendResponse.class);
+        SendResponse failed = mock(SendResponse.class);
+        when(failed.getException()).thenReturn(error);
+        BatchResponse batch = mock(BatchResponse.class);
+        when(batch.getResponses()).thenReturn(List.of(delivered, failed));
+        when(messaging.sendEachForMulticast(any(MulticastMessage.class))).thenReturn(batch);
+
+        User stale = new User();
+        stale.setFcmToken("stale-token");
+        when(userRepository.findByFcmToken("stale-token")).thenReturn(List.of(stale));
+
+        service(messaging).sendNudgeNotification(List.of("good-token", "stale-token"), 7L, "Leaking tap");
+
+        verify(userRepository).save(stale);
+        verify(userRepository, never()).findByFcmToken("good-token");
+        org.assertj.core.api.Assertions.assertThat(stale.getFcmToken()).isNull();
     }
 }

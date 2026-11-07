@@ -75,6 +75,9 @@ export default function StudentComplaintDetails({ complaint, onClose }) {
               {complaint.communityArea ? complaint.wing || 'Community area' : `Room ${complaint.room || 'N/A'}`}
             </Detail>
             <Detail label="Filed">{formatServerDateTime(complaint.createdAt)}</Detail>
+            {complaint.lastNudgedAt && (
+              <Detail label="Last nudged">{formatServerDateTime(complaint.lastNudgedAt)}</Detail>
+            )}
             {complaint.availableTimeSlot && <Detail label="Available">{complaint.availableTimeSlot}</Detail>}
             {complaint.keyWithSecurity && (
               <Detail label="Room access">

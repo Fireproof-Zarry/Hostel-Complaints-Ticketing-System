@@ -1079,6 +1079,47 @@
   opacity: 0.55;
 }
 
+/* Border only, around the whole row: table rows cannot take a border of their
+   own, so each cell draws its part */
+.admin-shell .complaints-table tbody tr.complaint-row-highlighted td {
+  box-shadow: inset 0 2px 0 #f43f5e, inset 0 -2px 0 #f43f5e;
+}
+
+.admin-shell .complaints-table tbody tr.complaint-row-highlighted td:first-child {
+  box-shadow: inset 2px 0 0 #f43f5e, inset 0 2px 0 #f43f5e, inset 0 -2px 0 #f43f5e;
+}
+
+.admin-shell .complaints-table tbody tr.complaint-row-highlighted td:last-child {
+  box-shadow: inset -2px 0 0 #f43f5e, inset 0 2px 0 #f43f5e, inset 0 -2px 0 #f43f5e;
+}
+
+.admin-shell .detail-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.admin-nudged-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #ffe4e6;
+  color: #be123c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-nudged-icon {
+  display: inline-flex;
+  margin-right: 6px;
+  vertical-align: -2px;
+  color: #e11d48;
+}
+
 .admin-location-warning {
   display: block;
   width: fit-content;

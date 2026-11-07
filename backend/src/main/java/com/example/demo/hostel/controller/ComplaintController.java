@@ -5,10 +5,12 @@ import com.example.demo.hostel.dto.ComplaintHistoryEntry;
 import com.example.demo.hostel.dto.CreateComplaintRequest;
 import com.example.demo.hostel.dto.DuplicateCandidate;
 import com.example.demo.hostel.dto.MyComplaint;
+import com.example.demo.hostel.dto.NudgeResponse;
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.service.CommunityComplaintService;
 import com.example.demo.hostel.service.ComplaintService;
 import com.example.demo.hostel.service.DuplicateDetectionService;
+import com.example.demo.hostel.service.NudgeService;
 import com.example.demo.hostel.service.UpvoteService;
 import com.example.demo.hostel.validation.RoomLocationValidator;
 
@@ -34,18 +36,21 @@ public class ComplaintController {
     private final UpvoteService upvoteService;
     private final DuplicateDetectionService duplicateDetectionService;
     private final CommunityComplaintService communityComplaintService;
+    private final NudgeService nudgeService;
 
     public ComplaintController(
             ComplaintService complaintService,
             RoomLocationValidator roomLocationValidator,
             UpvoteService upvoteService,
             DuplicateDetectionService duplicateDetectionService,
-            CommunityComplaintService communityComplaintService) {
+            CommunityComplaintService communityComplaintService,
+            NudgeService nudgeService) {
         this.complaintService = complaintService;
         this.roomLocationValidator = roomLocationValidator;
         this.upvoteService = upvoteService;
         this.duplicateDetectionService = duplicateDetectionService;
         this.communityComplaintService = communityComplaintService;
+        this.nudgeService = nudgeService;
     }
 
     private static final int MAX_WING_LENGTH = 100;
@@ -176,6 +181,17 @@ public class ComplaintController {
             @AuthenticationPrincipal Jwt jwt) {
         complaintService.deleteComplaint(id, jwt.getClaimAsString("email"));
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Owner nudges the admins about an unresolved complaint older than 7 days,
+     * at most once every 7 days (409 otherwise; 404 for anyone else's complaint).
+     */
+    @PostMapping("/{id}/nudge")
+    public ResponseEntity<NudgeResponse> nudge(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        return ResponseEntity.ok(nudgeService.nudge(id, jwt.getClaimAsString("email")));
     }
 
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

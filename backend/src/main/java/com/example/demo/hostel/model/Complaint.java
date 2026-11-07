@@ -71,6 +71,12 @@ public class Complaint {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    // Last time the owner nudged the admins. Only ComplaintRepository.recordNudge
+    // writes it: not updatable, so saving a copy loaded just before a nudge
+    // cannot erase it.
+    @Column(name = "last_nudged_at", updatable = false)
+    private LocalDateTime lastNudgedAt;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "student_id", nullable = false)
     private User student;
@@ -120,6 +126,8 @@ public class Complaint {
     @JsonIgnore
     public LocalDateTime getDeletedAt() { return deletedAt; }
     public void setDeletedAt(LocalDateTime deletedAt) { this.deletedAt = deletedAt; }
+    public LocalDateTime getLastNudgedAt() { return lastNudgedAt; }
+    public void setLastNudgedAt(LocalDateTime lastNudgedAt) { this.lastNudgedAt = lastNudgedAt; }
     public boolean isArchived() { return isArchived; }
     public void setArchived(boolean archived) { this.isArchived = archived; }
     public User getStudent() { return student; }

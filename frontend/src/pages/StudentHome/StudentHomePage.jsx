@@ -21,7 +21,7 @@ import StudentDashboard from './sections/StudentDashboard';
 import StudentHeader from './components/StudentHeader';
 import useComplaintForm from './hooks/useComplaintForm';
 import useStudentComplaints from './hooks/useStudentComplaints';
-import useStudentNotifications from './hooks/useStudentNotifications';
+import usePushNotifications from '../../notifications/usePushNotifications';
 import { removeFcmToken } from '../../notifications/pushNotifications';
 import useForegroundNotifications from '../../notifications/useForegroundNotifications';
 import { isDraftEmpty } from '../../utils/complaintDraft';
@@ -96,7 +96,7 @@ export default function StudentHomePage() {
     }
   }, [requestMyComplaints, setComplaints]);
 
-  const notifications = useStudentNotifications(profile?.id);
+  const notifications = usePushNotifications(profile?.id);
   const { notificationToast, dismissNotificationToast } =
     useForegroundNotifications(handleForegroundMessage);
 
@@ -106,6 +106,28 @@ export default function StudentHomePage() {
     setError('');
     setSuccess('');
   }, [dismissNotificationToast, setError]);
+
+  const handleNudge = useCallback(
+    async (complaint) => {
+      const response = await apiFetch(
+        `${apiBaseUrl}/complaints/${complaint.id}/nudge`,
+        { method: 'POST' }
+      );
+
+      // Also after a refusal: the page may be out of date, and the refreshed
+      // complaint updates the button and explains why.
+      try {
+        setComplaints(await requestMyComplaints());
+      } catch {
+        // The manual Refresh button still works if this quiet update fails.
+      }
+
+      if (!response.ok) {
+        throw new Error('Could not nudge the administrators. Please try again later.');
+      }
+    },
+    [requestMyComplaints, setComplaints]
+  );
 
   const handleLogout = useCallback(async () => {
     await removeFcmToken();
@@ -315,6 +337,7 @@ export default function StudentHomePage() {
               onFileComplaint={handleFileComplaint}
               onViewComplaint={handleViewComplaint}
               onDeleteComplaint={handleDeleteComplaint}
+              onNudgeComplaint={handleNudge}
             />
           )}
 
