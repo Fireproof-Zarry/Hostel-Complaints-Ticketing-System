@@ -13,6 +13,9 @@ let currentRegistration = null;
 
 let addForegroundListener = null;
 
+// Where Firebase registers its service worker
+const FIREBASE_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
+
 // Logout must not hang on a slow network.
 const MAX_LOGOUT_WAIT_MS = 3000;
 
@@ -219,5 +222,20 @@ export async function listenForForegroundMessages(callback) {
       'Your complaint status has been updated.';
 
     callback({ title, body, payload });
+
+    // Firebase counts a window behind another app as visible and sends the
+    // message here, where nobody would see the in-app pop-up
+    if (!document.hasFocus()) {
+      showSystemNotification(title, body);
+    }
   });
+}
+
+async function showSystemNotification(title, body) {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+    await registration?.showNotification(title, { body });
+  } catch (error) {
+    console.warn('[FCM] Could not show the system notification:', error);
+  }
 }

@@ -350,6 +350,19 @@ class WorkOrderServiceIntegrationTest {
     }
 
     @Test
+    void assigningBackToAnEarlierAssigneeNotifiesThemAgain() {
+        giveDevice(warden, "warden-token");
+        giveDevice(caretaker, "caretaker-token");
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.LOW, null, ADMIN);
+        workOrderService.assignInCharge(complaintId, caretaker.getId(), WorkOrderPriority.LOW, null, ADMIN);
+        clearInvocations(notificationService);
+
+        workOrderService.assignInCharge(complaintId, warden.getId(), WorkOrderPriority.LOW, null, ADMIN);
+
+        verify(notificationService).sendAssignmentNotification(eq("warden-token"), anyString());
+    }
+
+    @Test
     void aFailedAssignmentSendsNothing() {
         giveDevice(warden, "warden-token");
         doThrow(new RuntimeException("simulated history failure"))
