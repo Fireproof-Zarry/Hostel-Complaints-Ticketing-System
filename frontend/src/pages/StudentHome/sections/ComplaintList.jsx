@@ -16,6 +16,7 @@ export default function ComplaintList({
     onFileComplaint,
     onViewComplaint,
     onDeleteComplaint,
+    onNudgeComplaint,
 }) {
     return (
         <section className="space-y-5">
@@ -102,6 +103,7 @@ export default function ComplaintList({
                             complaint={complaint}
                             onView={onViewComplaint}
                             onDelete={onDeleteComplaint}
+                            onNudge={onNudgeComplaint}
                         />
                     ))}
                 </div>
