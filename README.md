@@ -1,89 +1,87 @@
+# HostelFix
 
-# Hostel Complaints Ticketing System
+A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras (CS5013). Students report problems, hostel staff and admins assign and resolve them, and everyone can follow each complaint from filing to resolution.
 
+## Features
 
-## Frontend 
-### 1. Install Node.js using NVM
+**Students**
+- Sign in with an `@smail.iitm.ac.in` Google account
+- File room or community-area complaints, with an optional photo
+- See a warning when a similar complaint already exists
+- Follow each complaint's status and timeline, and see who is handling it
+- Upvote community issues, and delete a complaint while it is still pending
+- Get push notifications when a status changes
 
-If you're using WSL, install Node through NVM inside WSL.
+**Hostel staff**
+- Sign in with any Google account an admin has added
+- See all complaints, assign complaints to themselves, and work through them
+- Use **My complaints** for their assigned and filed complaints
+- File community-area or room complaints
+- Get notified when a complaint is assigned to them
 
-```bash
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-source ~/.bashrc
-nvm install 24
-nvm use 24
-node --version
-npm --version
-```
-To run frontend :
+**Admins**
+- Everything staff can do, plus assigning complaints to anyone
+- Add and remove staff, and see each person's workload
+- View the analytics dashboard
 
-```bash
-cd ~/Hostel-Complaints-Ticketing-System/frontend
-npm install
-npm run dev
-```
+## Tech stack
 
-## Run Locally With Make
+| Part | Technology |
+|---|---|
+| Frontend | React 19, Vite, Tailwind CSS, installable as a PWA |
+| Backend | Spring Boot 4, Java 21, Hibernate |
+| Database and photos | Supabase (PostgreSQL and Storage) |
+| Sign-in | Google Identity Services |
+| Push notifications | Firebase Cloud Messaging |
+| Hosting | Render |
 
-After creating `backend/.env` (see below), run each of these in its own terminal from the repository root:
+## Quick start
 
-```bash
-make backend
-make frontend
-```
+You need Java 21, Node 22 or later, and `make`. On WSL, install Node with [nvm](https://github.com/nvm-sh/nvm).
 
-`make frontend` picks a suitable Node version through nvm and runs `npm install` when the lockfile has changed.
+1. Create the settings files and fill them in. [Environment variables](docs/DEPLOYMENT.md#environment-variables) explains each value.
 
-## Backend - Run Without Docker
+   ```bash
+   cp backend/.env.example backend/.env
+   cp frontend/.env.example frontend/.env
+   ```
 
-No additional dependencies are required apart from Java 17/21.
+2. Start each part in its own terminal, from the repository root:
 
-### 1. Run Spring Boot Backend
+   ```bash
+   make backend    # http://localhost:8080
+   make frontend   # http://localhost:5173
+   ```
 
-Create `backend/.env` from the example and set your Supabase database password and comma-separated administrator smail addresses:
+3. Open `http://localhost:5173`. Students use **Student Login**; admins and hostel staff use **Staff Login**.
 
-```bash
-cd ~/Hostel-Complaints-Ticketing-System/backend
-cp .env.example .env
-# Edit .env, replace the database password, and set ADMIN_EMAILS to the accounts that should be administrators.
-chmod +x mvnw
-./mvnw spring-boot:run
-```
+The frontend will show a blank page if its Firebase settings are missing. See [Troubleshooting](docs/DEPLOYMENT.md#troubleshooting).
 
-Spring Boot automatically loads `backend/.env` when started from the `backend` directory. The local `.env` file is ignored by Git; do not commit database credentials. Student accounts must use a Google-verified `@smail.iitm.ac.in` address; administrator accounts must use a Google-verified email explicitly listed in `ADMIN_EMAILS`.
-
-### 2. Verify login and student dashboard locally
-
-Start the backend as above, then confirm it responds:
-
-```bash
-curl http://localhost:8080/health
-```
-
-In a second terminal, start the frontend:
+## Tests
 
 ```bash
-cd ~/Hostel-Complaints-Ticketing-System/frontend
-nvm use 24
-npm run dev
+cd backend && ./mvnw test     # Postgres-based tests need Docker
+cd frontend && npm test
 ```
 
-Open `http://localhost:5173` and sign in with Google. If Google rejects the local app origin, add `http://localhost:5173` as an authorized JavaScript origin for the configured Google OAuth client.
+## Documentation
 
-Use **Student Login** with your `@smail.iitm.ac.in` account to check the student dashboard and complaint list. Admins and hostel staff use **Staff Login**. Accounts listed in `ADMIN_EMAILS` are assigned the admin role; other verified `@smail.iitm.ac.in` accounts are students. Admin emails may use any domain. Sign out and in again after changing the list so the backend refreshes the saved account role.
+| Document | What it covers |
+|---|---|
+| [User guide](docs/USER_GUIDE.md) | How to use HostelFix as a student, staff member or admin |
+| [Architecture](docs/ARCHITECTURE.md) | How the system fits together, and its main workflows |
+| [API reference](docs/API.md) | Every endpoint |
+| [Database](docs/DATABASE.md) | Tables and migrations |
+| [Deployment](docs/DEPLOYMENT.md) | Supabase, Firebase and Render setup, settings and troubleshooting |
+| [Frontend](frontend/README.md) | How the frontend code is organised |
 
-## Backend - Docker
+## Docker
 
-### 1. Build the Docker image
+To run the backend in a container:
 
 ```bash
 cd backend
 docker build -t hostel-complaints-backend .
-docker run -d --name hostel-complaints-backend -p 8080:8080 -e DB_PASSWORD='YOUR_SUPABASE_PASSWORD' -e ADMIN_EMAILS='<comma-separated-admin-emails>' hostel-complaints-backend
-docker ps
-curl -i -u admin:YOUR_ADMIN_PASSWORD http://localhost:8080/health
-docker stop hostel-complaints-backend
-
-# To start existing container
-docker start hostel-complaints-backend  
+docker run -d --name hostel-complaints-backend -p 8080:8080 --env-file .env hostel-complaints-backend
+curl http://localhost:8080/health
 ```
