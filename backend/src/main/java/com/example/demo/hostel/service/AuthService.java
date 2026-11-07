@@ -15,6 +15,11 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+/**
+ * Decides who may use HostelFix and with which role. Google proves who someone is; this
+ * class applies the hostel's rules. Students need a verified smail account, admins are
+ * listed in ADMIN_EMAILS, and staff are added by an admin (StaffService).
+ */
 @Service
 public class AuthService {
 
@@ -69,6 +74,12 @@ public class AuthService {
         return processGoogleLogin(jwt);
     }
 
+    /**
+     * Runs on every request: checks the token's account, works out the role, and creates or
+     * updates the user. ADMIN_EMAILS wins over a stored role, and staff keep theirs.
+     *
+     * @throws IllegalArgumentException if this account may not use HostelFix
+     */
     public User processGoogleLogin(Jwt jwt) {
         String email = jwt.getClaimAsString("email");
         if (email == null || email.isBlank()) {

@@ -12,11 +12,14 @@ import org.springframework.stereotype.Repository;
 import java.util.Collection;
 import java.util.List;
 
+/** Upvotes on community complaints. */
 @Repository
 public interface UpvoteRepository extends JpaRepository<Upvote, UpvoteId> {
 
+        /** Upvotes on one complaint. */
         long countByIdComplaintId(Long complaintId);
 
+        /** Whether this student has upvoted this complaint. */
         boolean existsById(UpvoteId id);
 
         /** Rows of [complaintId, upvoteCount] for the given complaints (only those with upvotes). */

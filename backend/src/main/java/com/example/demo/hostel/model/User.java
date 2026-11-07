@@ -3,6 +3,10 @@ package com.example.demo.hostel.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+/**
+ * Anyone who can sign in: student, staff or admin. Accounts come from Google sign-in, or
+ * from an admin adding staff by email. fcmToken is the one device that gets notifications.
+ */
 @Entity
 @Table(name = "users")
 public class User {

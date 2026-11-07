@@ -7,6 +7,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.data.domain.Persistable;
 
+/** A student saying a community complaint affects them too. One per student per complaint. */
 @Entity
 @Table(name = "upvotes")
 public class Upvote implements Persistable<UpvoteId> {

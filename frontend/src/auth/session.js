@@ -2,11 +2,13 @@
 // Google ID tokens expire after 1 hour and are not refreshed, so the app
 // checks the expiry itself and sends the user back to sign in cleanly.
 
+// Where the Google sign-in token is kept in this browser
 export const TOKEN_KEY = 'idToken';
 const NOTICE_KEY = 'hostelfix.sessionNotice';
 // Treat the token as expired slightly early to absorb small clock differences
 const EXPIRY_MARGIN_MS = 60 * 1000;
 
+// Why a session ended, as shown on the login page
 export const SESSION_MESSAGES = {
   expired: 'Your session expired. Please sign in again.',
   clock: 'Your sign-in could not be verified because of a clock mismatch between your device and the server. Please try again in a minute.',
@@ -73,10 +75,12 @@ export function sessionEndReason(wwwAuthenticate) {
 
 const listeners = new Set();
 
+/** The stored sign-in token, or null. */
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
 }
 
+/** Stores the token after a successful sign-in. */
 export function saveToken(token) {
   localStorage.setItem(TOKEN_KEY, token);
   sessionStorage.removeItem(NOTICE_KEY);

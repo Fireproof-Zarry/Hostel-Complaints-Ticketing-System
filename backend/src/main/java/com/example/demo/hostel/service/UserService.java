@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Locale;
 
+/** Changes to a user's own account: profile details and notification device. */
 @Service
 public class UserService {
 

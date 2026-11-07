@@ -10,6 +10,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * The original complaint API under /api/student/complaints. The app itself uses
+ * ComplaintController, which validates location and category.
+ */
 @RestController
 @RequestMapping("/api/student/complaints")
 public class StudentController {
@@ -22,6 +26,7 @@ public class StudentController {
         this.userRepository = userRepository;
     }
 
+    /** Files a complaint with only a title and description. */
     @PostMapping
     public Complaint createComplaint(
             @AuthenticationPrincipal Jwt jwt, 
@@ -36,6 +41,7 @@ public class StudentController {
         return studentService.submitComplaint(student, title, description);
     }
 
+    /** The caller's complaints, newest first. */
     @GetMapping
     public List<Complaint> getMyComplaints(@AuthenticationPrincipal Jwt jwt) {
         String email = jwt.getClaimAsString("email");

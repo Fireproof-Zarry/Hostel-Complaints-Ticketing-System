@@ -284,6 +284,7 @@ public class WorkOrderService {
         ComplaintTransitionService.runAfterCommit(() -> notificationService.sendAssignmentNotification(token, body));
     }
 
+    /** Still active and past its deadline, in hostel time. */
     static boolean isOverdue(WorkOrder workOrder) {
         return workOrder.getStatus().isActive()
                 && workOrder.getDeadline() != null
@@ -346,6 +347,7 @@ public class WorkOrderService {
         }
     }
 
+    /** Profile name if set, then Google name, then email. */
     static String displayName(User user) {
         if (user.getFullName() != null && !user.getFullName().isBlank()) return user.getFullName();
         return user.getName() != null ? user.getName() : user.getEmail();
@@ -355,6 +357,7 @@ public class WorkOrderService {
         return new ResponseStatusException(HttpStatus.BAD_REQUEST, reason);
     }
 
+    /** The API form of a work order; call inside a transaction, because it reads lazy fields. */
     static WorkOrderView toView(WorkOrder workOrder) {
         Complaint complaint = workOrder.getComplaint();
         User assignee = workOrder.getAssignee();

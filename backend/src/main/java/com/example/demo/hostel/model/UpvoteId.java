@@ -5,6 +5,7 @@ import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
 
+/** Composite key of an Upvote. */
 @Embeddable
 public class UpvoteId implements Serializable {
 

@@ -8,6 +8,11 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
+/**
+ * Someone taking responsibility for a complaint. A complaint has at most one active work
+ * order (a partial unique index in schema_nov03.sql) and keeps finished ones as a record.
+ * Change these through WorkOrderService, which keeps the complaint in step.
+ */
 @Entity
 @Table(name = "work_orders")
 public class WorkOrder {

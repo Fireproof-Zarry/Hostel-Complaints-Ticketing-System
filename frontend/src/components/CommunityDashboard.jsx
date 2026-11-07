@@ -29,6 +29,7 @@ async function fetchCommunityPage({ sort, floor, page }) {
   return response.json();
 }
 
+/** Upvote toggle showing the current count. */
 function UpvoteButton({ complaint, pending, onToggle }) {
   if (complaint.reportedByYou) {
     return (
@@ -60,6 +61,7 @@ function UpvoteButton({ complaint, pending, onToggle }) {
   );
 }
 
+/** One community complaint with its upvote button. */
 function CommunityComplaintCard({ complaint, pending, onToggle }) {
   return (
     <article className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row">

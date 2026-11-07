@@ -1,3 +1,4 @@
+// Each floor's rooms start with its roomHundreds digit: 2xx is First
 export const HOSTEL_FLOORS = [
   { name: 'Ground', roomHundreds: 1 },
   { name: 'First', roomHundreds: 2 },
@@ -25,11 +26,13 @@ const roomHundredsByFloor = new Map(
   })
 );
 
+/** The first digit of rooms on a floor. */
 export function getRoomHundredsForFloor(floor) {
   const normalizedFloor = floor?.trim().toLowerCase().replace(/\s+floor$/, '');
   return roomHundredsByFloor.get(normalizedFloor) ?? null;
 }
 
+/** Whether the room number belongs to that floor. */
 export function isRoomOnFloor(floor, room) {
   const roomHundreds = getRoomHundredsForFloor(floor);
   const normalizedRoom = String(room ?? '');

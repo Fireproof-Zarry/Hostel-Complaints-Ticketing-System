@@ -23,6 +23,7 @@ function formatDeadline(value) {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
 }
 
+/** A small coloured label on a staff row. */
 function Badge({ tone, children }) {
   const tones = {
     slate: 'bg-slate-100 text-slate-700',

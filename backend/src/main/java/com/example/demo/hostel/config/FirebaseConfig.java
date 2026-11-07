@@ -21,6 +21,7 @@ import java.io.InputStream;
 @ConditionalOnExpression("!'${firebase.config.path:}'.isBlank()")
 public class FirebaseConfig {
 
+    /** Loads the service account file named by firebase.config.path. */
     @Bean
     public FirebaseApp firebaseApp(@Value("${firebase.config.path}") String configPath) throws IOException {
         // FirebaseApp is a JVM-wide singleton; reuse it if already initialized
@@ -36,6 +37,7 @@ public class FirebaseConfig {
         }
     }
 
+    /** The client FcmNotificationService sends through. */
     @Bean
     public FirebaseMessaging firebaseMessaging(FirebaseApp firebaseApp) {
         return FirebaseMessaging.getInstance(firebaseApp);

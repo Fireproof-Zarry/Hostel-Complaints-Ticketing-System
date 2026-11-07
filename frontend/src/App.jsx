@@ -18,6 +18,7 @@ import {
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
 
+/** Shown for unknown URLs, and to signed-in users on a page their role cannot open. */
 function NotFound() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-6 text-center text-slate-900">
@@ -152,6 +153,7 @@ function SessionWatcher() {
   return null
 }
 
+/** The routes, wrapped in Google sign-in and session handling. */
 export default function App() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>

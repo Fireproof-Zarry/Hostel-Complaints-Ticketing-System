@@ -4,6 +4,7 @@ import ComplaintTimeline from './ComplaintTimeline';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { formatServerDateTime } from '../utils/serverDate';
 
+/** One labelled value in the details grid. */
 function Detail({ label, children }) {
   return (
     <div>
