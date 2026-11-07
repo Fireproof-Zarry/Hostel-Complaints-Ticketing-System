@@ -4,8 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Starts HostelFix. @EnableScheduling runs the nightly jobs: ComplaintArchivalService
+ * and ComplaintPurgeService.
+ */
 @SpringBootApplication
-// Runs scheduled jobs such as ComplaintArchivalService
 @EnableScheduling
 public class DemoApplication {
 

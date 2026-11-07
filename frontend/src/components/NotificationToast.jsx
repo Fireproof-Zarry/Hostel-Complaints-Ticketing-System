@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Bell, X } from 'lucide-react';
 
+// How long the pop-up stays on screen
 const TOAST_DURATION_MS = 6000;
 
 // Shows a push message that arrives while the student has HostelFix open.

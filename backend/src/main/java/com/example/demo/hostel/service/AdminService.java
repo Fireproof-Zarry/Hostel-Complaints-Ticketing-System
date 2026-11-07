@@ -19,6 +19,10 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * Complaint management for admins and staff. Status changes and assignments are passed on
+ * to ComplaintTransitionService and WorkOrderService, which hold the rules.
+ */
 @Service
 public class AdminService {
 
@@ -59,11 +63,13 @@ public class AdminService {
                 .toList();
     }
 
+    /** One complaint, or 404. */
     public Complaint getComplaint(Long id) {
         return complaintRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Complaint not found"));
     }
 
+    /** Non-archived complaints matching the filters; null filters are ignored. */
     public List<Complaint> getComplaints(
             Status status,
             String category,
@@ -89,6 +95,11 @@ public class AdminService {
                 .toList();
     }
 
+    /**
+     * Changes a complaint's status and brings its work order in line, in one transaction.
+     *
+     * @throws IllegalArgumentException if the actor does not exist
+     */
     @Transactional
     public Complaint updateStatus(Long id, Status newStatus, String actorEmail, String reason) {
         User actor = userRepository.findByEmail(actorEmail)

@@ -9,6 +9,7 @@ const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 // fresh list loads. The token ties it to the current login.
 let lastComplaints = null;
 
+/** Loads the student's complaints and profile, and applies the search and status filter. */
 export default function useStudentComplaints(
   token,
   search = '',

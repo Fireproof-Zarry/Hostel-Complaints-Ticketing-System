@@ -2,6 +2,7 @@
 import { getToken, onMessage } from 'firebase/messaging';
 import { messagingPromise } from '../firebase';
 import { apiFetch, getToken as getSessionToken } from '../auth/session';
+import { createForegroundListeners } from './foregroundListeners';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -10,9 +11,15 @@ const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 // token, so each new login refreshes the FCM token, even for the same student.
 let currentRegistration = null;
 
+let addForegroundListener = null;
+
+// Where Firebase registers its service worker
+const FIREBASE_SW_SCOPE = '/firebase-cloud-messaging-push-scope';
+
 // Logout must not hang on a slow network.
 const MAX_LOGOUT_WAIT_MS = 3000;
 
+/** The browser's permission, or 'unsupported' without the Notification API. */
 export function getNotificationPermission() {
   return 'Notification' in window ? Notification.permission : 'unsupported';
 }
@@ -23,10 +30,12 @@ function turnedOffKey(userId) {
   return `hostelfix.notificationsOff.${userId}`;
 }
 
+/** Whether this user switched notifications off on this browser. */
 export function areNotificationsTurnedOff(userId) {
   return localStorage.getItem(turnedOffKey(userId)) === 'true';
 }
 
+/** Remembers this user's on or off choice on this browser. */
 export function setNotificationsTurnedOff(userId, turnedOff) {
   if (turnedOff) {
     localStorage.setItem(turnedOffKey(userId), 'true');
@@ -40,6 +49,7 @@ export function forgetFcmRegistration() {
   currentRegistration = null;
 }
 
+/** Gets this browser's device token from Firebase and saves it for the user. */
 async function registerFcmToken(userId) {
   if (!userId) {
     throw new Error('User ID is required.');
@@ -137,6 +147,7 @@ export async function registerExistingPermission(userId) {
   return currentRegistration.promise;
 }
 
+/** Removes the saved device from the user's account. */
 async function deleteFcmToken(registration) {
   // A registration still in progress must not restore the token afterwards.
   await registration?.promise.catch(() => {});
@@ -205,7 +216,9 @@ export async function listenForForegroundMessages(callback) {
 
   console.log('[FCM] Foreground listener registered.');
 
-  return onMessage(messaging, (payload) => {
+  addForegroundListener ??= createForegroundListeners((handler) => onMessage(messaging, handler));
+
+  return addForegroundListener((payload) => {
     console.log('[FCM] Foreground message received:', payload);
 
     const title = payload.notification?.title || 'HostelFix';
@@ -214,5 +227,21 @@ export async function listenForForegroundMessages(callback) {
       'Your complaint status has been updated.';
 
     callback({ title, body, payload });
+
+    // Firebase counts a window behind another app as visible and sends the
+    // message here, where nobody would see the in-app pop-up
+    if (!document.hasFocus()) {
+      showSystemNotification(title, body);
+    }
   });
+}
+
+/** Shows a notification through Firebase's service worker. */
+async function showSystemNotification(title, body) {
+  try {
+    const registration = await navigator.serviceWorker.getRegistration(FIREBASE_SW_SCOPE);
+    await registration?.showNotification(title, { body });
+  } catch (error) {
+    console.warn('[FCM] Could not show the system notification:', error);
+  }
 }

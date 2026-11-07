@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 import java.util.UUID;
 
+/** Finds an existing room or community area, so complaints there share one Location row. */
 @Repository
 public interface LocationRepository extends JpaRepository<Location, UUID> {
 

@@ -1,5 +1,6 @@
 package com.example.demo.hostel.dto.analytics;
 
+/** Complaints in one category; categories with none are included with a count of 0. */
 public class CategoryAnalyticsDTO {
 
     private String category;

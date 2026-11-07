@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+/** Work order queries. Queries by assignee skip soft-deleted complaints. */
 @Repository
 public interface WorkOrderRepository extends JpaRepository<WorkOrder, UUID> {
 

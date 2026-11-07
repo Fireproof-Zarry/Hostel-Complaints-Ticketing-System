@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../auth/session';
+import StaffNotificationSwitch from './StaffNotificationSwitch';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { formatServerDateTime } from '../utils/serverDate';
 
@@ -12,6 +13,7 @@ function formatDeadline(value) {
   return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+/** One complaint as a clickable row; overdue work is highlighted. */
 function ComplaintRow({ id, title, status, overdue, onOpen, children }) {
   return (
     <li>
@@ -36,6 +38,7 @@ function ComplaintRow({ id, title, status, overdue, onOpen, children }) {
   );
 }
 
+/** A titled list, or a message when it is empty. */
 function Section({ title, count, empty, children }) {
   return (
     <section className="space-y-3">
@@ -54,7 +57,7 @@ function Section({ title, count, empty, children }) {
  * to them, and the complaints they filed. onOpen(id) opens the complaint popup;
  * refreshKey reloads the lists after a change made there.
  */
-export default function MyComplaintsPage({ onOpen, refreshKey }) {
+export default function MyComplaintsPage({ notifications, onOpen, refreshKey }) {
   const [assigned, setAssigned] = useState(null);
   const [filed, setFiled] = useState(null);
   const [error, setError] = useState('');
@@ -89,6 +92,7 @@ export default function MyComplaintsPage({ onOpen, refreshKey }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <StaffNotificationSwitch notifications={notifications} />
       {error && <p role="alert" className="m-0 rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
       {assigned === null || filed === null ? (
         !error && <p className="m-0 text-sm text-slate-500">Loading your complaints…</p>

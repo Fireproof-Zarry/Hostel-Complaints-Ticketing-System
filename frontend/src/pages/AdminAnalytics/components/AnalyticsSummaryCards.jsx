@@ -1,6 +1,7 @@
 
 import { SUMMARY_CARDS, formatNumber } from '../utils/analyticsUtils'
 
+/** The count cards defined by SUMMARY_CARDS. */
 function AnalyticsSummaryCards({ overview }) {
     return (
         <div className="analytics-summary-grid">

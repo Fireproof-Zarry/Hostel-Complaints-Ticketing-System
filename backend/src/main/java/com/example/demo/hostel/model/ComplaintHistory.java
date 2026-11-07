@@ -5,6 +5,11 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
+/**
+ * One status change on a complaint and who made it. Written by ComplaintTransitionService
+ * in the same transaction as the change. Never returned directly, because the actor is a
+ * full user record: see ComplaintHistoryEntry.
+ */
 @Entity
 @Table(name = "complaint_history")
 public class ComplaintHistory {

@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react';
 import ComplaintCard from '../components/ComplaintCard';
 import { STUDENT_STATUS_FILTERS } from '../constants/studentConstants';
 
+/** The My Complaints tab, with search and a status filter. */
 export default function ComplaintList({
     complaints,
     filteredComplaints,

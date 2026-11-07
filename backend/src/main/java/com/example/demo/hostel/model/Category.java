@@ -3,6 +3,7 @@ package com.example.demo.hostel.model;
 import jakarta.persistence.*;
 import java.util.UUID;
 
+/** A kind of issue, such as Electrical, with the hours it should normally take to fix. */
 @Entity
 @Table(name = "categories")
 public class Category {

@@ -14,6 +14,12 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Who can reach what. Every request carries a Google ID token, checked by the resource
+ * server and turned into a role by CustomJwtAuthenticationConverter. The public routes are
+ * /health and POST /api/auth/login; /api/admin/staff is for admins; the rest of /api/admin
+ * and /api/work-orders are for admins and staff; anything else needs a valid sign-in.
+ */
 @Configuration
 public class SecurityConfig {
 
@@ -24,6 +30,7 @@ public class SecurityConfig {
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
     }
 
+    /** The URL rules, token handling and complaint rate limit, for every request. */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ComplaintRateLimiter complaintRateLimiter)
             throws Exception {
@@ -66,6 +73,7 @@ public class SecurityConfig {
         return new ComplaintRateLimiter();
     }
 
+    /** Lets the local and deployed frontends call the API, and read the headers they need. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();

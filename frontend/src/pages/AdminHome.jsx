@@ -20,13 +20,12 @@ import {
   Users,
   Wrench,
 } from 'lucide-react'
-import ComingSoon from './ComingSoon'
 import MyComplaintsPage from '../components/MyComplaintsPage'
+import NotificationToast from '../components/NotificationToast'
 import StaffComplaintForm from '../components/StaffComplaintForm'
 import StaffManagement from '../components/StaffManagement'
 import WorkOrderPanel from '../components/WorkOrderPanel'
 import ComplaintTimeline from '../components/ComplaintTimeline'
-import NotificationToast from '../components/NotificationToast'
 import AdminAnalytics from './AdminAnalytics/AdminAnalytics'
 import ProfileForm from '../components/ProfileForm'
 import { apiFetch, logout } from '../auth/session'
@@ -39,6 +38,7 @@ import './AdminHome.css'
 
 // Shown in the main area like the other sidebar pages
 const PROFILE_VIEW = 'My Profile'
+// Sidebar pages; the Complaints page is the default
 const STAFF_VIEW = 'Staff Management'
 const MY_COMPLAINTS_VIEW = 'My Complaints'
 const FILE_COMPLAINT_VIEW = 'File Complaint'
@@ -64,6 +64,7 @@ async function responseError(response, fallback) {
   }
 }
 
+/** Complaints containing every word of the search, across their main fields. */
 function filterComplaintsBySearch(complaints, searchTerm) {
   const query = searchTerm.trim().toLowerCase()
   if (!query) return complaints
@@ -103,6 +104,7 @@ const istCalendarFormatter = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 })
 
+/** A server timestamp as a Date, or null. */
 function parseComplaintDate(value) {
   if (!value) return null
 
@@ -112,11 +114,13 @@ function parseComplaintDate(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+/** A server timestamp in IST. */
 function formatComplaintDateTime(value) {
   const date = parseComplaintDate(value)
   return date ? istDateFormatter.format(date) : '—'
 }
 
+/** The IST calendar day of a date, for counting days since a complaint was raised. */
 function getIstCalendarDay(date) {
   const parts = Object.fromEntries(
     istCalendarFormatter.formatToParts(date).map(({ type, value }) => [type, value])
@@ -124,10 +128,12 @@ function getIstCalendarDay(date) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day))
 }
 
+/** True when a complaint's room number does not belong to its floor. */
 function hasFloorRoomMismatch(floor, room) {
   return getRoomHundredsForFloor(floor) !== null && !isRoomOnFloor(floor, room)
 }
 
+/** The dashboard for admins and staff: sidebar, pages, and the complaint dialogs. */
 export default function AdminHome() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -140,17 +146,21 @@ export default function AdminHome() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [admins, setAdmins] = useState([])
-  const [comingSoonPage, setComingSoonPage] = useState(null)
+  const [activePage, setActivePage] = useState(null)
   // ADMIN or STAFF; staff share this dashboard but cannot manage staff and
   // can only assign complaints to themselves
   const [currentUser, setCurrentUser] = useState(null)
   const isAdmin = currentUser?.role === 'ADMIN'
 
-  // Nudges go to admins only, so staff never register for push here
-  const notifications = usePushNotifications(isAdmin ? currentUser.id : undefined)
+  // Bumped after a work order change so the popup's timeline reloads
+  const [timelineVersion, setTimelineVersion] = useState(0)
+  const notifications = usePushNotifications(currentUser?.id)
   const refreshComplaintsRef = useRef(null)
-  // A push can be a nudge, which reorders the list
-  const handleForegroundMessage = useCallback(() => refreshComplaintsRef.current?.(), [])
+  // A push can be a nudge, which reorders the list, or a new assignment for My complaints
+  const handleForegroundMessage = useCallback(() => {
+    refreshComplaintsRef.current?.()
+    setTimelineVersion((version) => version + 1)
+  }, [])
   const { notificationToast, dismissNotificationToast } =
     useForegroundNotifications(handleForegroundMessage)
   // Decided from the first frame: the saved on/off choice and the browser's
@@ -185,8 +195,6 @@ export default function AdminHome() {
 
   // Selected complaint for View
   const [selectedComplaint, setSelectedComplaint] = useState(null)
-  // Bumped after a work order change so the popup's timeline reloads
-  const [timelineVersion, setTimelineVersion] = useState(0)
 
   // Complaint for status update
   const [statusComplaint, setStatusComplaint] = useState(null)
@@ -361,7 +369,7 @@ export default function AdminHome() {
   useEffect(() => {
     if (!complaintLink) return
     const id = Number(complaintLink)
-    setComingSoonPage(null)
+    setActivePage(null)
     setHighlightedComplaintId(id)
     // Reload only if filters or the search are hiding it
     if (!filteredComplaints.some((complaint) => complaint.id === id)) clearFilters()
@@ -618,9 +626,9 @@ export default function AdminHome() {
         <nav className="admin-nav" aria-label="Admin navigation">
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === null ? 'active' : ''}`}
+            className={`admin-nav-item ${activePage === null ? 'active' : ''}`}
             onClick={() => {
-              setComingSoonPage(null)
+              setActivePage(null)
               setError('')
             }}
             title="Complaints"
@@ -632,8 +640,8 @@ export default function AdminHome() {
 
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === MY_COMPLAINTS_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(MY_COMPLAINTS_VIEW)}
+            className={`admin-nav-item ${activePage === MY_COMPLAINTS_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(MY_COMPLAINTS_VIEW)}
             title="My complaints"
           >
             <Inbox size={19} />
@@ -642,8 +650,8 @@ export default function AdminHome() {
 
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === FILE_COMPLAINT_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(FILE_COMPLAINT_VIEW)}
+            className={`admin-nav-item ${activePage === FILE_COMPLAINT_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(FILE_COMPLAINT_VIEW)}
             title="File complaint"
           >
             <FilePlus2 size={19} />
@@ -653,8 +661,8 @@ export default function AdminHome() {
           {/* Analytics navigation */}
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === 'Analytics' ? 'active' : ''}`}
-            onClick={() => setComingSoonPage('Analytics')}
+            className={`admin-nav-item ${activePage === 'Analytics' ? 'active' : ''}`}
+            onClick={() => setActivePage('Analytics')}
             title="Analytics"
           >
             <BarChart3 size={19} />
@@ -664,8 +672,8 @@ export default function AdminHome() {
           {isAdmin && (
             <button
               type="button"
-              className={`admin-nav-item ${comingSoonPage === STAFF_VIEW ? 'active' : ''}`}
-              onClick={() => setComingSoonPage(STAFF_VIEW)}
+              className={`admin-nav-item ${activePage === STAFF_VIEW ? 'active' : ''}`}
+              onClick={() => setActivePage(STAFF_VIEW)}
               title="Staff management"
             >
               <Users size={19} />
@@ -677,8 +685,8 @@ export default function AdminHome() {
         <div className="admin-sidebar-bottom">
           <button
             type="button"
-            className={`admin-nav-item ${comingSoonPage === PROFILE_VIEW ? 'active' : ''}`}
-            onClick={() => setComingSoonPage(PROFILE_VIEW)}
+            className={`admin-nav-item ${activePage === PROFILE_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(PROFILE_VIEW)}
             title="My profile"
           >
             <UserRound size={19} />
@@ -719,8 +727,8 @@ export default function AdminHome() {
           </button>
 
           <div className="admin-header-title">
-            <span>HOSTELFIX / {comingSoonPage ? comingSoonPage.toUpperCase() : 'COMPLAINTS'}</span>
-            <h1>{comingSoonPage || 'Complaints'}</h1>
+            <span>HOSTELFIX / {activePage ? activePage.toUpperCase() : 'COMPLAINTS'}</span>
+            <h1>{activePage || 'Complaints'}</h1>
           </div>
 
           <div className="admin-header-actions">
@@ -765,47 +773,21 @@ export default function AdminHome() {
               >
                 {isBellOn ? <Bell size={19} /> : <BellOff size={19} />}
               </button>
-            ) : (
-              <button
-                type="button"
-                className="admin-header-icon"
-                aria-label="Notifications (work in progress)"
-                title="Notifications are a work in progress"
-                onClick={() => setComingSoonPage('Notifications')}
-              >
-                <Bell size={19} />
-                <i />
-              </button>
-            )}
+            ) : null}
           </div>
         </header>
 
         <section className="admin-content">
-          {comingSoonPage === 'Analytics' ? (
+          {activePage === 'Analytics' ? (
             <AdminAnalytics />
-          ) : comingSoonPage === PROFILE_VIEW ? (
+          ) : activePage === PROFILE_VIEW ? (
             <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />
-          ) : comingSoonPage === STAFF_VIEW && isAdmin ? (
+          ) : activePage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
-          ) : comingSoonPage === MY_COMPLAINTS_VIEW ? (
-            <MyComplaintsPage onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
-          ) : comingSoonPage === FILE_COMPLAINT_VIEW ? (
+          ) : activePage === MY_COMPLAINTS_VIEW ? (
+            <MyComplaintsPage notifications={notifications} onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
+          ) : activePage === FILE_COMPLAINT_VIEW ? (
             <StaffComplaintForm onFiled={handleRefreshComplaints} />
-          ) : comingSoonPage ? (
-            <div className="admin-work-in-progress">
-              <ComingSoon title={comingSoonPage} />
-              <p>
-                This section is under development. Complaint management remains
-                available in the Complaints workspace.
-              </p>
-              <button
-                type="button"
-                className="admin-primary-button"
-                onClick={() => setComingSoonPage(null)}
-              >
-                <ClipboardList size={17} /> Go to complaints
-              </button>
-            </div>
           ) : (
             <>
               <div className="admin-page-heading">
@@ -1696,7 +1678,7 @@ export default function AdminHome() {
           onOpen={() => {
             dismissNotificationToast()
             if (notificationToast.url) navigate(notificationToast.url)
-            else setComingSoonPage(null)
+            else setActivePage(MY_COMPLAINTS_VIEW)
           }}
           onDismiss={dismissNotificationToast}
         />

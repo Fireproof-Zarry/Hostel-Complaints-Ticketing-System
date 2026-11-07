@@ -67,6 +67,7 @@ function RecurringIssueGroup({ title, issues, type }) {
     )
 }
 
+/** The Recurring Issues tab: repeat problems in rooms and community areas. */
 function RecurringIssues({ recurringIssues = [] }) {
     const roomIssues = recurringIssues.filter(
         (issue) => issue.type === 'ROOM'

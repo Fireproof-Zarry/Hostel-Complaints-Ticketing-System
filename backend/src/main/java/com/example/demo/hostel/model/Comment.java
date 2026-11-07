@@ -7,6 +7,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+/** A note on a complaint. Deleted with its complaint. Not used by the API yet. */
 @Entity
 @Table(name = "comments")
 public class Comment {

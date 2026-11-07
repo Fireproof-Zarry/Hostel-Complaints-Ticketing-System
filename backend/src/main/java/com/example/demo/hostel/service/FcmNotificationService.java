@@ -19,6 +19,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Push notifications through Firebase Cloud Messaging. Does nothing if Firebase is not
+ * configured, and sending can never fail the request that triggered it.
+ */
 @Service
 public class FcmNotificationService {
 
@@ -30,6 +34,44 @@ public class FcmNotificationService {
     public FcmNotificationService(ObjectProvider<FirebaseMessaging> firebaseMessaging, UserRepository userRepository) {
         this.firebaseMessaging = firebaseMessaging;
         this.userRepository = userRepository;
+    }
+
+    /**
+     * Tells someone a complaint was assigned to them, on a background thread.
+     * Failures are logged and never propagate to the caller.
+     */
+    @Async
+    public void sendAssignmentNotification(String targetToken, String body) {
+        FirebaseMessaging messaging = firebaseMessaging.getIfAvailable();
+        if (messaging == null) {
+            log.warn("Firebase is not configured; skipping assignment notification");
+            return;
+        }
+        if (targetToken == null || targetToken.isBlank()) {
+            log.info("Skipping assignment notification: the assignee has no registered device");
+            return;
+        }
+
+        Message message = Message.builder()
+                .setToken(targetToken)
+                .setNotification(Notification.builder()
+                        .setTitle("New complaint assigned")
+                        .setBody(body)
+                        .build())
+                .build();
+
+        try {
+            String messageId = messaging.send(message);
+            log.info("Sent assignment notification {}", messageId);
+        } catch (FirebaseMessagingException e) {
+            log.warn("Could not send assignment notification to token {}: {} ({})",
+                    abbreviate(targetToken), e.getMessage(), e.getMessagingErrorCode());
+            if (e.getMessagingErrorCode() == MessagingErrorCode.UNREGISTERED) {
+                clearToken(targetToken);
+            }
+        } catch (RuntimeException e) {
+            log.error("Unexpected error while sending assignment notification", e);
+        }
     }
 
     /**

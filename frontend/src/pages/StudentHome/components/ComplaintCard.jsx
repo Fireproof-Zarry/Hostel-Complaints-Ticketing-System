@@ -4,6 +4,7 @@ import NudgeButton from '../../../components/NudgeButton';
 import { formatStatus, statusClasses } from '../../../utils/complaintStatus';
 import { formatDate } from '../utils/studentUtils';
 
+/** A complaint's summary in My Complaints, with View and, while pending, Delete. */
 export default function ComplaintCard({ complaint, onView, onDelete, onNudge }) {
     return (
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">

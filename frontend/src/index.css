@@ -898,26 +898,3 @@ body {
 .assign-modal .complaint-modal-footer {
   padding-top: 18px;
 }
-
-/* Coming Soon */
-
-.coming-soon-page {
-  min-height: calc(100vh - 82px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-}
-
-.coming-soon-page h1 {
-  margin: 0 0 10px;
-  font-size: 32px;
-  color: #fff;
-}
-
-.coming-soon-page p {
-  margin: 0;
-  color: #888;
-  font-size: 15px;
-}

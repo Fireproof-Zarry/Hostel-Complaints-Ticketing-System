@@ -140,6 +140,7 @@ function FloorBarChart({ floors }) {
     )
 }
 
+/** The Floors tab: complaint counts and distribution by floor. */
 function Floors({ floorBreakdown = [] }) {
     // Normalize API values before using them in the UI.
     const floors = floorBreakdown.map((item) => ({

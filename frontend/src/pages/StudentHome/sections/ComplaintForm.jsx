@@ -4,6 +4,7 @@ import DuplicateWarning from '../../../components/DuplicateWarning';
 import ImageUpload from '../../../components/ImageUpload';
 import { HOSTEL_FLOORS } from '../../../utils/hostelLocation';
 
+/** The File Complaint tab; its logic is in useComplaintForm. */
 export default function ComplaintForm({
     formData,
     setFormData,

@@ -18,10 +18,12 @@ public record CreateComplaintRequest(
         @JsonAlias("available_time_slot") String availableTimeSlot,
         @JsonAlias("key_with_security") Boolean keyWithSecurity
 ) {
+    /** A missing value means a room complaint. */
     public boolean communityArea() {
         return Boolean.TRUE.equals(isCommunityArea);
     }
 
+    /** A missing value means the key was not left with security. */
     public boolean keyLeftWithSecurity() {
         return Boolean.TRUE.equals(keyWithSecurity);
     }

@@ -1,5 +1,9 @@
 package com.example.demo.hostel.dto.analytics;
 
+/**
+ * Headline figures. resolutionRate is a percentage that leaves out rejected complaints;
+ * averageResolutionTimeHours is null when nothing has been resolved.
+ */
 public class OverviewDTO {
 
     private long totalComplaints;

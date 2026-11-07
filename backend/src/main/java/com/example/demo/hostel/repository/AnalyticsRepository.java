@@ -8,6 +8,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * Native PostgreSQL queries behind the analytics dashboard. Each takes an optional,
+ * inclusive date range, and a null bound means no limit on that side.
+ */
 public interface AnalyticsRepository
         extends Repository<com.example.demo.hostel.model.Complaint, Long> {
 

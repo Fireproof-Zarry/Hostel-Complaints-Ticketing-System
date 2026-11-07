@@ -27,6 +27,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Complaints as their reporters see them: filing, listing, details, history, photos,
+ * upvotes and the community dashboard. Hostel management uses AdminController.
+ */
 @RestController
 @RequestMapping("/api/complaints")
 public class ComplaintController {
@@ -56,6 +60,10 @@ public class ComplaintController {
     private static final int MAX_WING_LENGTH = 100;
     private static final int MAX_TIME_SLOT_LENGTH = 500;
 
+    /**
+     * Files a complaint: 201, or 400 if a required field is missing or too long. Also limited
+     * by ComplaintRateLimitFilter and the open-complaint limit in ComplaintService.
+     */
     @PostMapping
     public ResponseEntity<Complaint> createComplaint(
             @AuthenticationPrincipal Jwt jwt,
@@ -110,6 +118,7 @@ public class ComplaintController {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    /** The caller's complaints, newest first, with the assignee's contact while one is active. */
     @GetMapping("/mine")
     public ResponseEntity<List<MyComplaint>> getMyComplaints(
             @AuthenticationPrincipal Jwt jwt) {
@@ -118,13 +127,6 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.getMyComplaintsWithContacts(email));
     }
 
-    /**
-     * Open complaints similar to the title a student is typing (up to 3, most
-     * similar first). Community-area issues (the default) need a floor and
-     * optionally a wing; personal issues (communityArea=false) search the
-     * student's own profile room, so no location is sent. Staff and admins have
-     * no room of their own and send the room they are reporting on.
-     */
     /**
      * Community dashboard: open community-area complaints with their upvote
      * count and whether the caller reported / upvoted each one.
@@ -142,6 +144,13 @@ public class ComplaintController {
                 communityComplaintService.getCommunityComplaints(email, floor, sort, page, size));
     }
 
+    /**
+     * Open complaints similar to the title a student is typing (up to 3, most
+     * similar first). Community-area issues (the default) need a floor and
+     * optionally a wing; personal issues (communityArea=false) search the
+     * student's own profile room, so no location is sent. Staff and admins have
+     * no room of their own and send the room they are reporting on.
+     */
     @GetMapping("/potential-duplicates")
     public ResponseEntity<List<DuplicateCandidate>> getPotentialDuplicates(
             @RequestParam String title,
@@ -155,6 +164,7 @@ public class ComplaintController {
                 duplicateDetectionService.findPotentialDuplicates(email, title, communityArea, floor, wing, room));
     }
 
+    /** One of the caller's own complaints; 404 for anyone else's. */
     @GetMapping("/{id}")
     public ResponseEntity<Complaint> getComplaintById(
             @PathVariable Long id,
@@ -164,6 +174,10 @@ public class ComplaintController {
         return ResponseEntity.ok(complaintService.getComplaintById(id, email));
     }
 
+    /**
+     * A complaint's status changes, newest first. Students get their own complaints (404
+     * otherwise); admins and staff get any complaint.
+     */
     @GetMapping("/{id}/history")
     public ResponseEntity<List<ComplaintHistoryEntry>> getComplaintHistory(
             @PathVariable Long id,
@@ -194,6 +208,7 @@ public class ComplaintController {
         return ResponseEntity.ok(nudgeService.nudge(id, jwt.getClaimAsString("email")));
     }
 
+    /** Attaches a photo to the caller's own complaint, replacing any earlier one. */
     @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Complaint> uploadImage(
             @PathVariable Long id,

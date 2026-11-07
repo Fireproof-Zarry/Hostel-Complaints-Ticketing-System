@@ -23,11 +23,13 @@ public class StaffController {
         this.staffService = staffService;
     }
 
+    /** Staff and admins with their current workload. */
     @GetMapping
     public List<StaffMemberView> listStaff() {
         return staffService.listStaff();
     }
 
+    /** One person's active work orders, earliest deadline first. */
     @GetMapping("/{userId}/work-orders")
     public List<WorkOrderView> getActiveWorkOrders(@PathVariable String userId) {
         return staffService.getActiveWorkOrders(userId);

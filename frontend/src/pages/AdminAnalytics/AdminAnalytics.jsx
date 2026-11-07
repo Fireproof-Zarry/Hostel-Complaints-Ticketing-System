@@ -20,6 +20,7 @@ import './styles/components.css'
 import './styles/charts.css'
 import './styles/responsive.css'
 
+/** The analytics dashboard: date filters, summary cards and one section per tab. */
 export default function AdminAnalytics() {
     const [activeTab, setActiveTab] = useState('overview')
     const [analytics, setAnalytics] = useState(null)

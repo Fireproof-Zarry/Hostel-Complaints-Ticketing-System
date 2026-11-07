@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.UUID;
 
+/** Complaint photos in the complaint-images bucket on Supabase Storage. */
 @Service
 public class SupabaseStorageService {
 
@@ -51,6 +52,9 @@ public class SupabaseStorageService {
         this.restTemplate = restTemplate;
     }
 
+    /**
+     * Checks the file is really a JPEG, PNG or WebP image, uploads it, and returns its public URL.
+     */
     public String uploadImage(MultipartFile file) {
         String contentType = file == null ? null : file.getContentType();
         if (contentType == null || !EXTENSIONS_BY_CONTENT_TYPE.containsKey(contentType)) {

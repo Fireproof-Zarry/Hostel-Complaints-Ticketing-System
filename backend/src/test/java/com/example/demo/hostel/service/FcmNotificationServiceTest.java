@@ -45,6 +45,40 @@ class FcmNotificationServiceTest {
     }
 
     @Test
+    void sendsAssignmentNotifications() throws Exception {
+        when(messaging.send(any(Message.class))).thenReturn("projects/p/messages/2");
+
+        service(messaging).sendAssignmentNotification("token-123", "\"Leaking tap\" was assigned to you.");
+
+        verify(messaging).send(any(Message.class));
+    }
+
+    @Test
+    void assignmentNotificationsSkipMissingTokensAndUnconfiguredFirebase() throws Exception {
+        service(messaging).sendAssignmentNotification(null, "body");
+        service(messaging).sendAssignmentNotification(" ", "body");
+
+        verify(messaging, never()).send(any(Message.class));
+        assertThatCode(() -> service(null).sendAssignmentNotification("token-123", "body"))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void clearsATokenThatFailsOnAnAssignmentNotification() throws Exception {
+        FirebaseMessagingException error = mock(FirebaseMessagingException.class);
+        when(error.getMessagingErrorCode()).thenReturn(MessagingErrorCode.UNREGISTERED);
+        when(messaging.send(any(Message.class))).thenThrow(error);
+
+        User user = new User();
+        user.setFcmToken("stale-token");
+        when(userRepository.findByFcmToken("stale-token")).thenReturn(List.of(user));
+
+        service(messaging).sendAssignmentNotification("stale-token", "body");
+
+        org.assertj.core.api.Assertions.assertThat(user.getFcmToken()).isNull();
+    }
+
+    @Test
     void skipsQuietlyWhenFirebaseIsNotConfigured() {
         assertThatCode(() -> service(null).sendStatusUpdateNotification("token-123", "Leaking tap", "RESOLVED"))
                 .doesNotThrowAnyException();

@@ -1,3 +1,4 @@
+// An empty complaint form
 export const INITIAL_COMPLAINT_FORM = {
   title: '',
   description: '',
@@ -9,6 +10,7 @@ export const INITIAL_COMPLAINT_FORM = {
   keyWithSecurity: false,
 };
 
+// The status choices in My Complaints
 export const STUDENT_STATUS_FILTERS = [
   { value: 'ALL', label: 'All statuses' },
   { value: 'PENDING', label: 'Pending' },

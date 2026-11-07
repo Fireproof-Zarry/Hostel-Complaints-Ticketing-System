@@ -31,6 +31,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Complaints from the reporter's side: filing, reading their own, deleting and photos.
+ * Status changes belong to ComplaintTransitionService.
+ */
 @Service
 public class ComplaintService {
 
@@ -141,6 +145,7 @@ public class ComplaintService {
                 });
     }
 
+    /** The complaints this user filed, newest first, including archived ones. */
     public List<Complaint> getMyComplaints(String email) {
         User student = userRepository.findByEmail(email).orElseThrow();
         return complaintRepository.findByStudentOrderByCreatedAtDesc(student);
@@ -173,6 +178,7 @@ public class ComplaintService {
                 .toList();
     }
 
+    /** One of this user's complaints; 404 for anyone else's, so others are not revealed. */
     public Complaint getComplaintById(Long id, String email) {
         User student = userRepository.findByEmail(email).orElseThrow();
         return complaintRepository.findByIdAndStudent(id, student)
@@ -198,6 +204,7 @@ public class ComplaintService {
         complaintRepository.save(complaint);
     }
 
+    /** Stores a photo for the user's own complaint; see SupabaseStorageService for the checks. */
     public Complaint attachImage(Long id, String email, MultipartFile file) {
         Complaint complaint = getComplaintById(id, email);
         complaint.setImageUrl(storageService.uploadImage(file));
