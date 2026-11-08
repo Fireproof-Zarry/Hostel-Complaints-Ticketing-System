@@ -15,8 +15,12 @@ import {
   SessionEndedError,
   TOKEN_KEY,
 } from './auth/session'
+import { readSessionCache, writeSessionCache } from './utils/sessionCache'
+import { trackBackground } from './utils/backgroundActivity'
+import BackgroundActivityIndicator from './components/BackgroundActivityIndicator'
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
+const VERIFIED_ROLE_KEY = 'verifiedAccount'
 
 /** Shown for unknown URLs, and to signed-in users on a page their role cannot open. */
 function NotFound() {
@@ -42,23 +46,32 @@ function RoleRoute({ requiredRole, children }) {
   // A string key keeps the effect stable when an inline array is passed
   const allowedRoles = [requiredRole].flat().join(',')
   const token = getToken()
-  const [access, setAccess] = useState(() => (
-    token ? { status: 'checking' } : { status: 'unauthenticated' }
-  ))
+  // A role verified earlier in this tab lets a reload show the page straight away;
+  // it is checked again below, and a changed role still takes effect
+  const [access, setAccess] = useState(() => {
+    if (!token) return { status: 'unauthenticated' }
+    const cachedRole = readSessionCache(VERIFIED_ROLE_KEY)
+    return allowedRoles.split(',').includes(cachedRole) ? { status: 'allowed' } : { status: 'checking' }
+  })
   const [retry, setRetry] = useState(0)
+  // Opened from the cached role: the check below runs behind the page
+  const [openedFromCache] = useState(() => access.status === 'allowed')
 
   useEffect(() => {
     if (!token) return undefined
 
     const controller = new AbortController()
     // apiFetch ends the session (and SessionWatcher redirects) for expired or rejected tokens
-    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
+    const request = apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
+    if (openedFromCache) trackBackground(request)
+    request
       .then(async (response) => {
         if (!response.ok) {
           throw new Error(`Could not verify your account (${response.status}).`)
         }
 
         const user = await response.json()
+        writeSessionCache(VERIFIED_ROLE_KEY, user.role)
         setAccess({
           status: allowedRoles.split(',').includes(user.role) ? 'allowed' : 'notFound',
         })
@@ -67,12 +80,15 @@ function RoleRoute({ requiredRole, children }) {
         if (error instanceof SessionEndedError) {
           setAccess({ status: 'unauthenticated' })
         } else if (error.name !== 'AbortError') {
-          setAccess({ status: 'error', message: error.message })
+          // Keep showing a page already opened from the cached role
+          setAccess((current) => (
+            current.status === 'allowed' ? current : { status: 'error', message: error.message }
+          ))
         }
       })
 
     return () => controller.abort()
-  }, [allowedRoles, retry, token])
+  }, [allowedRoles, openedFromCache, retry, token])
 
   if (access.status === 'unauthenticated') {
     return <Navigate to="/login" replace />
@@ -159,6 +175,7 @@ export default function App() {
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
       <BrowserRouter>
         <SessionWatcher />
+        <BackgroundActivityIndicator />
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />

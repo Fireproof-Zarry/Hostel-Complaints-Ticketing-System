@@ -4,6 +4,7 @@ import { apiFetch, decodeTokenPayload, getToken } from '../auth/session';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { HOSTEL_FLOORS } from '../utils/hostelLocation';
 import { replaceComplaint, toggleUpvoteOptimistically } from '../utils/upvotes';
+import { trackBackground } from '../utils/backgroundActivity';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const PAGE_SIZE = 20;
@@ -161,10 +162,17 @@ export default function CommunityDashboard({ refreshSignal = 0 }) {
   // Loading is derived: the feed is stale until it was fetched for the current filters
   const queryKey = JSON.stringify([sort, floor, reloadCount]);
   const isLoading = feed.key !== queryKey;
+  // The cached feed is on screen: its first refresh shows the corner "Updating…"
+  const isLoadingRef = useRef(isLoading);
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   useEffect(() => {
     let active = true;
-    fetchCommunityPage({ sort, floor, page: 0 })
+    const request = fetchCommunityPage({ sort, floor, page: 0 });
+    if (!isLoadingRef.current) trackBackground(request);
+    request
       .then((data) => {
         if (!active) return;
         if (sort === DEFAULT_SORT && !floor) writeCachedFeed(data);
@@ -195,7 +203,7 @@ export default function CommunityDashboard({ refreshSignal = 0 }) {
     let active = true;
     const pages = Array.from({ length: feed.page + 1 }, (_, page) => page);
 
-    Promise.all(pages.map((page) => fetchCommunityPage({ sort, floor, page })))
+    trackBackground(Promise.all(pages.map((page) => fetchCommunityPage({ sort, floor, page }))))
       .then((results) => {
         if (!active) return;
         const fresh = new Map(

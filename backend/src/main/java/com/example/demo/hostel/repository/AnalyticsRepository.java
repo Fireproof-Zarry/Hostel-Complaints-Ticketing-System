@@ -6,6 +6,7 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -55,6 +56,31 @@ public interface AnalyticsRepository
         String getMonth();
 
         Long getCount();
+    }
+
+    interface StaffMember {
+        String getUserId();
+
+        String getEmail();
+
+        String getName();
+
+        String getRole();
+    }
+
+    interface StaffWorkOrder extends StaffMember {
+        String getStatus();
+
+        LocalDateTime getCreatedAt();
+
+        // When it was done or cancelled, for a finished work order
+        LocalDateTime getFinishedAt();
+
+        LocalDateTime getDeadline();
+
+        Boolean getCreatedInRange();
+
+        Boolean getFinishedInRange();
     }
 
     /*
@@ -285,6 +311,72 @@ public interface AnalyticsRepository
                    OR lr.latest_resolved_at < CAST(:endDate AS date) + INTERVAL '1 day')
             """, nativeQuery = true)
     Double findAverageResolutionTimeHours(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate);
+
+    /*
+     * 8. Current staff, so those with no work orders still get a row.
+     * Admins and former staff appear only through their work orders (query 9).
+     */
+
+    @Query(value = """
+            SELECT
+                u.id AS "userId",
+                u.email AS email,
+                COALESCE(NULLIF(TRIM(u.full_name), ''), u.name, u.email) AS name,
+                u.role AS role
+            FROM users u
+            WHERE u.role = 'STAFF'
+            """, nativeQuery = true)
+    List<StaffMember> findStaffMembers();
+
+    /*
+     * 9. Work orders behind the staff figures, with their assignee.
+     *
+     * Returns every active work order (active and overdue counts are as of now,
+     * whatever the range), plus finished ones created or finished in the range.
+     * A work order is not edited after it is done or cancelled unless its
+     * complaint is reopened, so updated_at is when it finished.
+     * Work orders of soft-deleted complaints are left out.
+     */
+
+    @Query(value = """
+            SELECT *
+            FROM (
+                SELECT
+                    u.id AS "userId",
+                    u.email AS email,
+                    COALESCE(NULLIF(TRIM(u.full_name), ''), u.name, u.email) AS name,
+                    u.role AS role,
+                    w.status AS status,
+                    w.created_at AS "createdAt",
+                    CASE WHEN w.status IN ('DONE', 'CANCELLED')
+                         THEN COALESCE(w.updated_at, w.created_at)
+                    END AS "finishedAt",
+                    w.deadline AS deadline,
+                    ((CAST(:startDate AS date) IS NULL
+                      OR w.created_at >= CAST(:startDate AS date))
+                     AND (CAST(:endDate AS date) IS NULL
+                      OR w.created_at < CAST(:endDate AS date) + INTERVAL '1 day'))
+                        AS "createdInRange",
+                    (w.status IN ('DONE', 'CANCELLED')
+                     AND (CAST(:startDate AS date) IS NULL
+                      OR COALESCE(w.updated_at, w.created_at) >= CAST(:startDate AS date))
+                     AND (CAST(:endDate AS date) IS NULL
+                      OR COALESCE(w.updated_at, w.created_at) < CAST(:endDate AS date) + INTERVAL '1 day'))
+                        AS "finishedInRange"
+                FROM work_orders w
+                JOIN users u
+                    ON u.id = w.assignee_id
+                JOIN complaints c
+                    ON c.id = w.complaint_id
+                WHERE c.deleted_at IS NULL
+            ) staff_work
+            WHERE status IN ('OPEN', 'IN_PROGRESS')
+               OR "createdInRange"
+               OR "finishedInRange"
+            """, nativeQuery = true)
+    List<StaffWorkOrder> findStaffWorkOrders(
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
 }

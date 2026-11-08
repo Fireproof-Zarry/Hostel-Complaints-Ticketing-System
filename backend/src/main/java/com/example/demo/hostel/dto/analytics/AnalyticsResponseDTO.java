@@ -10,6 +10,7 @@ public class AnalyticsResponseDTO {
     private List<FloorAnalyticsDTO> floorBreakdown;
     private List<RecurringIssueDTO> recurringIssues;
     private List<MonthlyTrendDTO> monthlyTrends;
+    private StaffAnalyticsDTO staff;
 
     public OverviewDTO getOverview() {
         return overview;
@@ -49,5 +50,13 @@ public class AnalyticsResponseDTO {
 
     public void setMonthlyTrends(List<MonthlyTrendDTO> monthlyTrends) {
         this.monthlyTrends = monthlyTrends;
+    }
+
+    public StaffAnalyticsDTO getStaff() {
+        return staff;
+    }
+
+    public void setStaff(StaffAnalyticsDTO staff) {
+        this.staff = staff;
     }
 }

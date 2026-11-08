@@ -36,6 +36,8 @@ import useForegroundNotifications from '../notifications/useForegroundNotificati
 import usePushNotifications from '../notifications/usePushNotifications'
 import { getRoomHundredsForFloor, isRoomOnFloor } from '../utils/hostelLocation'
 import { isAwaitingNudgeResponse } from '../utils/nudge'
+import { readSessionCache, writeSessionCache } from '../utils/sessionCache'
+import { trackBackground } from '../utils/backgroundActivity'
 import './AdminHome.css'
 
 // Shown in the main area like the other sidebar pages
@@ -45,6 +47,28 @@ const STAFF_VIEW = 'Staff Management'
 const RESIDENTS_VIEW = 'Residents'
 const MY_COMPLAINTS_VIEW = 'My Complaints'
 const FILE_COMPLAINT_VIEW = 'File Complaint'
+const ANALYTICS_VIEW = 'Analytics'
+
+// The open page survives a reload of this browser tab (null is Complaints)
+const PAGE_STORAGE_KEY = 'adminPage'
+const PAGES = [PROFILE_VIEW, STAFF_VIEW, MY_COMPLAINTS_VIEW, FILE_COMPLAINT_VIEW, ANALYTICS_VIEW]
+
+function readSavedPage() {
+  try {
+    const page = sessionStorage.getItem(PAGE_STORAGE_KEY)
+    return PAGES.includes(page) ? page : null
+  } catch {
+    return null
+  }
+}
+
+// The unfiltered complaint list and the signed-in user, shown straight away on a reload
+// while fresh copies load (see utils/sessionCache)
+const DASHBOARD_CACHE_KEY = 'adminDashboardCache'
+
+function updateDashboardCache(data) {
+  writeSessionCache(DASHBOARD_CACHE_KEY, { ...readSessionCache(DASHBOARD_CACHE_KEY), ...data })
+}
 
 // Where a complaint can move next; ComplaintTransitionService enforces the same rules
 const STATUS_TRANSITIONS = {
@@ -143,16 +167,26 @@ export default function AdminHome() {
   // The complaint a nudge notification pointed to; see the 10-second effect below
   const [highlightedComplaintId, setHighlightedComplaintId] = useState(null)
   const [sidebarOpen, setSidebarOpen] = useState(true)
-  const [complaints, setComplaints] = useState([])
-  const [filteredComplaints, setFilteredComplaints] = useState([])
+  const [cached] = useState(() => readSessionCache(DASHBOARD_CACHE_KEY))
+  const [complaints, setComplaints] = useState(() => cached?.complaints ?? [])
+  const [filteredComplaints, setFilteredComplaints] = useState(() => cached?.complaints ?? [])
   const [searchTerm, setSearchTerm] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !cached?.complaints)
   const [error, setError] = useState('')
   const [admins, setAdmins] = useState([])
-  const [activePage, setActivePage] = useState(null)
+  const [activePage, setActivePage] = useState(readSavedPage)
+
+  useEffect(() => {
+    try {
+      if (activePage) sessionStorage.setItem(PAGE_STORAGE_KEY, activePage)
+      else sessionStorage.removeItem(PAGE_STORAGE_KEY)
+    } catch {
+      // Without storage a reload just opens Complaints.
+    }
+  }, [activePage])
   // ADMIN or STAFF; staff share this dashboard but cannot manage staff and
   // can only assign complaints to themselves
-  const [currentUser, setCurrentUser] = useState(null)
+  const [currentUser, setCurrentUser] = useState(() => cached?.currentUser ?? null)
   const isAdmin = currentUser?.role === 'ADMIN'
 
   // Bumped after a work order change so the popup's timeline reloads
@@ -226,8 +260,13 @@ export default function AdminHome() {
     }, 4000)
   }
 
-  // quiet: refresh in place, without swapping the table for "Loading..."
-  const fetchComplaints = async (filters = {}, query = searchTerm, { quiet = false } = {}) => {
+  // quiet: refresh in place, with the corner "Updating…" instead of swapping the table for "Loading..."
+  const fetchComplaints = (filters = {}, query = searchTerm, { quiet = false } = {}) => {
+    const request = loadComplaints(filters, query, quiet)
+    return quiet ? trackBackground(request) : request
+  }
+
+  const loadComplaints = async (filters, query, quiet) => {
     try {
       if (!quiet) setLoading(true)
       setError('')
@@ -277,6 +316,7 @@ export default function AdminHome() {
 
       setComplaints(data)
       setFilteredComplaints(filterComplaintsBySearch(data, query))
+      if (!Object.values(filters).some(Boolean)) updateDashboardCache({ complaints: data })
 
       return true
     } catch (error) {
@@ -320,14 +360,19 @@ export default function AdminHome() {
   const fetchCurrentUser = async () => {
     try {
       const response = await apiFetch(`${import.meta.env.VITE_API_URL}/auth/me`)
-      if (response.ok) setCurrentUser(await response.json())
+      if (response.ok) {
+        const user = await response.json()
+        setCurrentUser(user)
+        updateDashboardCache({ currentUser: user })
+      }
     } catch (error) {
       console.error('Failed to load the signed-in user:', error)
     }
   }
 
   useEffect(() => {
-    fetchComplaints()
+    // With cached complaints on screen, refresh them in place
+    fetchComplaints({}, '', { quiet: Boolean(cached?.complaints) })
     fetchAdmins()
     fetchCurrentUser()
   }, [])
@@ -681,8 +726,8 @@ export default function AdminHome() {
           {/* Analytics navigation */}
           <button
             type="button"
-            className={`admin-nav-item ${activePage === 'Analytics' ? 'active' : ''}`}
-            onClick={() => setActivePage('Analytics')}
+            className={`admin-nav-item ${activePage === ANALYTICS_VIEW ? 'active' : ''}`}
+            onClick={() => setActivePage(ANALYTICS_VIEW)}
             title="Analytics"
           >
             <BarChart3 size={19} />
@@ -810,7 +855,7 @@ export default function AdminHome() {
         </header>
 
         <section className="admin-content">
-          {activePage === 'Analytics' ? (
+          {activePage === ANALYTICS_VIEW ? (
             <AdminAnalytics />
           ) : activePage === PROFILE_VIEW ? (
             <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />

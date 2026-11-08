@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronRight, RefreshCw, Trash2, UserPlus, Users } from 'lucide-react';
 import { apiFetch } from '../auth/session';
+import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
+import { trackBackground } from '../utils/backgroundActivity';
+
+const STAFF_CACHE_KEY = 'staffListCache';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -83,8 +87,9 @@ function ActiveWorkOrders({ memberId }) {
  * now, and adding or removing staff by email.
  */
 export default function StaffManagement() {
-  const [staff, setStaff] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Last list seen, shown at once on returning here while a fresh one loads
+  const [staff, setStaff] = useState(() => readSessionCache(STAFF_CACHE_KEY) ?? []);
+  const [isLoading, setIsLoading] = useState(() => readSessionCache(STAFF_CACHE_KEY) === null);
   const [email, setEmail] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
@@ -97,12 +102,22 @@ export default function StaffManagement() {
   // Bumped after an add or remove to reload the list
   const [reloadKey, setReloadKey] = useState(0);
 
+  // With the list on screen, a reload shows the corner "Updating…" instead of Loading
+  const hasListRef = useRef(!isLoading);
+  useEffect(() => {
+    hasListRef.current = !isLoading;
+  }, [isLoading]);
+
   useEffect(() => {
     const controller = new AbortController();
-    apiFetch(`${apiBaseUrl}/admin/staff`, { signal: controller.signal })
+    const request = apiFetch(`${apiBaseUrl}/admin/staff`, { signal: controller.signal });
+    if (hasListRef.current) trackBackground(request);
+    request
       .then(async (response) => {
         if (!response.ok) throw new Error(await errorMessage(response, 'Could not load staff.'));
-        setStaff(await response.json());
+        const list = await response.json();
+        setStaff(list);
+        writeSessionCache(STAFF_CACHE_KEY, list);
       })
       .catch((loadError) => {
         if (loadError.name !== 'AbortError') setError(loadError.message);

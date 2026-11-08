@@ -125,6 +125,12 @@ export function logout() {
   // The student dashboard's cached complaints, profile and community feed
   sessionStorage.removeItem('studentDashboardCache');
   sessionStorage.removeItem('communityFeedCache');
+  // The admin pages' cached data and the verified role (utils/sessionCache)
+  sessionStorage.removeItem('adminDashboardCache');
+  sessionStorage.removeItem('analyticsCache');
+  sessionStorage.removeItem('verifiedAccount');
+  sessionStorage.removeItem('myComplaintsCache');
+  sessionStorage.removeItem('staffListCache');
 }
 
 /**

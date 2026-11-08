@@ -36,7 +36,7 @@ public class WorkOrderService {
 
     // Deadlines are picked in the browser as hostel (IST) wall-clock time with no
     // zone, so compare them with the time in IST, not the server's zone (UTC on Render)
-    private static final ZoneId HOSTEL_ZONE = ZoneId.of("Asia/Kolkata");
+    static final ZoneId HOSTEL_ZONE = ZoneId.of("Asia/Kolkata");
 
     private final WorkOrderRepository workOrderRepository;
     private final ComplaintRepository complaintRepository;

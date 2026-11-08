@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { apiFetch, decodeTokenPayload } from '../../../auth/session';
 import { isActiveComplaint } from '../utils/studentUtils';
+import { trackBackground } from '../../../utils/backgroundActivity';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -79,7 +80,10 @@ export default function useStudentComplaints(
 
     const controller = new AbortController();
 
-    apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal })
+    const request = apiFetch(`${apiBaseUrl}/auth/me`, { signal: controller.signal });
+    // A cached profile is on screen: refresh it behind the corner "Updating…"
+    if (cached?.profile) trackBackground(request);
+    request
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data) {
@@ -92,7 +96,7 @@ export default function useStudentComplaints(
       });
 
     return () => controller.abort();
-  }, [token]);
+  }, [cached, token]);
 
   // Load the student's complaints after authentication.
   useEffect(() => {
@@ -103,7 +107,10 @@ export default function useStudentComplaints(
 
     let isActive = true;
 
-    requestMyComplaints()
+    const request = requestMyComplaints();
+    // Cached complaints are on screen: refresh them behind the corner "Updating…"
+    if (cached) trackBackground(request);
+    request
       .then((data) => {
         if (isActive) {
           setError('');
@@ -126,7 +133,7 @@ export default function useStudentComplaints(
     return () => {
       isActive = false;
     };
-  }, [requestMyComplaints, token]);
+  }, [cached, requestMyComplaints, token]);
 
   useEffect(() => {
     if (token && !isLoading && !error) {
@@ -138,7 +145,7 @@ export default function useStudentComplaints(
     setIsRefreshing(true);
 
     try {
-      const data = await requestMyComplaints();
+      const data = await trackBackground(requestMyComplaints());
       setError('');
       setComplaints(data);
       return data;

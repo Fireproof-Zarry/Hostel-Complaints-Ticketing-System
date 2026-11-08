@@ -5,6 +5,7 @@ import {
     Building2,
     Repeat2,
     Clock3,
+    Users,
     ClipboardList,
     Clock,
     CheckCircle2,
@@ -43,6 +44,12 @@ export const TABS = [
         label: 'Resolution',
         icon: Clock3,
         description: 'Resolution time, resolution rate and trends.',
+    },
+    {
+        id: 'staff',
+        label: 'Staff',
+        icon: Users,
+        description: 'Work orders, completion time and deadlines per staff member.',
     },
 ]
 

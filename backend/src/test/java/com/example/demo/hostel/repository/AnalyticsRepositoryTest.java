@@ -484,8 +484,96 @@ class AnalyticsRepositoryTest {
     }
 
     // ---------------------------------------------------------
+    // 8-9. Staff members and their work orders
+    // ---------------------------------------------------------
+
+    @Test
+    void findStaffMembers_returnsOnlyStaff_withProfileNameFirst() {
+
+        User staff = user("staff@example.com", Role.STAFF);
+        staff.setFullName("Ravi Kumar");
+        userRepository.save(staff);
+
+        assertThat(analyticsRepository.findStaffMembers())
+                .extracting(AnalyticsRepository.StaffMember::getName,
+                        AnalyticsRepository.StaffMember::getRole)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple("Ravi Kumar", "STAFF"));
+    }
+
+    @Test
+    void findStaffWorkOrders_returnsActiveAlways_andFinishedOnlyInRange() {
+
+        Complaint complaint = createComplaint(plumbing, firstFloorRoom, Status.ASSIGNED);
+        LocalDateTime deadline = LocalDateTime.of(2026, 10, 20, 18, 0);
+
+        // Active, created long before the range
+        insertWorkOrder(complaint, "OPEN",
+                LocalDateTime.of(2026, 1, 5, 10, 0), null, deadline);
+        // Done inside the range
+        insertWorkOrder(complaint, "DONE",
+                LocalDateTime.of(2026, 10, 9, 10, 0), LocalDateTime.of(2026, 10, 10, 10, 0), deadline);
+        // Done before the range
+        insertWorkOrder(complaint, "DONE",
+                LocalDateTime.of(2026, 9, 1, 10, 0), LocalDateTime.of(2026, 9, 2, 10, 0), null);
+        // Cancelled inside the range
+        insertWorkOrder(complaint, "CANCELLED",
+                LocalDateTime.of(2026, 10, 11, 10, 0), LocalDateTime.of(2026, 10, 12, 10, 0), null);
+
+        var result = analyticsRepository.findStaffWorkOrders(
+                LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+
+        assertThat(result)
+                .extracting(AnalyticsRepository.StaffWorkOrder::getStatus,
+                        AnalyticsRepository.StaffWorkOrder::getCreatedInRange,
+                        AnalyticsRepository.StaffWorkOrder::getFinishedInRange)
+                .containsExactlyInAnyOrder(
+                        org.assertj.core.groups.Tuple.tuple("OPEN", false, false),
+                        org.assertj.core.groups.Tuple.tuple("DONE", true, true),
+                        org.assertj.core.groups.Tuple.tuple("CANCELLED", true, true));
+
+        var done = result.stream().filter(row -> "DONE".equals(row.getStatus())).findFirst().orElseThrow();
+        assertThat(done.getUserId()).isEqualTo(admin.getId());
+        assertThat(done.getCreatedAt()).isEqualTo(LocalDateTime.of(2026, 10, 9, 10, 0));
+        assertThat(done.getFinishedAt()).isEqualTo(LocalDateTime.of(2026, 10, 10, 10, 0));
+        assertThat(done.getDeadline()).isEqualTo(deadline);
+
+        var open = result.stream().filter(row -> "OPEN".equals(row.getStatus())).findFirst().orElseThrow();
+        assertThat(open.getFinishedAt()).isNull();
+    }
+
+    @Test
+    void findStaffWorkOrders_excludesSoftDeletedComplaints() {
+
+        Complaint deleted = createComplaint(plumbing, firstFloorRoom, Status.PENDING);
+        insertWorkOrder(deleted, "OPEN", LocalDateTime.of(2026, 10, 9, 10, 0), null, null);
+
+        jdbcTemplate.update(
+                "UPDATE complaints SET deleted_at = ? WHERE id = ?",
+                LocalDateTime.of(2026, 10, 10, 10, 0),
+                deleted.getId());
+
+        assertThat(analyticsRepository.findStaffWorkOrders(null, null)).isEmpty();
+    }
+
+    // ---------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------
+
+    // Assigned to the admin; updatedAt stands for when a finished one finished
+    private void insertWorkOrder(
+            Complaint complaint,
+            String status,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt,
+            LocalDateTime deadline) {
+
+        jdbcTemplate.update("""
+                INSERT INTO work_orders
+                    (work_order_id, complaint_id, assignee_id, priority, status, deadline, created_at, updated_at)
+                VALUES (gen_random_uuid(), ?, ?, 'MEDIUM', ?, ?, ?, ?)
+                """,
+                complaint.getId(), admin.getId(), status, deadline, createdAt, updatedAt);
+    }
 
     private Complaint createComplaint(
             Category category,

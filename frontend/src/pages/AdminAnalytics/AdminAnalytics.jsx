@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 
 import { apiFetch } from '../../auth/session'
+import { readSessionCache, writeSessionCache } from '../../utils/sessionCache'
+import { trackBackground } from '../../utils/backgroundActivity'
 import { TABS } from './utils/analyticsUtils'
 
 import AnalyticsHeader from './components/AnalyticsHeader'
@@ -14,21 +16,26 @@ import Categories from './sections/Categories'
 import Floors from './sections/Floors'
 import RecurringIssues from './sections/RecurringIssues'
 import Resolution from './sections/Resolution'
+import Staff from './sections/Staff'
 
 import './styles/layout.css'
 import './styles/components.css'
 import './styles/charts.css'
 import './styles/responsive.css'
 
+// The unfiltered figures, shown straight away on returning here while fresh ones load
+const ANALYTICS_CACHE_KEY = 'analyticsCache'
+
 /** The analytics dashboard: date filters, summary cards and one section per tab. */
 export default function AdminAnalytics() {
     const [activeTab, setActiveTab] = useState('overview')
-    const [analytics, setAnalytics] = useState(null)
+    const [analytics, setAnalytics] = useState(() => readSessionCache(ANALYTICS_CACHE_KEY))
 
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
 
-    const [loading, setLoading] = useState(true)
+    const [loading, setLoading] = useState(() => !analytics)
+    const [openedFromCache] = useState(() => analytics !== null)
     const [error, setError] = useState('')
 
     // Validate the selected date range.
@@ -36,8 +43,8 @@ export default function AdminAnalytics() {
         startDate && endDate && endDate < startDate
     )
 
-    // Fetch analytics from the backend.
-    const fetchAnalytics = useCallback(async (from = '', to = '') => {
+    // Fetch analytics from the backend; true if it worked.
+    const loadAnalytics = useCallback(async (from, to) => {
         try {
             setLoading(true)
             setError('')
@@ -62,23 +69,34 @@ export default function AdminAnalytics() {
 
             const data = await response.json()
             setAnalytics(data)
+            if (!from && !to) writeSessionCache(ANALYTICS_CACHE_KEY, data)
+            return true
         } catch (err) {
             console.error('Failed to fetch analytics:', err)
             setError(err.message || 'Failed to load analytics.')
+            return false
         } finally {
             setLoading(false)
         }
     }, [])
 
+    // background: figures are already on screen, so show the corner "Updating…" instead
+    const fetchAnalytics = useCallback((from = '', to = '', { background = false } = {}) => {
+        const request = loadAnalytics(from, to)
+        return background ? trackBackground(request) : request
+    }, [loadAnalytics])
+
     // Fetch analytics when the page loads.
     useEffect(() => {
-        fetchAnalytics()
-    }, [fetchAnalytics])
+        fetchAnalytics('', '', { background: openedFromCache })
+    }, [fetchAnalytics, openedFromCache])
 
     // Apply the selected date filters.
     const handleApplyFilters = () => {
         if (hasInvalidDateRange) return
 
+        // Figures for the old range would be misleading while the new ones load
+        setAnalytics(null)
         fetchAnalytics(startDate, endDate)
     }
 
@@ -86,12 +104,13 @@ export default function AdminAnalytics() {
     const handleResetFilters = () => {
         setStartDate('')
         setEndDate('')
+        setAnalytics(null)
         fetchAnalytics()
     }
 
     // Refresh analytics using the currently selected filters.
     const handleRefresh = () => {
-        fetchAnalytics(startDate, endDate)
+        fetchAnalytics(startDate, endDate, { background: analytics !== null })
     }
 
     const overview = analytics?.overview
@@ -141,6 +160,8 @@ export default function AdminAnalytics() {
                 monthlyTrendData={monthlyTrendData}
             />
         ),
+
+        staff: <Staff staff={analytics?.staff} />,
     }
 
     return (
@@ -178,11 +199,17 @@ export default function AdminAnalytics() {
                 id={`analytics-panel-${activeTab}`}
                 aria-labelledby={`analytics-tab-${activeTab}`}
             >
-                {loading ? (
+                {analytics && error && (
+                    <p className="analytics-error" role="alert">
+                        Could not refresh analytics: {error}
+                    </p>
+                )}
+
+                {loading && !analytics ? (
                     <div className="analytics-placeholder">
                         <p>Loading analytics...</p>
                     </div>
-                ) : error ? (
+                ) : error && !analytics ? (
                     <div className="analytics-placeholder">
                         <h3>Unable to load analytics</h3>
 

@@ -1,8 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../auth/session';
 import StaffNotificationSwitch from './StaffNotificationSwitch';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { formatServerDateTime } from '../utils/serverDate';
+import { readSessionCache, writeSessionCache } from '../utils/sessionCache';
+import { trackBackground } from '../utils/backgroundActivity';
+
+const MY_COMPLAINTS_CACHE_KEY = 'myComplaintsCache';
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
@@ -58,9 +62,16 @@ function Section({ title, count, empty, children }) {
  * refreshKey reloads the lists after a change made there.
  */
 export default function MyComplaintsPage({ notifications, onOpen, refreshKey }) {
-  const [assigned, setAssigned] = useState(null);
-  const [filed, setFiled] = useState(null);
+  // Last lists seen, shown at once on returning here while fresh ones load
+  const [cached] = useState(() => readSessionCache(MY_COMPLAINTS_CACHE_KEY));
+  const [assigned, setAssigned] = useState(() => cached?.assigned ?? null);
+  const [filed, setFiled] = useState(() => cached?.filed ?? null);
   const [error, setError] = useState('');
+  // With lists on screen, a reload shows the corner "Updating…" instead of Loading
+  const hasListsRef = useRef(cached !== null);
+  useEffect(() => {
+    hasListsRef.current = assigned !== null && filed !== null;
+  }, [assigned, filed]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -69,11 +80,14 @@ export default function MyComplaintsPage({ notifications, onOpen, refreshKey }) 
       if (!response.ok) throw new Error('Could not load your complaints.');
       return response.json();
     };
-    Promise.all([load('/work-orders/me'), load('/complaints/mine')])
+    const request = Promise.all([load('/work-orders/me'), load('/complaints/mine')]);
+    if (hasListsRef.current) trackBackground(request);
+    request
       .then(([workOrders, complaints]) => {
         setAssigned(workOrders);
         setFiled(complaints);
         setError('');
+        writeSessionCache(MY_COMPLAINTS_CACHE_KEY, { assigned: workOrders, filed: complaints });
       })
       .catch((loadError) => {
         if (loadError.name !== 'AbortError') setError(loadError.message);
