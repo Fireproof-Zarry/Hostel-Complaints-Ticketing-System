@@ -1,4 +1,4 @@
-import { Bell, ClipboardList, FilePlus2, Home, UserRound, Users } from 'lucide-react';
+import { Bell, CircleQuestionMark, ClipboardList, FilePlus2, Home, UserRound, Users } from 'lucide-react';
 
 // The student sidebar: each page and the line shown for it at the bottom
 export const STUDENT_NAVIGATION = [
@@ -7,5 +7,6 @@ export const STUDENT_NAVIGATION = [
   { id: 'complaints', label: 'My Complaints', icon: ClipboardList, description: 'Your submitted complaints and their current status.' },
   { id: 'community', label: 'Community', icon: Users, description: 'Issues in shared areas. Upvote the ones that affect you.' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Manage browser notifications for complaint status updates.' },
+  { id: 'help', label: 'Help', icon: CircleQuestionMark, description: 'Which category to choose, and answers to common questions.' },
   { id: 'profile', label: 'My Profile', icon: UserRound, description: 'Keep your details current so workers can reach you.' },
 ];

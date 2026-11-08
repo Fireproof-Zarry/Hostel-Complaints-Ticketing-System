@@ -11,6 +11,7 @@ import DeleteComplaintDialog from '../../components/DeleteComplaintDialog';
 import NotificationToast from '../../components/NotificationToast';
 import SubmissionConfirmation from '../../components/SubmissionConfirmation';
 import StudentComplaintDetails from '../../components/StudentComplaintDetails';
+import StudentHelp from '../../components/StudentHelp';
 import StudentSidebar from '../../components/StudentSidebar';
 import { STUDENT_NAVIGATION } from '../../components/studentNavigation';
 import { apiFetch, getToken, logout } from '../../auth/session';
@@ -434,6 +435,8 @@ export default function StudentHomePage() {
               onNudgeComplaint={handleNudge}
             />
           )}
+
+          {activeTab === 'help' && <StudentHelp />}
 
           {activeTab === 'notifications' && (
             <section className="mx-auto max-w-3xl space-y-5">
