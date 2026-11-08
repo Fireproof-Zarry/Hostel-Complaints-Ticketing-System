@@ -65,6 +65,7 @@ If the Web API key is restricted to certain websites, add the live frontend's do
 In Google Cloud, under **APIs & Services → Credentials**, add these as Authorized JavaScript origins of the OAuth client:
 
 - `http://localhost:5173`
+- `http://localhost:8080` (the all-in-one Docker image)
 - `https://hostel-complaints-frontend.onrender.com`
 
 The client ID must match `spring.security.oauth2.resourceserver.jwt.audiences` in `application.properties`.
@@ -92,6 +93,35 @@ Add the secret file before setting the path. The memory settings in the `Dockerf
 3. Add a rewrite from `/*` to `/index.html`, so links like `/admin` work on reload.
 
 If the frontend's address changes, update the allowed origins in `SecurityConfig` too.
+
+## All-in-one Docker image
+
+The root `Dockerfile` packages the whole app for running on any machine. Render doesn't use it.
+
+| Part | In the image |
+|---|---|
+| Frontend | Built with `VITE_API_URL=/api` and served by the backend on port 8080 |
+| Backend | Runs with the `docker` profile (`application-docker.properties`) |
+| Database | PostgreSQL 16 inside the container, listening only there and needing no password. Hibernate creates the tables; `docker/setup.sql` adds the categories, `pg_trgm` and indexes; `docker/demo-data.sql` loads 10 demo complaints on first start |
+| Photos, push notifications | Off: they need the project's keys, which aren't in the image |
+
+**Building.** `frontend/.env` must be filled in. It's passed with `--secret`, so it's used for the frontend build only and isn't stored in the image. Its Google client ID and Firebase web config end up in the built JavaScript, as on the live site; they're public by design.
+
+```bash
+docker build --secret id=frontend_env,src=frontend/.env -t hostelfix:$(git rev-parse HEAD) .
+```
+
+**Running.**
+
+```bash
+docker run --rm -p 8080:8080 -e ADMIN_EMAILS=you@example.com hostelfix:<sha>
+```
+
+`ADMIN_EMAILS` decides who can use Staff Login. The data lasts until the container stops (`--rm`); the next start loads the demo data again.
+
+**Sharing.** `docker save hostelfix:<sha> | gzip > hostelfix-<sha>.tar.gz`, then on the other machine `docker load -i hostelfix-<sha>.tar.gz`.
+
+**Demo data.** Five students and four staff, all with made-up addresses, so nobody can sign in as them. The complaints cover every status, including an overdue work order, a nudged complaint, a rejection and upvoted community issues.
 
 ## Releasing
 
