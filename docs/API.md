@@ -66,6 +66,7 @@ A user can only change their own account.
 | GET | `/api/complaints/{id}` | One of the caller's complaints |
 | GET | `/api/complaints/{id}/history` | Status changes, newest first. Owner, or any admin or staff member |
 | DELETE | `/api/complaints/{id}` | Soft-deletes the caller's complaint. Pending only, otherwise 409 |
+| PATCH | `/api/complaints/{id}/description` | Replaces the description of the caller's own open complaint: `{ "description": "..." }` |
 | POST | `/api/complaints/{id}/image` | Attaches a photo: multipart field `file` |
 | GET | `/api/complaints/community` | Open community complaints |
 | GET | `/api/complaints/potential-duplicates` | Similar open complaints |
@@ -114,6 +115,10 @@ Returns 422 if a room complaint has no valid room.
 | `communityArea` | `true` by default |
 | `floor`, `wing` | For community issues; `floor` is required |
 | `room` | For staff and admins searching a room. Ignored for students |
+
+### `PATCH /api/complaints/{id}/description`
+
+The new description is trimmed and must be 1 to 1000 characters, otherwise 400. Returns 409 once the complaint is Resolved or Rejected, and 404 for anyone else's complaint.
 
 ### `POST /api/complaints/{id}/nudge`
 
@@ -209,12 +214,3 @@ Status can be `IN_PROGRESS`, `DONE` or `CANCELLED`.
 | `floorBreakdown` | `floor` and `count` |
 | `recurringIssues` | `type`, `floor`, `roomNumber`, `wing`, `category`, `count`, for the same category reported at least twice in one place |
 | `monthlyTrends` | `month` (`yyyy-MM`), `created`, `resolved`. Months with no activity are included as zero. With no dates, it covers the last 12 months |
-
-## Original student API
-
-The app uses `/api/complaints`. These older endpoints still exist:
-
-| Method | Path | Description |
-|---|---|---|
-| POST | `/api/student/complaints` | Files a complaint with `?title=&description=` |
-| GET | `/api/student/complaints` | The caller's complaints |
