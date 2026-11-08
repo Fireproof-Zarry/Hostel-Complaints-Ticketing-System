@@ -148,8 +148,8 @@ Open **Residents**. Only students on this list can use the student portal. Until
 **At the start of each year:**
 
 1. In your allotment sheet in Excel, select the roll number column and copy it. You can also copy the whole sheet: names, rooms and headings are ignored.
-2. Paste it into **Replace the list**, or click **Choose CSV file** (in Excel: File › Save As › CSV).
-3. Click **Check list**. You'll see how many roll numbers were found, how many are new, and who will lose access. Nothing has changed yet.
+2. Paste it into **Replace the list**, or click **Choose CSV file** (in Excel: File › Save As › CSV). Pasted roll numbers can be one per line, or separated by commas or spaces. In a CSV file they can be in any column, and a heading such as "Roll No" is fine.
+3. Click **Preview changes**. You'll see how many roll numbers were found, how many are new, and who will lose access. Nothing has changed yet.
 4. If it looks right, click **Replace the list**. Students who aren't on the new list can't sign in from their next action.
 
 **During the year:** type a roll number under **One student** and click **Add**. To remove someone, search for their roll number and click **Remove**.

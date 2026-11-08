@@ -198,9 +198,18 @@ export default function ResidentList() {
         <div>
           <h3 className="m-0 text-base font-semibold text-slate-900">Replace the list</h3>
           <p className="m-0 mt-1 text-sm text-slate-500">
-            Do this at the start of each year. Copy the roll number column from your Excel sheet and paste it here,
-            or choose a CSV file. Other columns such as names and rooms are ignored.
+            Do this at the start of each year. The new list replaces the old one completely.
           </p>
+          <ul className="m-0 mt-2 list-disc space-y-1 pl-5 text-sm text-slate-500">
+            <li>
+              <strong className="text-slate-700">Pasting:</strong> put one roll number per line, or separate them with
+              commas or spaces. You can copy the roll number column straight from Excel.
+            </li>
+            <li>
+              <strong className="text-slate-700">CSV file:</strong> the roll numbers can be in any column, and a heading
+              such as “Roll No” is fine. Names, rooms and headings are ignored.
+            </li>
+          </ul>
         </div>
         <label className="sr-only" htmlFor="resident-text">Roll numbers</label>
         <textarea
@@ -220,7 +229,7 @@ export default function ResidentList() {
             <input type="file" accept=".csv,.txt,text/csv,text/plain,.xlsx,.xls" onChange={handleFile} className="sr-only" />
           </label>
           <button type="submit" disabled={!text.trim() || busy === 'check'} className={primaryButton}>
-            {busy === 'check' && <RefreshCw className="h-4 w-4 animate-spin" />} Check list
+            {busy === 'check' && <RefreshCw className="h-4 w-4 animate-spin" />} Preview changes
           </button>
         </div>
 
@@ -228,7 +237,7 @@ export default function ResidentList() {
           <div className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
             <PreviewSummary preview={preview} />
             <p className="m-0 text-sm text-slate-700">Nothing has changed yet.</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 pt-5">
               <button
                 type="button"
                 onClick={handleReplace}
@@ -272,7 +281,7 @@ export default function ResidentList() {
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search, e.g. CS23"
+            placeholder="Search a roll number to remove it, e.g. CS23B051"
             className={`${inputClass} box-border w-full pl-9`}
           />
         </div>
