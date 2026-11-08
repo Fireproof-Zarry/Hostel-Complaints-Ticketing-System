@@ -59,7 +59,7 @@ Spring doesn't run these files. Run them by hand in the Supabase SQL editor, in 
 | `schema_nov06.sql` | Allows the `STAFF` role in `users` |
 | `schema_nov07.sql` | `complaints.last_nudged_at` |
 | `schema_nov08.sql` | Work orders for complaints assigned before work orders existed |
-| `schema_nov09.sql` | The `residents` table, with a check that each roll number looks like `cs23b051` |
+| `schema_nov08_2.sql` | The `residents` table, with a check that each roll number looks like `cs23b051` |
 
 `spring.jpa.hibernate.ddl-auto=update` adds new tables and columns on startup, but it doesn't create the indexes above or change existing check constraints. So the migrations are still needed.
 
