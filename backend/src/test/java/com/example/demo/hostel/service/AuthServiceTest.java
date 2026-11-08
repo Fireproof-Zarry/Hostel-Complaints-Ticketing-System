@@ -27,7 +27,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("student@smail.iitm.ac.in")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        User user = new AuthService(userRepository, "").processGoogleLogin(jwt(
+        User user = new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                 "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", true
         ));
 
@@ -44,7 +44,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail(existingUser.getEmail())).thenReturn(Optional.of(existingUser));
         when(userRepository.save(existingUser)).thenReturn(existingUser);
 
-        User user = new AuthService(userRepository, existingUser.getEmail()).processGoogleLogin(jwt(
+        User user = new AuthService(userRepository, existingUser.getEmail(), email -> true).processGoogleLogin(jwt(
                 existingUser.getEmail(), "Administrator", "smail.iitm.ac.in", true
         ));
 
@@ -57,7 +57,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        User user = new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
+        User user = new AuthService(userRepository, "admin@example.com", email -> true).processGoogleLogin(jwt(
                 "admin@example.com", "Admin", null, true
         ));
 
@@ -71,7 +71,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("someone@gmail.com")).thenReturn(Optional.empty());
 
         assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                         "someone@gmail.com", "Someone", null, true
                 ))
         );
@@ -81,7 +81,7 @@ class AuthServiceTest {
     @Test
     void unverifiedSmailEmailIsRejected() {
         assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                         "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", false
                 ))
         );
@@ -91,7 +91,7 @@ class AuthServiceTest {
     @Test
     void missingEmailVerifiedClaimIsRejected() {
         assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                         "student@smail.iitm.ac.in", "Student", "smail.iitm.ac.in", null
                 ))
         );
@@ -101,7 +101,7 @@ class AuthServiceTest {
     @Test
     void unverifiedConfiguredAdminEmailIsRejected() {
         assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "admin@example.com").processGoogleLogin(jwt(
+                new AuthService(userRepository, "admin@example.com", email -> true).processGoogleLogin(jwt(
                         "admin@example.com", "Admin", null, false
                 ))
         );
@@ -117,7 +117,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("warden@gmail.com")).thenReturn(Optional.of(staff));
         when(userRepository.save(staff)).thenReturn(staff);
 
-        User user = new AuthService(userRepository, "").processGoogleLogin(jwt(
+        User user = new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                 "warden@gmail.com", "Hostel Warden", null, true
         ));
 
@@ -135,7 +135,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("warden@gmail.com")).thenReturn(Optional.of(staff));
         when(userRepository.save(staff)).thenReturn(staff);
 
-        User user = new AuthService(userRepository, "warden@gmail.com").processGoogleLogin(jwt(
+        User user = new AuthService(userRepository, "warden@gmail.com", email -> true).processGoogleLogin(jwt(
                 "warden@gmail.com", "Warden", null, true
         ));
 
@@ -151,7 +151,7 @@ class AuthServiceTest {
         when(userRepository.findByEmail("former-warden@gmail.com")).thenReturn(Optional.of(removed));
 
         assertThrows(IllegalArgumentException.class, () ->
-                new AuthService(userRepository, "").processGoogleLogin(jwt(
+                new AuthService(userRepository, "", email -> true).processGoogleLogin(jwt(
                         "former-warden@gmail.com", "Former Warden", null, true
                 ))
         );

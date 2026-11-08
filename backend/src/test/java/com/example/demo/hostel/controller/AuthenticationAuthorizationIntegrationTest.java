@@ -159,7 +159,7 @@ class AuthenticationAuthorizationIntegrationTest {
     static class AuthConfiguration {
         @Bean
         AuthService authService(UserRepository userRepository) {
-            return new AuthService(userRepository, ADMIN_EMAIL);
+            return new AuthService(userRepository, ADMIN_EMAIL, email -> true);
         }
     }
 }

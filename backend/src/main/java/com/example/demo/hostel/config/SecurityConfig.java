@@ -17,7 +17,7 @@ import java.util.List;
 /**
  * Who can reach what. Every request carries a Google ID token, checked by the resource
  * server and turned into a role by CustomJwtAuthenticationConverter. The public routes are
- * /health and POST /api/auth/login; /api/admin/staff is for admins; the rest of /api/admin
+ * /health and POST /api/auth/login; /api/admin/staff and /api/admin/residents are for admins; the rest of /api/admin
  * and /api/work-orders are for admins and staff; anything else needs a valid sign-in.
  */
 @Configuration
@@ -46,9 +46,10 @@ public class SecurityConfig {
                 .requestMatchers("/health").permitAll()
                 // The login page's token is verified inside this endpoint
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                // Staff management is admin-only; the rest of the admin area
+                // Staff management and the resident list are admin-only; the rest of the admin area
                 // (complaints, archive, assignment) is shared with hostel staff
                 .requestMatchers("/api/admin/staff/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/residents/**").hasRole("ADMIN")
                 .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "STAFF")
                 .requestMatchers("/api/work-orders/**").hasAnyRole("ADMIN", "STAFF")
                 .anyRequest().authenticated()
