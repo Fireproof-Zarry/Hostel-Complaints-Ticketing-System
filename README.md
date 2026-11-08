@@ -12,6 +12,7 @@ A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras 
 - Upvote community issues, and delete a complaint while it is still pending
 - Nudge the admins about a complaint that's been open for a week
 - Get push notifications when a status changes
+- Use the Help page to choose the right category and answer common questions
 
 **Hostel staff**
 - Sign in with any Google account an admin has added

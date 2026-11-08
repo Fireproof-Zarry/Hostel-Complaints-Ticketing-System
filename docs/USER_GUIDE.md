@@ -62,6 +62,10 @@ Click the bell or open **Notifications**, then turn them on and allow them when 
 
 Clicking a notification takes you to that complaint in **My Complaints**. Notifications stop on that device when you log out. On an iPhone, add HostelFix to your Home Screen first.
 
+### Help
+
+Open **Help** in the sidebar for examples of what belongs in each category, and answers to common questions about statuses, limits, deleting, nudging and notifications.
+
 ## Hostel staff
 
 An admin adds your email first. Then use **Staff Login** with that account, and add your phone number under **My profile**, because students see it once you're assigned to their complaint.
