@@ -17,22 +17,29 @@ import java.util.stream.Collectors;
 
 /**
  * Decides who may use HostelFix and with which role. Google proves who someone is; this
- * class applies the hostel's rules. Students need a verified smail account, admins are
+ * class applies the hostel's rules. Students need a verified smail account and, once the
+ * hostel office has uploaded its resident list, must be on it (ResidentService). Admins are
  * listed in ADMIN_EMAILS, and staff are added by an admin (StaffService).
  */
 @Service
 public class AuthService {
 
     private static final String STUDENT_DOMAIN = "smail.iitm.ac.in";
+    /** Shown to a student who is not on the resident list, at login and on later requests. */
+    public static final String NOT_RESIDENT_MESSAGE =
+            "This portal is for Bhadra residents. If you live in Bhadra, contact the hostel office.";
 
     private final UserRepository userRepository;
+    private final ResidentDirectory residentDirectory;
     private final Set<String> adminEmails;
 
     public AuthService(
             UserRepository userRepository,
-            @Value("${app.auth.admin-emails:}") String configuredAdminEmails
+            @Value("${app.auth.admin-emails:}") String configuredAdminEmails,
+            ResidentDirectory residentDirectory
     ) {
         this.userRepository = userRepository;
+        this.residentDirectory = residentDirectory;
         this.adminEmails = Arrays.stream(configuredAdminEmails.split(","))
                 .map(String::trim)
                 .filter(email -> !email.isEmpty())
@@ -71,6 +78,9 @@ public class AuthService {
         if (loginType == LoginType.STUDENT && isStaffOrAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Please use Staff Login.");
         }
+        if (loginType == LoginType.STUDENT && !residentDirectory.isResident(email)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, NOT_RESIDENT_MESSAGE);
+        }
         return processGoogleLogin(jwt);
     }
 
@@ -104,8 +114,13 @@ public class AuthService {
             );
         }
 
-        String name = jwt.getClaimAsString("name");
         Role role = isAdmin ? Role.ADMIN : isStaff ? Role.STAFF : Role.STUDENT;
+        // Checked on every request, so a student taken off the list loses access straight away
+        if (role == Role.STUDENT && !residentDirectory.isResident(email)) {
+            throw new IllegalArgumentException(NOT_RESIDENT_MESSAGE);
+        }
+
+        String name = jwt.getClaimAsString("name");
         boolean isNewUser = user == null;
         if (isNewUser) {
             user = new User();

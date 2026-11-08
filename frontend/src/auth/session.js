@@ -13,6 +13,8 @@ export const SESSION_MESSAGES = {
   expired: 'Your session expired. Please sign in again.',
   clock: 'Your sign-in could not be verified because of a clock mismatch between your device and the server. Please try again in a minute.',
   rejected: 'Your sign-in could not be verified. Please sign in again.',
+  // Taken off the hostel's resident list; AuthService.NOT_RESIDENT_MESSAGE
+  notResident: 'This portal is for Bhadra residents. If you live in Bhadra, contact the hostel office.',
 };
 
 // ---- Pure helpers (unit-tested) ----
@@ -68,6 +70,7 @@ export function sessionEndReason(wwwAuthenticate) {
   const header = wwwAuthenticate ?? '';
   if (/expired/i.test(header)) return 'expired';
   if (/used before|not yet valid/i.test(header)) return 'clock';
+  if (/Bhadra residents/i.test(header)) return 'notResident';
   return 'rejected';
 }
 

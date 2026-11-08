@@ -4,7 +4,7 @@
 
 Open HostelFix and choose your tab:
 
-- **Student Login:** use your `@smail.iitm.ac.in` account. Other addresses won't work.
+- **Student Login:** use your `@smail.iitm.ac.in` account. Other addresses won't work. Once the hostel office has uploaded its resident list, only Bhadra residents can sign in. If you live in Bhadra and can't, contact the hostel office.
 - **Staff Login:** for hostel staff and admins. Use the email address your admin added.
 
 ## Students
@@ -140,6 +140,21 @@ Open **Staff management**.
 - **Remove staff:** click **Remove**, then move their complaints to someone else or return them to Pending.
 
 Admins themselves are set in the app's configuration, not on this page.
+
+### Managing residents
+
+Open **Residents**. Only students on this list can use the student portal. Until you upload one, every student with an `@smail.iitm.ac.in` account can sign in. Staff and admins are not affected.
+
+**At the start of each year:**
+
+1. In your allotment sheet in Excel, select the roll number column and copy it. You can also copy the whole sheet: names, rooms and headings are ignored.
+2. Paste it into **Replace the list**, or click **Choose CSV file** (in Excel: File › Save As › CSV). Pasted roll numbers can be one per line, or separated by commas or spaces. In a CSV file they can be in any column, and a heading such as "Roll No" is fine.
+3. Click **Preview changes**. You'll see how many roll numbers were found, how many are new, and who will lose access. Nothing has changed yet.
+4. If it looks right, click **Replace the list**. Students who aren't on the new list can't sign in from their next action.
+
+**During the year:** type a roll number under **One student** and click **Add**. To remove someone, search for their roll number and click **Remove**.
+
+**Turning it off:** **Empty the list** lets every smail student sign in again.
 
 ## Good to know
 

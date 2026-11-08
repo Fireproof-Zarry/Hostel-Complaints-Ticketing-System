@@ -33,6 +33,7 @@ test('maps the backend WWW-Authenticate header to a reason', () => {
   assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="Jwt expired at 2026-11-01T10:00:00Z"'), 'expired');
   assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="Jwt used before 2026-11-01T10:00:00Z"'), 'clock');
   assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="The aud claim is not valid"'), 'rejected');
+  assert.equal(sessionEndReason('Bearer error="invalid_token", error_description="This portal is for Bhadra residents. If you live in Bhadra, contact the hostel office."'), 'notResident');
   assert.equal(sessionEndReason(null), 'rejected');
 });
 
