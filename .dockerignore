@@ -1,0 +1,17 @@
+# Only what the root Dockerfile needs. Secrets must never reach the image:
+# frontend/.env is mounted only for the build step (--secret), never copied.
+**/.env
+**/.env.*
+!**/.env.example
+backend/firebase-service-account.json
+**/*service-account*.json
+
+.git
+**/node_modules
+**/target
+frontend/dist
+**/*:Zone.Identifier
+**/.idea
+**/.vscode
+docs
+prompts
