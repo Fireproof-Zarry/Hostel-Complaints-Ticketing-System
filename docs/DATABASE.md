@@ -22,7 +22,7 @@ erDiagram
 | Table | Purpose | Key columns |
 |---|---|---|
 | `users` | Everyone who can sign in | `email`, `role`, `full_name`, `phone_number`, `roll_number`, `room_number`, `fcm_token` |
-| `complaints` | Reported issues | `student_id` (whoever filed it, including staff), `status`, `assigned_to`, `image_url`, `is_archived`, `deleted_at`, `version` |
+| `complaints` | Reported issues | `student_id` (whoever filed it, including staff), `status`, `assigned_to`, `image_url`, `is_archived`, `deleted_at`, `version`, `last_nudged_at` |
 | `categories` | Kinds of issue | `name`, `default_sla_hours` |
 | `locations` | Rooms and community areas | `floor`, `room_number`, `wing`, `is_community_area` |
 | `complaint_history` | Every status change | `old_status`, `new_status`, `reason`, `actor_id`, `changed_at` |
@@ -55,6 +55,7 @@ Spring doesn't run these files. Run them by hand in the Supabase SQL editor, in 
 | `schema_nov02.sql` | `complaints.version` |
 | `schema_nov03.sql` | Work order changes and the one-active-work-order index |
 | `schema_nov06.sql` | Allows the `STAFF` role in `users` |
+| `schema_nov07.sql` | `complaints.last_nudged_at` |
 
 `spring.jpa.hibernate.ddl-auto=update` adds new tables and columns on startup, but it doesn't create the indexes above or change existing check constraints. So the migrations are still needed.
 
@@ -70,10 +71,12 @@ SELECT
   (SELECT count(*) FROM pg_indexes
     WHERE indexname = 'uk_work_orders_one_active_per_complaint') AS nov03,
   (SELECT pg_get_constraintdef(oid) LIKE '%STAFF%' FROM pg_constraint
-    WHERE conname = 'users_role_check') AS nov06;
+    WHERE conname = 'users_role_check') AS nov06,
+  (SELECT count(*) FROM information_schema.columns
+    WHERE table_name = 'complaints' AND column_name = 'last_nudged_at') AS nov07;
 ```
 
-The result should be `1, 1, 1, 1, true`.
+The result should be `1, 1, 1, 1, true, 1`.
 
 ### Adding a migration
 

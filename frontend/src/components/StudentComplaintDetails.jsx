@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { KeyRound, Phone, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { KeyRound, Pencil, Phone, X } from 'lucide-react';
 import ComplaintTimeline from './ComplaintTimeline';
 import { formatStatus, statusClasses } from '../utils/complaintStatus';
 import { formatServerDateTime } from '../utils/serverDate';
@@ -14,21 +14,130 @@ function Detail({ label, children }) {
   );
 }
 
+const MAX_DESCRIPTION_LENGTH = 1000;
+
+/** The complaint text, with a pencil to edit it while the complaint is still open. */
+function EditableDescription({ complaint, onSave, onEditingChange }) {
+  const [draft, setDraft] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const editable = complaint.status !== 'RESOLVED' && complaint.status !== 'REJECTED';
+  const isEditing = draft !== null;
+
+  useEffect(() => onEditingChange(isEditing), [isEditing, onEditingChange]);
+
+  const cancel = () => {
+    setDraft(null);
+    setError('');
+  };
+
+  const save = async () => {
+    const trimmed = draft.trim();
+    if (trimmed === complaint.description) {
+      cancel();
+      return;
+    }
+    setIsSaving(true);
+    setError('');
+    try {
+      await onSave(complaint, trimmed);
+      setDraft(null);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Could not save. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isEditing) {
+    const tooLong = draft.trim().length > MAX_DESCRIPTION_LENGTH;
+    return (
+      <div className="space-y-2">
+        <textarea
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.stopPropagation();
+              cancel();
+            }
+          }}
+          aria-label="Complaint description"
+          rows={5}
+          autoFocus
+          disabled={isSaving}
+          className="w-full rounded-lg border border-slate-300 p-3 text-sm leading-6 text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={`text-xs ${tooLong ? 'text-red-600' : 'text-slate-500'}`}>
+            {draft.trim().length}/{MAX_DESCRIPTION_LENGTH}
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={cancel}
+              disabled={isSaving}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={save}
+              disabled={isSaving || !draft.trim() || tooLong}
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSaving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+        {error && <p role="alert" className="m-0 text-sm text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-2">
+      <p className="m-0 min-w-0 flex-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">{complaint.description}</p>
+      {editable && (
+        <button
+          type="button"
+          onClick={() => setDraft(complaint.description ?? '')}
+          aria-label="Edit complaint text"
+          title="Edit complaint text"
+          className="shrink-0 rounded-lg p-1.5 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+        >
+          <Pencil className="h-4 w-4" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 /** One complaint in full for the student who filed it. Escape, Close or the backdrop closes it. */
-export default function StudentComplaintDetails({ complaint, onClose }) {
+export default function StudentComplaintDetails({ complaint, onClose, onSaveDescription }) {
   const closeRef = useRef(null);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    // While editing, Escape cancels the edit instead of closing the dialog.
+    if (isEditing) return undefined;
     const handleKeyDown = (event) => {
       if (event.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [isEditing, onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      onClick={isEditing ? undefined : onClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
@@ -58,7 +167,11 @@ export default function StudentComplaintDetails({ complaint, onClose }) {
         </div>
 
         <div className="space-y-5 overflow-y-auto p-5">
-          <p className="m-0 whitespace-pre-wrap text-sm leading-6 text-slate-700">{complaint.description}</p>
+          <EditableDescription
+            complaint={complaint}
+            onSave={onSaveDescription}
+            onEditingChange={setIsEditing}
+          />
 
           {complaint.imageUrl && (
             <a href={complaint.imageUrl} target="_blank" rel="noreferrer" className="block" title="Open full-size photo">

@@ -552,6 +552,23 @@ export default function AdminHome() {
     ),
   ]
 
+  // The In-charge filter shows names but still filters by email. Former staff
+  // are no longer in admins, so they keep showing their email.
+  const staffNamesByEmail = Object.fromEntries(
+    admins.map((admin) => [admin.email, admin.fullName || admin.name || admin.email])
+  )
+  const nameCounts = assignedToUsers.reduce((counts, email) => {
+    const name = staffNamesByEmail[email] || email
+    return { ...counts, [name]: (counts[name] || 0) + 1 }
+  }, {})
+  const assignedToOptions = assignedToUsers
+    .map((email) => {
+      const name = staffNamesByEmail[email] || email
+      // Two people with the same name are told apart by their email
+      return { email, label: nameCounts[name] > 1 && name !== email ? `${name} (${email})` : name }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label))
+
   const statusCounts = {
     total: complaints.length,
     pending: complaints.filter((complaint) => complaint.status === 'PENDING').length,
@@ -969,8 +986,8 @@ export default function AdminHome() {
                       onChange={(event) => setAssignedToFilter(event.target.value)}
                     >
                       <option value="">All staff</option>
-                      {assignedToUsers.map((email) => (
-                        <option key={email} value={email}>{email}</option>
+                      {assignedToOptions.map(({ email, label }) => (
+                        <option key={email} value={email}>{label}</option>
                       ))}
                     </select>
                   </label>

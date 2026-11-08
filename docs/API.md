@@ -62,7 +62,7 @@ A user can only change their own account.
 | Method | Path | Description |
 |---|---|---|
 | POST | `/api/complaints` | Files a complaint |
-| GET | `/api/complaints/mine` | The caller's complaints, newest first, with `assignee` (`name`, `phoneNumber`) while a work order is active |
+| GET | `/api/complaints/mine` | The caller's complaints, newest first, with `assignee` (`name`, `phoneNumber`) while a work order is active, plus `canNudge` and `nextNudgeAt` |
 | GET | `/api/complaints/{id}` | One of the caller's complaints |
 | GET | `/api/complaints/{id}/history` | Status changes, newest first. Owner, or any admin or staff member |
 | DELETE | `/api/complaints/{id}` | Soft-deletes the caller's complaint. Pending only, otherwise 409 |
@@ -70,6 +70,7 @@ A user can only change their own account.
 | GET | `/api/complaints/community` | Open community complaints |
 | GET | `/api/complaints/potential-duplicates` | Similar open complaints |
 | POST | `/api/complaints/{id}/upvote` | Adds or removes the caller's upvote, for students only |
+| POST | `/api/complaints/{id}/nudge` | Nudges the admins about the caller's own unresolved complaint |
 
 ### `POST /api/complaints`
 
@@ -114,6 +115,18 @@ Returns 422 if a room complaint has no valid room.
 | `floor`, `wing` | For community issues; `floor` is required |
 | `room` | For staff and admins searching a room. Ignored for students |
 
+### `POST /api/complaints/{id}/nudge`
+
+Returns when this nudge happened and when the next one is allowed:
+
+```json
+{ "complaintId": 21, "lastNudgedAt": "2026-11-13T00:30:00", "nextNudgeAt": "2026-11-19T23:30:00" }
+```
+
+Returns 409 if the complaint is closed, or if the 7-day wait hasn't passed. Returns 404 for anyone else's complaint. See [the rules](ARCHITECTURE.md#nudges).
+
+In `/api/complaints/mine`, `canNudge` says whether it's allowed now. `nextNudgeAt` says when it opens, and is null once the complaint is closed. These timestamps are in the server's time zone, with no offset.
+
 ### History entry
 
 ```json
@@ -132,7 +145,7 @@ Students see "Hostel office" for staff and admins. Admins and staff see real nam
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/admin/complaints` | Non-archived complaints |
+| GET | `/api/admin/complaints` | Non-archived complaints, with unresolved nudged ones first. Each includes `lastNudgedAt` |
 | GET | `/api/admin/complaints/{id}` | One complaint |
 | GET | `/api/admin/complaints/archived` | Archived complaints |
 | GET | `/api/admin/complaints/admins` | Everyone who can be assigned: admins and staff |

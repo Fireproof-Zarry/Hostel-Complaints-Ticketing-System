@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, RefreshCw, ThumbsUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, RefreshCw, ArrowBigUp } from 'lucide-react';
 
 function formatStatus(status) {
   return status?.toLowerCase().replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Open';
@@ -59,7 +59,7 @@ export default function DuplicateWarning({ scope = 'community', candidates, upvo
                   >
                     {upvotingId === candidate.id
                       ? <RefreshCw className="h-4 w-4 animate-spin" />
-                      : <ThumbsUp className="h-4 w-4" />}
+                      : <ArrowBigUp className="h-4 w-4" />}
                     Yes, this is my issue
                   </button>
                 )}
