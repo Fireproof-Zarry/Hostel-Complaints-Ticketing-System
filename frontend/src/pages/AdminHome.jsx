@@ -7,6 +7,7 @@ import {
   Bell,
   BellOff,
   BellRing,
+  Building2,
   CheckCircle2,
   ClipboardList,
   Clock3,
@@ -23,6 +24,7 @@ import {
 import MyComplaintsPage from '../components/MyComplaintsPage'
 import NotificationToast from '../components/NotificationToast'
 import StaffComplaintForm from '../components/StaffComplaintForm'
+import ResidentList from '../components/ResidentList'
 import StaffManagement from '../components/StaffManagement'
 import WorkOrderPanel from '../components/WorkOrderPanel'
 import ComplaintTimeline from '../components/ComplaintTimeline'
@@ -40,6 +42,7 @@ import './AdminHome.css'
 const PROFILE_VIEW = 'My Profile'
 // Sidebar pages; the Complaints page is the default
 const STAFF_VIEW = 'Staff Management'
+const RESIDENTS_VIEW = 'Residents'
 const MY_COMPLAINTS_VIEW = 'My Complaints'
 const FILE_COMPLAINT_VIEW = 'File Complaint'
 
@@ -697,6 +700,18 @@ export default function AdminHome() {
               {sidebarOpen && <span>Staff management</span>}
             </button>
           )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              className={`admin-nav-item ${activePage === RESIDENTS_VIEW ? 'active' : ''}`}
+              onClick={() => setActivePage(RESIDENTS_VIEW)}
+              title="Residents"
+            >
+              <Building2 size={19} />
+              {sidebarOpen && <span>Residents</span>}
+            </button>
+          )}
         </nav>
 
         <div className="admin-sidebar-bottom">
@@ -801,6 +816,8 @@ export default function AdminHome() {
             <ProfileForm onSaved={(saved) => setCurrentUser((user) => ({ ...user, fullName: saved.fullName }))} />
           ) : activePage === STAFF_VIEW && isAdmin ? (
             <StaffManagement />
+          ) : activePage === RESIDENTS_VIEW && isAdmin ? (
+            <ResidentList />
           ) : activePage === MY_COMPLAINTS_VIEW ? (
             <MyComplaintsPage notifications={notifications} onOpen={handleOpenComplaint} refreshKey={timelineVersion} />
           ) : activePage === FILE_COMPLAINT_VIEW ? (
