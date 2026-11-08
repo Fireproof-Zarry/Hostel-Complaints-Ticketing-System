@@ -81,7 +81,20 @@ cd frontend && npm test
 
 ## Docker
 
-To run the backend in a container:
+### The whole app in one container
+
+The root `Dockerfile` builds the frontend, the backend and a PostgreSQL database with demo complaints into one image. It needs no keys and never touches the real Supabase database. Photo uploads and push notifications are off.
+
+```bash
+docker build --secret id=frontend_env,src=frontend/.env -t hostelfix .
+docker run --rm -p 8080:8080 -e ADMIN_EMAILS=you@example.com hostelfix
+```
+
+Open `http://localhost:8080`. Sign in with **Student Login** using any `@smail.iitm.ac.in` account, or with **Staff Login** using the email in `ADMIN_EMAILS`. See [DEPLOYMENT.md](docs/DEPLOYMENT.md#all-in-one-docker-image) for details.
+
+### Backend only
+
+To run the backend in a container, as Render does:
 
 ```bash
 cd backend

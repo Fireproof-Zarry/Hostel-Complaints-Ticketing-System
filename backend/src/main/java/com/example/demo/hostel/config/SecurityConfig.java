@@ -1,6 +1,7 @@
 package com.example.demo.hostel.config;
 
 import jakarta.servlet.DispatcherType;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -24,10 +25,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomJwtAuthenticationConverter jwtAuthenticationConverter;
+    // Only the all-in-one Docker image serves the React app from this server
+    private final boolean serveFrontend;
 
     public SecurityConfig(
-            CustomJwtAuthenticationConverter jwtAuthenticationConverter) {
+            CustomJwtAuthenticationConverter jwtAuthenticationConverter,
+            @Value("${app.serve-frontend:false}") boolean serveFrontend) {
         this.jwtAuthenticationConverter = jwtAuthenticationConverter;
+        this.serveFrontend = serveFrontend;
     }
 
     /** The URL rules, token handling and complaint rate limit, for every request. */
@@ -44,6 +49,8 @@ public class SecurityConfig {
                 // rejected sign-in. Error dispatches only render the original error.
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/health").permitAll()
+                // The React app's pages and files, when served from here; the API stays protected
+                .requestMatchers(request -> serveFrontend && !request.getRequestURI().startsWith("/api/")).permitAll()
                 // The login page's token is verified inside this endpoint
                 .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                 // Staff management and the resident list are admin-only; the rest of the admin area
