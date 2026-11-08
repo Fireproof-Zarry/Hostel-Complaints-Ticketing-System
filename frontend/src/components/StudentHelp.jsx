@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 // The categories on the complaint form, with the issues that belong in each
 const CATEGORY_GUIDE = [
   { name: 'Electrical', examples: 'Lights, fans, switches, sockets, geysers, wiring' },
-  { name: 'Plumbing', examples: 'Taps, leaks, blocked drains, flush, water supply' },
+  { name: 'Plumbing', examples: 'Taps, leaks, blocked drains, flush, water supply, water dispensers' },
   { name: 'Carpentry', examples: 'Doors, locks, cupboards, beds, tables, windows' },
   { name: 'Cleaning', examples: 'Washrooms, corridors, garbage, pests' },
   { name: 'IT', examples: 'Wi-Fi, LAN ports, network access' },
