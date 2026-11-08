@@ -17,6 +17,11 @@ body,
   width: 100%;
 }
 
+/* Always show the scrollbar so content doesn't jump sideways when a page starts or stops scrolling */
+html {
+  overflow-y: scroll;
+}
+
 body {
   font-family: Arial, sans-serif;
   background: #f7f7fb;

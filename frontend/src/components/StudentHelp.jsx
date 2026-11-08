@@ -81,7 +81,7 @@ export default function StudentHelp() {
       </div>
 
       <div className="space-y-3">
-        <h4 className="m-0 text-lg font-semibold text-slate-900">Which category should I choose?</h4>
+        <h4 className="m-0 mb-3 text-lg font-semibold text-slate-900">Which category should I choose?</h4>
         <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2">
           {CATEGORY_GUIDE.map((category) => (
             <li key={category.name} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -90,13 +90,13 @@ export default function StudentHelp() {
             </li>
           ))}
         </ul>
-        <p className="m-0 text-sm text-slate-500">
+        <p className="m-0 mt-4 text-sm text-slate-500">
           Not sure? Pick the closest one. The hostel office sees every complaint and can still handle it.
         </p>
       </div>
 
       <div className="space-y-3">
-        <h4 className="m-0 text-lg font-semibold text-slate-900">Frequently asked questions</h4>
+        <h4 className="m-0 mb-3 text-lg font-semibold text-slate-900">Frequently asked questions</h4>
         <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           {FAQS.map((faq) => (
             <details key={faq.question} className="group px-4 py-3">
