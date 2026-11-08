@@ -559,7 +559,8 @@ class AnalyticsRepositoryTest {
     // Helpers
     // ---------------------------------------------------------
 
-    // Assigned to the admin; updatedAt stands for when a finished one finished
+    // Assigned to the admin; updatedAt stands for when a finished one finished, and
+    // defaults to createdAt like a fresh insert (@UpdateTimestamp; the test schema rejects null)
     private void insertWorkOrder(
             Complaint complaint,
             String status,
@@ -572,7 +573,8 @@ class AnalyticsRepositoryTest {
                     (work_order_id, complaint_id, assignee_id, priority, status, deadline, created_at, updated_at)
                 VALUES (gen_random_uuid(), ?, ?, 'MEDIUM', ?, ?, ?, ?)
                 """,
-                complaint.getId(), admin.getId(), status, deadline, createdAt, updatedAt);
+                complaint.getId(), admin.getId(), status, deadline, createdAt,
+                updatedAt == null ? createdAt : updatedAt);
     }
 
     private Complaint createComplaint(
