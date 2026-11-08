@@ -51,7 +51,7 @@ const ANALYTICS_VIEW = 'Analytics'
 
 // The open page survives a reload of this browser tab (null is Complaints)
 const PAGE_STORAGE_KEY = 'adminPage'
-const PAGES = [PROFILE_VIEW, STAFF_VIEW, MY_COMPLAINTS_VIEW, FILE_COMPLAINT_VIEW, ANALYTICS_VIEW]
+const PAGES = [PROFILE_VIEW, STAFF_VIEW, RESIDENTS_VIEW, MY_COMPLAINTS_VIEW, FILE_COMPLAINT_VIEW, ANALYTICS_VIEW]
 
 function readSavedPage() {
   try {
