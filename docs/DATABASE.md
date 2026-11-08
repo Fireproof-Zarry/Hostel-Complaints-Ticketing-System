@@ -37,7 +37,7 @@ erDiagram
 - **Status values:** these are stored as text and defined by enums in `model/`.
 - **One active work order:** the unique index `uk_work_orders_one_active_per_complaint` covers `OPEN` and `IN_PROGRESS` rows only, so finished work orders stay as a record.
 - **`assigned_to`:** this holds the assignee's email, for the admin table. The work order is the real link.
-- **Older assignments:** complaints assigned before work orders existed have `assigned_to` set but no work order. They count as zero in Staff management until they're assigned again.
+- **Older assignments:** complaints assigned before work orders existed had `assigned_to` set but no work order, so they counted as zero in Staff management. `schema_nov08.sql` gives each one a work order, as long as the assignee is still staff or an admin.
 
 ## Migrations
 
@@ -56,6 +56,7 @@ Spring doesn't run these files. Run them by hand in the Supabase SQL editor, in 
 | `schema_nov03.sql` | Work order changes and the one-active-work-order index |
 | `schema_nov06.sql` | Allows the `STAFF` role in `users` |
 | `schema_nov07.sql` | `complaints.last_nudged_at` |
+| `schema_nov08.sql` | Work orders for complaints assigned before work orders existed |
 
 `spring.jpa.hibernate.ddl-auto=update` adds new tables and columns on startup, but it doesn't create the indexes above or change existing check constraints. So the migrations are still needed.
 

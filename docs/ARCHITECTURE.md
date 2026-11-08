@@ -193,6 +193,8 @@ What the person sees depends on the page:
 | Visible but not focused | In-app pop-up and system notification |
 | Hidden or closed | System notification, from `firebase-messaging-sw.js` |
 
+Clicking a notification opens the complaint it is about: `/student?complaint={id}` for a status change, which switches to My Complaints, clears the filters and scrolls to it, and `/admin?complaint={id}` for a nudge. If HostelFix is already open, the service worker tells that page to navigate instead of opening a new tab.
+
 Things to know:
 - Nothing is stored, so there is no notification history. The timeline shows every status change.
 - Each user has one saved device. Registering a new one replaces the old one.
