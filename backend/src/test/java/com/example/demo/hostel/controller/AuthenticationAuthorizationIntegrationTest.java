@@ -2,12 +2,16 @@ package com.example.demo.hostel.controller;
 
 import com.example.demo.hostel.config.CustomJwtAuthenticationConverter;
 import com.example.demo.hostel.config.SecurityConfig;
-import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.UserRepository;
 import com.example.demo.hostel.service.AdminService;
 import com.example.demo.hostel.service.AuthService;
-import com.example.demo.hostel.service.StudentService;
+import com.example.demo.hostel.service.CommunityComplaintService;
+import com.example.demo.hostel.service.ComplaintService;
+import com.example.demo.hostel.service.DuplicateDetectionService;
+import com.example.demo.hostel.service.NudgeService;
+import com.example.demo.hostel.service.UpvoteService;
+import com.example.demo.hostel.validation.RoomLocationValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +38,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({AdminController.class, StudentController.class})
+@WebMvcTest({AdminController.class, ComplaintController.class})
 @Import({
         SecurityConfig.class,
         CustomJwtAuthenticationConverter.class,
@@ -57,7 +61,22 @@ class AuthenticationAuthorizationIntegrationTest {
     private AdminService adminService;
 
     @MockitoBean
-    private StudentService studentService;
+    private ComplaintService complaintService;
+
+    @MockitoBean
+    private RoomLocationValidator roomLocationValidator;
+
+    @MockitoBean
+    private UpvoteService upvoteService;
+
+    @MockitoBean
+    private DuplicateDetectionService duplicateDetectionService;
+
+    @MockitoBean
+    private CommunityComplaintService communityComplaintService;
+
+    @MockitoBean
+    private NudgeService nudgeService;
 
     @MockitoBean
     private UserRepository userRepository;
@@ -89,12 +108,12 @@ class AuthenticationAuthorizationIntegrationTest {
         when(adminService.getComplaints(
                 isNull(), isNull(), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(List.of());
-        when(studentService.getStudentComplaints(any(User.class))).thenReturn(List.<Complaint>of());
+        when(complaintService.getMyComplaintsWithContacts(anyString())).thenReturn(List.of());
     }
 
     @Test
     void verifiedStudentCanAccessStudentEndpointButNotAdminEndpoint() throws Exception {
-        mockMvc.perform(get("/api/student/complaints")
+        mockMvc.perform(get("/api/complaints/mine")
                         .header("Authorization", "Bearer student-token"))
                 .andExpect(status().isOk());
 
@@ -112,14 +131,14 @@ class AuthenticationAuthorizationIntegrationTest {
 
     @Test
     void unauthorizedGoogleAccountIsRejected() throws Exception {
-        mockMvc.perform(get("/api/student/complaints")
+        mockMvc.perform(get("/api/complaints/mine")
                         .header("Authorization", "Bearer unauthorized-token"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void unverifiedGoogleEmailIsRejected() throws Exception {
-        mockMvc.perform(get("/api/student/complaints")
+        mockMvc.perform(get("/api/complaints/mine")
                         .header("Authorization", "Bearer unverified-token"))
                 .andExpect(status().isUnauthorized());
     }
