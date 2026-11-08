@@ -143,6 +143,8 @@ Check the `make backend` output or Render logs first:
 | `Could not send assignment notification ...` | Firebase refused it; the line gives the reason |
 | `Firebase is not configured...` | `FIREBASE_CONFIG_PATH` isn't set |
 | No line | Nothing needed sending: the person assigned themselves, or was already the assignee |
+| `Sent nudge notification for complaint ...` | Firebase accepted the nudge. The line shows how many admins it reached |
+| `No admin has push notifications on...` | The nudge was saved, but no admin has a registered device |
 
 | Problem | Cause and fix |
 |---|---|

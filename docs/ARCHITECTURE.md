@@ -121,6 +121,20 @@ Staff can only assign themselves, and only if nobody else holds the complaint. R
 
 Deadlines are hostel wall-clock times in IST, so `WorkOrderService` compares them with the time in IST. Other timestamps are set by the server and sent as UTC without an offset; the frontend reads them with `utils/serverDate.js`.
 
+## Nudges
+
+The person who filed an unresolved complaint can nudge the admins if nothing seems to be happening.
+
+- **When it opens:** 5 AM IST on the 7th day after the complaint was filed, whatever time it was filed. A complaint filed any time on the 6th opens at 5 AM on the 13th.
+- **Repeat nudges:** the next one opens the same way, counted from the day of the last nudge.
+- **What it does:** sets `last_nudged_at` and sends a push notification to every admin with notifications on. A nudge doesn't change the complaint's status or add to its history.
+- **On the admin dashboard:** unresolved nudged complaints sort to the top, latest nudge first, with a bell icon. Once a complaint is closed, it loses the badge and its place at the top.
+- **Clicking the notification:** this opens `/admin?complaint={id}`, which clears any filters hiding the complaint and highlights it for 10 seconds, or until the next click.
+
+`NudgeService` holds the rules. `ComplaintRepository.recordNudge` repeats the checks in one conditional `UPDATE`, so if two nudges arrive together only one succeeds and only one notification goes out. That update skips `@Version` and `@UpdateTimestamp`, so a nudge doesn't count as editing the complaint.
+
+Times are stored in the server's time zone, so `NudgeService` converts them to IST to work out the day.
+
 ## Duplicate detection
 
 While someone types a title, `GET /api/complaints/potential-duplicates` searches open complaints using PostgreSQL's `pg_trgm` similarity, with a threshold of 0.3, and returns up to three. It searches the same floor for community issues and the same room for room issues. Students can upvote a match instead of filing a new complaint.
@@ -167,6 +181,7 @@ Notifications use Firebase Cloud Messaging. The frontend asks for permission, ge
 |---|---|
 | Complaint status changes | The person who filed it |
 | A complaint is assigned to someone else | The new assignee |
+| A complaint is nudged | Every admin with notifications on |
 
 Assigning yourself and editing a priority or deadline send nothing.
 

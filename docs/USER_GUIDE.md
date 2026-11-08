@@ -39,6 +39,17 @@ You can have up to 5 open complaints at a time. Your draft is saved in that brow
 
 You can delete a complaint while it's Pending.
 
+### Nudge a slow complaint
+
+If a complaint hasn't been resolved after a week, click **Nudge** on it in **My Complaints** to remind the admins.
+
+- The button turns on at 5 AM on the 7th day after you filed it. Until then it's greyed out, and hovering over it shows how long is left.
+- After a nudge, you can nudge again from 5 AM, 7 days later.
+- Reload the page if the wait has passed but the button is still grey.
+- You can't nudge a Resolved or Rejected complaint.
+
+A nudge reminds the admins but doesn't change the complaint's status.
+
 ### Community issues
 
 The **Community** page lists open issues in shared areas. Upvote the ones that affect you, so the hostel office can see what matters most.
@@ -103,6 +114,12 @@ Resolution rate is the share of complaints resolved, leaving out rejected ones. 
 ## Admins
 
 Admins can do everything staff can, plus the following.
+
+### Nudges
+
+Students can nudge a complaint that's been open for a week. Nudged complaints appear at the top of **Complaints** with a bell icon, latest first.
+
+To be notified, click the bell in the top right of the page and allow notifications. Clicking a nudge notification takes you to that complaint and highlights it. The bell and the switch on **My complaints** control the same setting for that browser.
 
 ### Assigning complaints
 
