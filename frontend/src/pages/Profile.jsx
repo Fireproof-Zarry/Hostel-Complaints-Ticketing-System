@@ -70,7 +70,7 @@ export default function Profile() {
       {notificationToast && (
         <NotificationToast
           toast={notificationToast}
-          onOpen={() => navigate('/student')}
+          onOpen={() => navigate(notificationToast.url || '/student')}
           onDismiss={dismissNotificationToast}
         />
       )}

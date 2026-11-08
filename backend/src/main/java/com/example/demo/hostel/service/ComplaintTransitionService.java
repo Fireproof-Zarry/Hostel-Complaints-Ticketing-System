@@ -2,6 +2,7 @@ package com.example.demo.hostel.service;
 
 import com.example.demo.hostel.model.Complaint;
 import com.example.demo.hostel.model.ComplaintHistory;
+import com.example.demo.hostel.model.Role;
 import com.example.demo.hostel.model.Status;
 import com.example.demo.hostel.model.User;
 import com.example.demo.hostel.repository.ComplaintHistoryRepository;
@@ -95,7 +96,9 @@ public class ComplaintTransitionService {
         if (fcmToken != null && !fcmToken.isBlank() && oldStatus != nextStatus) {
             String title = complaint.getTitle();
             String status = nextStatus.name();
-            runAfterCommit(() -> fcmNotificationService.sendStatusUpdateNotification(fcmToken, title, status));
+            // Staff and admins see their own complaints on the admin page, which has no such link
+            String link = student.getRole() == Role.STUDENT ? FcmNotificationService.complaintUrl(complaintId) : null;
+            runAfterCommit(() -> fcmNotificationService.sendStatusUpdateNotification(fcmToken, title, status, link));
         }
     }
 

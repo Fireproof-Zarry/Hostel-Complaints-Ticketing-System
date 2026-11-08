@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle,
   Bell,
@@ -58,6 +58,10 @@ export default function StudentHomePage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [statusUpdateCount, setStatusUpdateCount] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // Set by a notification click (?complaint=id); cleared once that card is on screen
+  const [scrollToComplaintId, setScrollToComplaintId] = useState(null);
+
   // Opening the Community tab refreshes its counts in place (see below)
   const [communityVisits, setCommunityVisits] = useState(0);
 
@@ -128,10 +132,45 @@ export default function StudentHomePage() {
 
   const handleOpenNotificationToast = useCallback(() => {
     dismissNotificationToast();
-    setActiveTab('home');
     setError('');
     setSuccess('');
-  }, [dismissNotificationToast, setError]);
+    if (notificationToast?.url) navigate(notificationToast.url);
+    else setActiveTab('home');
+  }, [dismissNotificationToast, notificationToast, navigate, setError]);
+
+  // From a notification: My Complaints, with nothing filtered out, and the
+  // latest statuses (the page may have been in the background)
+  const complaintLink = searchParams.get('complaint');
+  useEffect(() => {
+    if (!complaintLink) return;
+    setActiveTab('complaints');
+    setStatusFilter('ALL');
+    setSearch('');
+    setScrollToComplaintId(Number(complaintLink));
+    setSearchParams({}, { replace: true });
+    requestMyComplaints().then(setComplaints).catch(() => {});
+  }, [complaintLink, requestMyComplaints, setComplaints, setSearchParams]);
+
+  // Scrolls once the card is rendered; gives up if the complaint is gone
+  useEffect(() => {
+    if (scrollToComplaintId === null || activeTab !== 'complaints') return;
+    const card = document.getElementById(`complaint-${scrollToComplaintId}`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setScrollToComplaintId(null);
+    } else if (!isLoading && !complaints.some((complaint) => complaint.id === scrollToComplaintId)) {
+      setScrollToComplaintId(null);
+    }
+  }, [scrollToComplaintId, activeTab, filteredComplaints, complaints, isLoading]);
+
+  // A click on a notification while this page is already open (see the service worker)
+  useEffect(() => {
+    const handleWorkerMessage = (event) => {
+      if (event.data?.type === 'OPEN_URL') navigate(event.data.url);
+    };
+    navigator.serviceWorker?.addEventListener('message', handleWorkerMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', handleWorkerMessage);
+  }, [navigate]);
 
   const handleNudge = useCallback(
     async (complaint) => {

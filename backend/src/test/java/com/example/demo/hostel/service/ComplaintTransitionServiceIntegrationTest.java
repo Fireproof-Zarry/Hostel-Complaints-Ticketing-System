@@ -140,7 +140,7 @@ class ComplaintTransitionServiceIntegrationTest {
         // Sent after commit, on the async executor.
         verify(fcmNotificationService, timeout(2000))
                 .sendStatusUpdateNotification(
-                        "student-device-token", "Leaking tap", "IN_PROGRESS");
+                        "student-device-token", "Leaking tap", "IN_PROGRESS", "/student?complaint=" + complaintId);
     }
 
     @Test
@@ -161,7 +161,7 @@ class ComplaintTransitionServiceIntegrationTest {
 
         // A rolled-back change must never notify the student.
         verify(fcmNotificationService, never())
-                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -172,7 +172,7 @@ class ComplaintTransitionServiceIntegrationTest {
                     complaintId, adminId, "REJECTED", null);
 
             verify(fcmNotificationService, never())
-                    .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+                    .sendStatusUpdateNotification(anyString(), anyString(), anyString(), any());
 
             tx.setRollbackOnly();
         });
@@ -181,7 +181,7 @@ class ComplaintTransitionServiceIntegrationTest {
                 .isEqualTo(Status.PENDING);
 
         verify(fcmNotificationService, never())
-                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -197,7 +197,7 @@ class ComplaintTransitionServiceIntegrationTest {
                 .isEqualTo(Status.REJECTED);
 
         verify(fcmNotificationService, never())
-                .sendStatusUpdateNotification(anyString(), anyString(), anyString());
+                .sendStatusUpdateNotification(anyString(), anyString(), anyString(), any());
     }
 
     private User user(String email, Role role) {
