@@ -17,6 +17,7 @@ erDiagram
     users ||--o{ upvotes : gives
     complaints ||--o{ comments : has
     users ||--o{ comments : writes
+    residents
 ```
 
 | Table | Purpose | Key columns |
@@ -29,6 +30,7 @@ erDiagram
 | `work_orders` | Who is responsible for a complaint | `assignee_id`, `priority`, `status`, `deadline`, `completion_notes` |
 | `upvotes` | "This affects me too" | One row per complaint and user |
 | `comments` | Notes on a complaint | Not used by the API yet |
+| `residents` | The hostel's resident list. While it has rows, only these students can sign in | `roll_number` (lower case, e.g. `cs23b051`), `added_at`, `added_by` |
 
 ## Things to know
 
@@ -57,6 +59,7 @@ Spring doesn't run these files. Run them by hand in the Supabase SQL editor, in 
 | `schema_nov06.sql` | Allows the `STAFF` role in `users` |
 | `schema_nov07.sql` | `complaints.last_nudged_at` |
 | `schema_nov08.sql` | Work orders for complaints assigned before work orders existed |
+| `schema_nov09.sql` | The `residents` table, with a check that each roll number looks like `cs23b051` |
 
 `spring.jpa.hibernate.ddl-auto=update` adds new tables and columns on startup, but it doesn't create the indexes above or change existing check constraints. So the migrations are still needed.
 

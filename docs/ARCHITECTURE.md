@@ -40,7 +40,7 @@ Code is in `backend/src/main/java/com/example/demo/hostel/`.
 
 | Role | Who | How the role is decided |
 |---|---|---|
-| `STUDENT` | Verified `@smail.iitm.ac.in` accounts | Created automatically on first sign-in |
+| `STUDENT` | Verified `@smail.iitm.ac.in` accounts, and only Bhadra residents once the resident list is uploaded | Created automatically on first sign-in |
 | `STAFF` | Hostel staff, on any Google account | An admin adds their email in Staff management |
 | `ADMIN` | A small fixed group | Listed in the `ADMIN_EMAILS` setting |
 
@@ -51,6 +51,7 @@ The login page has two tabs, both handled by `POST /api/auth/login`:
 | | Student Login | Staff Login |
 |---|---|---|
 | New smail student | Account created | 403 |
+| Smail student not on the resident list | 403, "This portal is for Bhadra residents" | 403 |
 | Existing student | Signed in | 403 |
 | Other personal email | 401 | 403 |
 | Staff added by an admin | 401, "use Staff Login" | Signed in |
@@ -58,7 +59,9 @@ The login page has two tabs, both handled by `POST /api/auth/login`:
 
 An smail address only counts if Google also confirms the domain through the token's `hd` claim.
 
-The tabs are only the entrance. **Every** later request is checked again by `CustomJwtAuthenticationConverter`, which calls `AuthService.processGoogleLogin`, so a removed staff member is blocked on their next action.
+**Resident list.** Admins upload the hostel's roll numbers on the **Residents** page (`ResidentService`, table `residents`). A student's roll number is the part of their address before `@smail.iitm.ac.in`, for example `cs23b051`. While the list is empty, every smail student can sign in, so deploying the feature locks nobody out. Staff and admins are never checked against it. The list is checked on every student request, so it is kept in memory: reloaded after each change, and every 5 minutes in case the table is edited directly.
+
+The tabs are only the entrance. **Every** later request is checked again by `CustomJwtAuthenticationConverter`, which calls `AuthService.processGoogleLogin`, so a removed staff member, or a student taken off the resident list, is blocked on their next action.
 
 `SecurityConfig` applies these URL rules:
 

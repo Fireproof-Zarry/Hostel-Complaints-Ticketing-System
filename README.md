@@ -25,6 +25,7 @@ A complaint ticketing system for hostels, built for Bhadra hostel at IIT Madras 
 **Admins**
 - Everything staff can do, plus assigning complaints to anyone
 - Add and remove staff, and see each person's workload
+- Upload the hostel's resident list each year, so only Bhadra residents can use the student portal
 - Get notified when a student nudges a complaint, with nudged complaints shown first
 
 ## Tech stack

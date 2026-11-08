@@ -19,7 +19,7 @@ Authorization: Bearer <token>
 | 409 | Not allowed in the current state, or someone changed it at the same moment |
 | 429 | Limit reached. With a `Retry-After` header it's the filing rate; without it, the open-complaint limit |
 
-Admin, staff, work-order and login errors return a reason the frontend can show:
+Admin, staff, resident-list, work-order and login errors return a reason the frontend can show:
 
 ```json
 { "error": "Forbidden", "message": "Staff can only assign complaints to themselves" }
@@ -198,6 +198,21 @@ Status can be `IN_PROGRESS`, `DONE` or `CANCELLED`.
 | GET | `/api/admin/staff/{userId}/work-orders` | One person's active work orders |
 | POST | `/api/admin/staff` | Adds staff: `{ "email": "..." }`. Returns 201 |
 | DELETE | `/api/admin/staff/{userId}` | Removes staff. Add `?reassignTo={userId}` to hand over their work; otherwise it returns to Pending |
+
+## Resident list (admins)
+
+Roll numbers are returned in lower case. Pasted text and CSV files are sent as `{ "text": "..." }`; every roll number in it is read, and other text (names, rooms, headings) is skipped.
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/admin/residents` | `{ count, matches }`. Add `?search=cs23` for up to 50 matching roll numbers. A count of 0 means every smail student can sign in |
+| POST | `/api/admin/residents/preview` | What replacing the list with this text would do. Saves nothing |
+| PUT | `/api/admin/residents` | Replaces the whole list. 400 if the text has no roll numbers |
+| DELETE | `/api/admin/residents` | Empties the list: `{ "removed": n }` |
+| POST | `/api/admin/residents` | Adds one: `{ "rollNumber": "CS23B051" }`. Returns 201; 409 if it's already listed |
+| DELETE | `/api/admin/residents/{rollNumber}` | Removes one. 404 if it isn't listed |
+
+Preview and replace return `found`, `added`, `removed`, `unchanged`, `duplicates`, `skippedCount`, the first few `addedSample`, `removedSample` and `skippedLines`, and `applied` (false for a preview).
 
 ## Analytics (admins and staff)
 
