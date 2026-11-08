@@ -27,13 +27,3 @@ Refinements matter most. They show where the first answer was wrong or incomplet
 | [10](10-status-workflow.md) | Status workflow and history API | #30 | `bb6f8c3` |
 | [11](11-complaint-timeline.md) | Complaint timeline | #31 | `8311d3b`, `a5abed6` |
 | [12](12-student-staff-login.md) | Student Login and Staff Login | #32 | `43683c8` |
-
-## Adding a prompt
-
-1. Copy [TEMPLATE.md](TEMPLATE.md) to `NN-short-topic.md`, using the next number.
-2. Paste the prompt exactly as sent.
-3. Record the refinements as the work goes, not afterwards.
-4. Add a row to the index above.
-5. Link the file in your pull request's **Prompts used** field.
-
-Don't include secrets or personal details beyond what's already in the repository.
