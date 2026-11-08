@@ -60,7 +60,7 @@ The **Community** page lists open issues in shared areas. Upvote the ones that a
 
 Click the bell or open **Notifications**, then turn them on and allow them when your browser asks. You'll be told when a complaint's status changes.
 
-Notifications stop on that device when you log out. On an iPhone, add HostelFix to your Home Screen first.
+Clicking a notification takes you to that complaint in **My Complaints**. Notifications stop on that device when you log out. On an iPhone, add HostelFix to your Home Screen first.
 
 ## Hostel staff
 
